@@ -1,0 +1,9 @@
+{
+  "extends": "@nfi/tsconfig/node.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "rootDir": "."
+  },
+  "include": ["migrations", "seeds", "indexes", "validators"],
+  "exclude": ["node_modules", "dist", "backups"]
+}

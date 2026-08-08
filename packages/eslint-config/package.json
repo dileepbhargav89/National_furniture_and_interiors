@@ -1,0 +1,19 @@
+{
+  "name": "@nfi/eslint-config",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Shared lint config, including the module-boundary enforcement rule that is the ESLint-vs-Nx decision's real enforcement mechanism. docs/05_repository_strategy.md §4.4, docs/07_technology_decision_record.md §20.2.",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./next": "./next.js"
+  },
+  "dependencies": {
+    "eslint": "^9.13.0",
+    "typescript-eslint": "^8.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-config-next": "^15.0.0",
+    "@eslint/eslintrc": "^3.1.0"
+  }
+}

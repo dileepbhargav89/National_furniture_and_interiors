@@ -1,0 +1,20 @@
+# Mirrors .gitignore's build-output exclusions, plus the lockfile (docs/05_repository_strategy.md §13).
+node_modules/
+.pnpm-store/
+.next/
+dist/
+build/
+out/
+*.tsbuildinfo
+.turbo/
+coverage/
+playwright-report/
+test-results/
+pnpm-lock.yaml
+CHANGELOG.md
+
+# docs/00-18 are locked — CLAUDE.md "Never edit docs/00-18 directly", docs/18_CLAUDE_CONSTITUTION.md
+# §2.11. Prettier must never rewrite them, not even whitespace-only. implementation/ is planning
+# prose, not source, and stays untouched by the same discipline.
+docs/
+implementation/

@@ -1,0 +1,4 @@
+# Placeholder — scoped image build + deploy to Production, gated by release approval.
+# Spec: docs/13_deployment_strategy.md §2.4 (Approval Gates), docs/10_devops_architecture.md §6-8.
+# Blocked on Sprint 1 producing a real deployable artifact — see docs/13_deployment_strategy.md §2 for
+# the promotion path this will implement (implementation/00_foundation_setup.md §5.10).

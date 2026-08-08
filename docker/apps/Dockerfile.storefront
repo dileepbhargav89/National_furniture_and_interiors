@@ -1,0 +1,32 @@
+# Multi-stage build for apps/storefront — docs/06_project_structure.md §7.1, docs/10_devops_architecture.md §4.1.
+# Standard shape shared by all four Dockerfiles: deps -> build -> runtime.
+# Note: storefront/admin are Vercel-deployed in Staging/Production (docs/07_technology_decision_record.md
+# §19.1, docs/10_devops_architecture.md §4.6) — this Dockerfile exists for Local/self-hosted parity
+# (docker-compose.local.yml) and as a portability fallback, using Next.js's standalone output mode.
+
+FROM node:22-alpine AS base
+RUN corepack enable
+WORKDIR /repo
+
+# ---- deps: install the full workspace graph (pnpm's strict, non-hoisted install, docs/05 §13) ----
+FROM base AS deps
+COPY . .
+RUN pnpm install --frozen-lockfile
+
+# ---- build: compile storefront and every workspace package it depends on ----
+FROM deps AS build
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN pnpm turbo run build --filter=storefront...
+
+# ---- runtime: minimal, non-root image serving Next.js's standalone output ----
+FROM node:22-alpine AS runtime
+RUN addgroup -S nfi && adduser -S nfi -G nfi
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY --from=build /repo/apps/storefront/.next/standalone ./
+COPY --from=build /repo/apps/storefront/.next/static ./apps/storefront/.next/static
+COPY --from=build /repo/apps/storefront/public ./apps/storefront/public
+USER nfi
+EXPOSE 3000
+CMD ["node", "apps/storefront/server.js"]

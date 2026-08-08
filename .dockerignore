@@ -1,0 +1,19 @@
+# Build context lives at the repo root (docker/apps/Dockerfile.* all COPY . . from here) —
+# docs/10_devops_architecture.md §4.2's build-context-level control, not just a final-image-level one.
+node_modules
+**/node_modules
+.pnpm-store
+.turbo
+**/.next
+**/dist
+coverage
+.git
+.env
+.env.local
+.env.*.local
+*.log
+docs
+implementation
+testing
+.vscode
+.idea

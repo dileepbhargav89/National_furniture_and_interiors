@@ -1,0 +1,45 @@
+{
+  "name": "national-furniture-interiors",
+  "private": true,
+  "version": "0.1.0",
+  "description": "National Furniture & Interiors — Furniture eCommerce, Interior Design Services, Lead Generation, CRM, Admin Dashboard, and Analytics platform. Architecture baseline: docs/01-18.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,md,json}\"",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "npx eslint --fix",
+      "npx prettier --write"
+    ],
+    "*.{md,json}": [
+      "npx prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.6.0",
+    "prettier": "^3.3.0",
+    "prettier-plugin-tailwindcss": "^0.6.8",
+    "husky": "^9.1.6",
+    "lint-staged": "^15.2.10",
+    "@commitlint/cli": "^19.5.0",
+    "@commitlint/config-conventional": "^19.5.0",
+    "eslint": "^9.13.0",
+    "@nfi/eslint-config": "workspace:*"
+  }
+}

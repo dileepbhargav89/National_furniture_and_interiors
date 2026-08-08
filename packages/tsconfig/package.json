@@ -1,0 +1,11 @@
+{
+  "name": "@nfi/tsconfig",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Base TypeScript compiler configs extended by every app/package, on top of root tsconfig.base.json. docs/07_technology_decision_record.md §20.1.",
+  "files": [
+    "base.json",
+    "nextjs.json",
+    "node.json"
+  ]
+}

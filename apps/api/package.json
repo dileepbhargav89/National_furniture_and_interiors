@@ -1,0 +1,38 @@
+{
+  "name": "@nfi/api",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/server.ts",
+    "dev:worker": "tsx watch --env-file=.env src/worker.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "start:worker": "node dist/worker.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "mongoose": "^8.7.0",
+    "ioredis": "^5.4.0",
+    "bullmq": "^5.21.0",
+    "zod": "^3.23.0",
+    "jsonwebtoken": "^9.0.0",
+    "helmet": "^8.0.0",
+    "cors": "^2.8.5",
+    "pino": "^9.5.0",
+    "@nfi/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@nfi/eslint-config": "workspace:*",
+    "@nfi/tsconfig": "workspace:*",
+    "eslint": "^9.13.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "@types/cors": "^2.8.17",
+    "typescript": "^5.6.0",
+    "tsx": "^4.19.0",
+    "vitest": "^2.0.0"
+  }
+}

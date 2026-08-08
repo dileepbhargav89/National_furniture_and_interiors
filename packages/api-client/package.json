@@ -1,0 +1,23 @@
+{
+  "name": "@nfi/api-client",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The only place either frontend app calls fetch against apps/api. Wraps base URL, auth-header injection, response-envelope parsing. docs/06_project_structure.md §3.2, docs/08_api_architecture.md §3.4.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@nfi/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@nfi/eslint-config": "workspace:*",
+    "@nfi/tsconfig": "workspace:*",
+    "eslint": "^9.13.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.0.0"
+  }
+}

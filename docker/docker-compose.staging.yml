@@ -1,0 +1,2 @@
+# Placeholder — staging-scoped Compose definition, if used.
+# Production is orchestrator-managed, not Compose (docs/02_enterprise_architecture.md §8.2, docs/10 §3).

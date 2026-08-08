@@ -1,0 +1,64 @@
+# Ownership mapping per top-level folder / workspace package.
+# docs/06_project_structure.md §2.2, §1.6 · docs/11_engineering_workflow.md §9.6-9.7 · docs/17_architecture_index.md §8
+#
+# Placeholder team handles below (@nfi-org/*) — replace with real GitHub team slugs
+# once the organization and teams are created. Mapping itself (which folder -> which owning
+# role) must not change without going through docs/18_CLAUDE_CONSTITUTION.md §6 (ADR process).
+
+# Root / cross-cutting
+/package.json                   @nfi-org/platform-leads
+/pnpm-workspace.yaml            @nfi-org/platform-leads
+/turbo.json                     @nfi-org/devops
+/tsconfig.base.json             @nfi-org/platform-leads
+CODEOWNERS                      @nfi-org/engineering-director
+
+# apps/
+/apps/storefront/                @nfi-org/frontend
+/apps/admin/                     @nfi-org/frontend
+/apps/api/src/core/              @nfi-org/backend-leads   # two-approval requirement, docs/11 §4.2
+/apps/api/src/modules/auth/      @nfi-org/backend
+/apps/api/src/modules/users/     @nfi-org/backend
+/apps/api/src/modules/leads/     @nfi-org/backend
+/apps/api/src/modules/crm/       @nfi-org/backend
+/apps/api/src/modules/design-projects/  @nfi-org/backend
+/apps/api/src/modules/catalog/   @nfi-org/backend
+/apps/api/src/modules/cart/      @nfi-org/backend
+/apps/api/src/modules/orders/    @nfi-org/backend
+/apps/api/src/modules/payments/  @nfi-org/backend @nfi-org/security   # docs/09 §12.3 mandatory security review
+/apps/api/src/modules/reviews/   @nfi-org/backend
+/apps/api/src/modules/media/     @nfi-org/backend
+/apps/api/src/modules/notifications/  @nfi-org/backend
+/apps/api/src/modules/cms/       @nfi-org/backend
+/apps/api/src/modules/admin/     @nfi-org/backend @nfi-org/security
+/apps/api/src/modules/analytics/ @nfi-org/backend
+/apps/worker/                    @nfi-org/backend
+
+# packages/ (shared — two-approval requirement, docs/11 §4.2)
+/packages/ui/                    @nfi-org/frontend-leads
+/packages/api-client/            @nfi-org/frontend-leads
+/packages/config/                @nfi-org/frontend-leads
+/packages/shared/                @nfi-org/platform-leads
+/packages/eslint-config/         @nfi-org/platform-leads
+/packages/tsconfig/              @nfi-org/platform-leads
+/packages/database/              @nfi-org/database
+
+# configs/, docker/, .github/, scripts/
+/configs/                        @nfi-org/devops
+/docker/                         @nfi-org/devops
+/.github/                        @nfi-org/devops
+/scripts/                        @nfi-org/devops
+
+# docs/ — sub-folder ownership per docs/06_project_structure.md §8
+/docs/database/                  @nfi-org/database
+/docs/api/                       @nfi-org/backend-leads
+/docs/development/               @nfi-org/engineering-director
+/docs/deployment/                @nfi-org/devops
+/docs/security/                  @nfi-org/security
+/docs/testing/                   @nfi-org/qa
+/docs/adr/                       @nfi-org/chief-architect
+/docs/*.md                       @nfi-org/chief-architect   # numbered architecture series — ADR-gated, docs/18 §2.11
+
+# assets/, public/, testing/
+/assets/                         @nfi-org/design
+/public/                         @nfi-org/platform-leads
+/testing/                        @nfi-org/qa

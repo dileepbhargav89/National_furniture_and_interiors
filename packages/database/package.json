@@ -1,0 +1,24 @@
+{
+  "name": "@nfi/database-tools",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Offline migration/seed/index/backup tooling. Never imported by the running application at runtime — invoked by scripts/ or CI only. docs/06_project_structure.md §4.4, §5, docs/13_deployment_strategy.md §5.",
+  "scripts": {
+    "migrate": "tsx migrations/run.ts",
+    "seed": "tsx seeds/run.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "mongoose": "^8.7.0",
+    "@nfi/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@nfi/eslint-config": "workspace:*",
+    "@nfi/tsconfig": "workspace:*",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.13.0",
+    "typescript": "^5.6.0",
+    "tsx": "^4.19.0"
+  }
+}

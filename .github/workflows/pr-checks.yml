@@ -1,0 +1,35 @@
+# Affected-package lint/typecheck/test/build on every PR.
+# Spec: docs/05_repository_strategy.md §15 (affected-package detection), docs/10_devops_architecture.md §6,
+# docs/11_engineering_workflow.md §3-4.
+name: PR Checks
+
+on:
+  pull_request:
+
+concurrency:
+  group: pr-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint, typecheck, test, build (affected packages only)
+        run: pnpm turbo run lint typecheck test build --filter='...[origin/${{ github.base_ref }}]'

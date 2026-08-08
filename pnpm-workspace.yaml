@@ -1,0 +1,6 @@
+# Workspace member glob — docs/05_repository_strategy.md §8.1, docs/06_project_structure.md §2.1
+# apps/*   -> deployable applications (storefront, admin, api, worker)
+# packages/* -> reusable, importable workspace packages (ui, api-client, config, shared, eslint-config, tsconfig, database)
+packages:
+  - "apps/*"
+  - "packages/*"
