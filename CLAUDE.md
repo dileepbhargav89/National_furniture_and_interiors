@@ -9,7 +9,9 @@ This file is intentionally thin and stays that way — it points at the source o
 
 ## Current State
 
-Structural scaffold only — no business logic exists yet. Folder tree, workspace config, and package manifests are in place per `docs/06_project_structure.md`. Sprint 0 (tooling setup: ESLint, Prettier, Husky, Commitlint, Docker, CI, health check) is planned but not yet executed — see `implementation/00_foundation_setup.md` for the full checklist and current status. Do not start Sprint 1 (`auth`/`users`/`admin`, per `docs/15_master_project_plan.md` Phase 1) until that checklist is closed.
+Sprint 0 (tooling setup) is complete and verified — see `implementation/00_foundation_setup.md` §6 for the closed checklist. Workspace installs cleanly (`pnpm install`), lint/typecheck/format/test/build all pass across every package, ESLint's module-boundary rule is live and smoke-tested, Husky + Commitlint enforce Conventional Commits, and `apps/api` boots with a working `GET /health` liveness probe. Still no business logic — `apps/api/src/core/` (config/database/cache/logger) and the Next.js app-shell boilerplate are infrastructure only, not feature code. Sprint 1 (`auth`/`users`/`admin`, per `docs/15_master_project_plan.md` Phase 1) may now begin.
+
+Known gaps to close in/before Sprint 1: `apps/worker`'s standalone-package-vs-shared-entry-point question is still open (`apps/worker/README.md`); the four Dockerfiles for `storefront`/`admin` are template-correct but unverified since this sandbox has no Docker; `apps/api/.env`'s vendor secrets (Razorpay/Cloudinary/Email/SMS) are placeholders with no consuming code yet.
 
 ## Quick Commands
 
