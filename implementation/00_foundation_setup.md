@@ -313,9 +313,9 @@ Nine tracks, sequenced. Each has an objective, concrete steps, and an acceptance
 - [x] Husky pre-commit (lint-staged) and commit-msg (commitlint) hooks installed and verified (5.6)
 - [x] `commitlint.config.js` enforces Conventional Commits with a 15-module scope-enum (5.7)
 - [x] `.env`/`.env.local` populated locally (never committed); boot-time fail-fast config validation implemented (5.8)
-- [x] All 4 Dockerfiles are real multi-stage builds; `docker-compose.local.yml` brings up `mongodb`+`redis` (5.9) — authored to spec; **not executable in this environment (no Docker installed)**, see Section 7 below
+- [x] All 4 Dockerfiles are real multi-stage builds; `docker-compose.local.yml` brings up `mongodb`+`redis`+`api`+`worker`+`storefront`+`admin` (5.9) — **Docker Desktop installed and all 6 services verified running and healthy**, see Section 7 below
 - [x] `pr-checks.yml` is real and green on an empty-code PR (5.10) — authored and YAML-validated; not run against actual GitHub Actions (no push performed)
-- [x] `GET /health` returns `200` with confirmed Redis connectivity; Mongo connectivity path verified via graceful-degradation behavior, not a live connection (5.11) — see Section 7
+- [x] `GET /health` returns `200` with confirmed Mongo **and** Redis connectivity (5.11) — **verified against live containers**, see Section 7
 - [x] The one `turbo.json` deviation (Section 3) remains corrected, no regression
 - [x] `implementation/` folder's traceability gap (Section 0) recorded as a candidate for a lightweight future ADR against `06_project_structure.md`
 
@@ -337,13 +337,28 @@ This is now a git repository (`git init` + initial commit, done with explicit us
 
 ---
 
-## 7. Environment Limitations During This Verification Pass
+## 7. Docker + MongoDB Environment Setup (2026-08-08, post-Sprint-0)
 
-Recorded here rather than silently assumed away, per this document's own discipline (Section 1):
+Docker Desktop was not installed when Sprint 0 was first closed out (Section 6's original text recorded this as an open verification gap). It has since been installed (`winget install Docker.DockerDesktop`, WSL2 backend, already-enabled on this machine) and the full local stack brought up and verified against real containers:
 
-- **No Docker available.** All four Dockerfiles and `docker-compose.local.yml` were authored to `docs/10_devops_architecture.md` §4.1's locked `deps → build → runtime` shape and YAML-syntax-validated, but `docker compose up` was never executed — Section 5.9's "brings up mongodb+redis" acceptance criterion is therefore unverified, not failed.
-- **No MongoDB available.** `apps/api` was booted directly (`node --env-file=.env dist/server.js`) against the one real service available in this sandbox — a local Redis-compatible server (Memurai) — and `GET /health` correctly returned `redisConnected: true`. `mongoConnected` correctly reported `false` (no crash, no hang) rather than being verified `true`.
-- Both gaps close automatically the first time this repository is run in an environment with Docker/MongoDB — e.g., via `docker compose -f docker/docker-compose.local.yml up`, which is the actual Section 5.11 acceptance path.
+- `docker compose -f docker/docker-compose.local.yml up -d` brings up all 6 services (`mongodb`, `redis`, `api`, `worker`, `storefront`, `admin`); `mongodb`/`redis` report `(healthy)`.
+- `GET http://localhost:4000/health` → `{"status":"ok","mongoConnected":true,"redisConnected":true}` — verified against the live containers, not just graceful-degradation behavior.
+- `storefront` (`:3000`) and `admin` (`:3001`) both serve `200`.
+
+### 7.1 Real Issues Found and Fixed During This Pass
+
+Recorded per this document's own verification discipline (Section 1) — none of these were silently patched:
+
+- **Redis host-port collision.** This machine already runs a native Redis-compatible service (Memurai) on `6379`. Docker silently "succeeded" binding the same host port, but traffic to `localhost:6379` was actually still being served by Memurai, not the container — confirmed by writing a marker key inside the container and finding it absent via the host port. Fixed by remapping the compose file's Redis service to host port `6380` (container-to-container traffic between `api`/`worker` and `redis` is unaffected — it uses the internal `redis:6379` service hostname, never the host port).
+- **`Dockerfile.api`/`Dockerfile.worker` runtime stage had a broken `node_modules` layout.** The runtime stage copied `apps/api/dist` and the root `node_modules` into a flattened `/app` directory, but pnpm's strict, non-hoisted install (`docs/05_repository_strategy.md` §13) resolves each package's dependencies via symlinks that depend on that package's *exact relative position* under the repo root. Flattening broke resolution (`Cannot find module 'cors'` at container boot). Fixed by preserving the real `apps/api/...` path inside the image instead of renaming it to `/app`.
+- **No `next.config.ts` existed**, so Next.js never produced the `.next/standalone` output both Dockerfiles' runtime stage expects — `docker build` failed with "not found" for that path. Added minimal `next.config.ts` to both `storefront`/`admin` (framework-required scaffolding, no product decisions in it).
+- **Standalone output broke native `pnpm build`/`pnpm test` on Windows.** Next.js's standalone output symlinks traced files into `.next/standalone/node_modules`, which requires Windows Developer Mode (`SeCreateSymbolicLinkPrivilege`) — a system security setting, which per this session's own operating rules is never changed without the user doing it themselves. Fixed in code instead: `output: 'standalone'` is now gated behind a `DOCKER_BUILD=true` env var set only inside the two Dockerfiles' build stage, so local `pnpm build`/`pnpm test` runs a plain (non-symlinking) Next.js build exactly as before, and only the Docker build (running inside a Linux container, where symlinks are unrestricted) opts in.
+- **`admin`'s standalone `server.js` ignored its `-p 3001` port.** The generated standalone server only reads the `PORT` env var — `next dev -p 3001`/`next start -p 3001` in `package.json` never applies to it. It was silently listening on the default `3000` inside the container while compose mapped host `3001→3001`, so `curl localhost:3001` got nothing. Fixed by setting `PORT: '3001'` explicitly in `docker-compose.local.yml`'s `admin` service.
+
+### 7.2 Still Outstanding
+
+- `pr-checks.yml` remains unverified against real GitHub Actions (nothing has been pushed to `origin`).
+- Vercel-native builds for `storefront`/`admin` (the actual Staging/Production deploy path per `docs/07_technology_decision_record.md` §19.1 — these Dockerfiles exist for local/self-hosted parity, not the primary deploy target) remain unverified, since that requires a Vercel project, not just Docker.
 
 ---
 

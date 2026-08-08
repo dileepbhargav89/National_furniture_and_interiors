@@ -22,7 +22,10 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - '6379:6379'
+      # Host-side 6380, not 6379: this machine already runs a native Redis-compatible service
+      # (Memurai) on 6379. Container-to-container traffic (api/worker below) is unaffected —
+      # it uses the `redis:6379` service hostname over the compose network, never this host port.
+      - '6380:6379'
     volumes:
       - redis_data:/data
     healthcheck:
@@ -88,6 +91,9 @@ services:
       - ../apps/admin/.env.local
     environment:
       NEXT_PUBLIC_API_BASE_URL: http://localhost:4000
+      # The standalone server.js Next.js generates reads PORT directly — it does not honor the
+      # `-p 3001` in package.json's dev/start scripts (those only apply to the `next` CLI).
+      PORT: '3001'
     ports:
       - '3001:3001'
     depends_on:

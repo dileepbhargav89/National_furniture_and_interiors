@@ -6,8 +6,23 @@
 // no flat-config export of its own — FlatCompat is the officially documented bridge (the same
 // approach `create-next-app` itself generates for ESLint 9 flat config projects).
 const { FlatCompat } = require('@eslint/eslintrc');
+const tseslint = require('typescript-eslint');
 const base = require('./index.js');
 
 const compat = new FlatCompat({ baseDirectory: __dirname });
 
-module.exports = [...base, ...compat.extends('next/core-web-vitals')];
+module.exports = [
+  ...base,
+  ...compat.extends('next/core-web-vitals'),
+  {
+    // eslint-config-next's legacy config sets a Babel-based parser globally and only scopes
+    // @typescript-eslint/parser to *.ts(x) via its own internal `overrides` — a nesting FlatCompat
+    // does not reliably carry through. Reassert the TS parser last so it wins for TS/TSX files
+    // (otherwise type-only usages, e.g. `import type` used solely in a type annotation, are
+    // misreported as unused by @typescript-eslint/no-unused-vars under the Babel parser).
+    files: ['**/*.ts', '**/*.tsx'],
+    languageOptions: {
+      parser: tseslint.parser,
+    },
+  },
+];

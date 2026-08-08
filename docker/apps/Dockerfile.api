@@ -16,14 +16,20 @@ FROM deps AS build
 RUN pnpm turbo run build --filter=@nfi/api...
 
 # ---- runtime: minimal, non-root, production-only image ----
+# pnpm's strict, non-hoisted node_modules (docs/05 §13) resolves packages via symlinks into a
+# root .pnpm store, relative to each package's own position in the tree — so the runtime image
+# preserves the real repo-relative layout (apps/api/node_modules, not a flattened /app) rather
+# than copying dist/package.json/node_modules into unrelated flat paths.
 FROM node:22-alpine AS runtime
 RUN corepack enable && addgroup -S nfi && adduser -S nfi -G nfi
-WORKDIR /app
+WORKDIR /repo
 ENV NODE_ENV=production
-COPY --from=build /repo/apps/api/dist ./dist
-COPY --from=build /repo/apps/api/package.json ./package.json
 COPY --from=build /repo/node_modules ./node_modules
+COPY --from=build /repo/apps/api/node_modules ./apps/api/node_modules
+COPY --from=build /repo/apps/api/dist ./apps/api/dist
+COPY --from=build /repo/apps/api/package.json ./apps/api/package.json
 COPY --from=build /repo/packages ./packages
 USER nfi
+WORKDIR /repo/apps/api
 EXPOSE 4000
 CMD ["node", "dist/server.js"]

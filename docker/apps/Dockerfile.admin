@@ -16,6 +16,9 @@ RUN pnpm install --frozen-lockfile
 # ---- build: compile admin and every workspace package it depends on ----
 FROM deps AS build
 ENV NEXT_TELEMETRY_DISABLED=1
+# Opts next.config.ts into output:'standalone' — see that file's comment for why this is
+# conditional (Windows-native `next build` needs Developer Mode for the symlinks it creates).
+ENV DOCKER_BUILD=true
 RUN pnpm turbo run build --filter=admin...
 
 # ---- runtime: minimal, non-root image serving Next.js's standalone output ----
