@@ -35,3 +35,5 @@ export async function disconnectDatabase(): Promise<void> {
   await mongoose.disconnect();
   connectPromise = null;
 }
+
+export { withTransaction } from './transaction';

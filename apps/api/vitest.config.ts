@@ -10,6 +10,7 @@ export default defineConfig({
       PORT: '4000',
       MONGODB_URI: 'mongodb://localhost:27017/nfi_test',
       REDIS_URL: 'redis://localhost:6379',
+      CORS_ALLOWED_ORIGINS: 'http://localhost:3000,http://localhost:3001',
       JWT_ACCESS_SECRET: 'a'.repeat(32),
       JWT_REFRESH_SECRET: 'b'.repeat(32),
       JWT_ACCESS_TTL: '15m',

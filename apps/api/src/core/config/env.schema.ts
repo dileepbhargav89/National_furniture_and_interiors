@@ -11,6 +11,12 @@ export const envSchema = z.object({
     .url('MONGODB_URI must be a valid mongodb:// or mongodb+srv:// connection string'),
   REDIS_URL: z.string().url('REDIS_URL must be a valid redis:// connection string'),
 
+  // Comma-separated, no wildcard — docs/08_api_architecture.md §4.8: only the storefront/admin
+  // origins are ever allowed, credentialed CORS is never opened to "*".
+  CORS_ALLOWED_ORIGINS: z
+    .string()
+    .min(1, 'CORS_ALLOWED_ORIGINS is required (comma-separated origin list)'),
+
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
   JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 characters'),
   JWT_ACCESS_TTL: z

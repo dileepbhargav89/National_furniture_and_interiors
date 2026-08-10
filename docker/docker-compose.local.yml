@@ -80,7 +80,10 @@ services:
     ports:
       - '3000:3000'
     depends_on:
-      - api
+      api:
+        # Gates on the api container's HEALTHCHECK, which probes /ready (docker/apps/Dockerfile.api)
+        # — "api can actually serve traffic", not merely "api's process started".
+        condition: service_healthy
 
   admin:
     build:
@@ -97,7 +100,10 @@ services:
     ports:
       - '3001:3001'
     depends_on:
-      - api
+      api:
+        # Gates on the api container's HEALTHCHECK, which probes /ready (docker/apps/Dockerfile.api)
+        # — "api can actually serve traffic", not merely "api's process started".
+        condition: service_healthy
 
 volumes:
   mongodb_data:

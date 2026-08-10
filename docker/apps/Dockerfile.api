@@ -32,4 +32,13 @@ COPY --from=build /repo/packages ./packages
 USER nfi
 WORKDIR /repo/apps/api
 EXPOSE 4000
+
+# Container health = READINESS (docs/10_devops_architecture.md §10.4). Docker/Compose's healthcheck
+# is what `depends_on: condition: service_healthy` gates on, i.e. "can this instance serve traffic
+# yet" — that is /ready's question, not /health's. On ECS (docs/10 §8.1) the two map to separate
+# probes: the ECS container health check to /health (restart on failure) and the ALB target-group
+# health check to /ready (drain from rotation without restarting).
+HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=5 \
+  CMD node -e "fetch('http://127.0.0.1:4000/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
 CMD ["node", "dist/server.js"]
