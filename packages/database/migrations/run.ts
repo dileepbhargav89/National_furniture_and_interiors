@@ -18,9 +18,12 @@ import type { Db } from './types';
 import type { Migration } from './types';
 import { migration as m0001 } from './0001-identity-indexes';
 import { migration as m0002 } from './0002-identity-reference-data';
+import { migration as m0003 } from './0003-role-permission-grants';
+import { migration as m0004 } from './0004-bootstrap-super-admin';
+import { migration as m0005 } from './0005-fix-optional-unique-indexes';
 
 /** Ordered by `id`. Adding a migration means adding it here — explicit, not filesystem-magic. */
-const MIGRATIONS: Migration[] = [m0001, m0002];
+const MIGRATIONS: Migration[] = [m0001, m0002, m0003, m0004, m0005];
 
 async function main(): Promise<void> {
   const uri = process.env.MONGODB_URI;

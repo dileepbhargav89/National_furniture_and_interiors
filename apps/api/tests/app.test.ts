@@ -6,7 +6,9 @@ let server: Server;
 let baseUrl: string;
 
 beforeAll(async () => {
-  const app = createApp();
+  // false = probes only. These tests assert liveness/readiness semantics and must not require a
+  // composition root (and therefore a live Redis) to run.
+  const app = createApp(false);
   await new Promise<void>((resolve) => {
     server = app.listen(0, () => resolve());
   });

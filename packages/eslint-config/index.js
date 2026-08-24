@@ -158,7 +158,15 @@ module.exports = [
   },
   {
     // apps/api/src/core/ is cross-cutting infrastructure only — never business logic (root CLAUDE.md, docs/06 §4.2).
+    //
+    // `core/di/` is deliberately EXEMPT: docs/06_project_structure.md §4.2's `di/` row specifies its
+    // Dependencies as "Every module's exported constructor", because the composition root's entire
+    // purpose is wiring concrete implementations into use-cases (docs/02 §7.3). The CLAUDE.md rule
+    // it must still honour is the semantic one — no business logic may be PLACED in core/ — which
+    // that row also states ("this file only wires, it never decides"). The rule below previously
+    // over-restricted core/di against its own locked specification; corrected 2026-08-11.
     files: ['src/core/**/*.ts'],
+    ignores: ['src/core/di/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',

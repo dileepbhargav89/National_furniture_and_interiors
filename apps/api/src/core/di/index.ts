@@ -1,1 +1,1 @@
-export { buildAppContext, type AppContext } from './composition-root';
+export { buildAppContext, resetAppContext, type AppContext } from './composition-root';

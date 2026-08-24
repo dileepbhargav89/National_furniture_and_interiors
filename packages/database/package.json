@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "mongoose": "^8.7.0",
-    "@nfi/shared": "workspace:*"
+    "@nfi/shared": "workspace:*",
+    "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
     "@nfi/eslint-config": "workspace:*",
@@ -19,6 +20,7 @@
     "@types/node": "^22.0.0",
     "eslint": "^9.13.0",
     "typescript": "^5.6.0",
-    "tsx": "^4.19.0"
+    "tsx": "^4.19.0",
+    "@types/bcryptjs": "^2.4.6"
   }
 }

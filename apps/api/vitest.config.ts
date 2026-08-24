@@ -8,8 +8,11 @@ export default defineConfig({
     env: {
       NODE_ENV: 'test',
       PORT: '4000',
-      MONGODB_URI: 'mongodb://localhost:27017/nfi_test',
-      REDIS_URL: 'redis://localhost:6379',
+      // 127.0.0.1, not `localhost`: Node resolves `localhost` to ::1 first on Windows, while
+      // local Redis (Memurai) and MongoDB listen on IPv4 only — which surfaced as spurious
+      // `ECONNREFUSED ::1:6379` noise in test output. Pinning the family removes the ambiguity.
+      MONGODB_URI: 'mongodb://127.0.0.1:27017/nfi_test',
+      REDIS_URL: 'redis://127.0.0.1:6379',
       CORS_ALLOWED_ORIGINS: 'http://localhost:3000,http://localhost:3001',
       JWT_ACCESS_SECRET: 'a'.repeat(32),
       JWT_REFRESH_SECRET: 'b'.repeat(32),
@@ -27,6 +30,13 @@ export default defineConfig({
       SMS_WHATSAPP_PROVIDER_API_KEY: 'sms_test_key',
       SENTRY_DSN: '',
       LOG_LEVEL: 'error',
+    },
+    coverage: {
+      provider: 'v8',
+      include: ['src/modules/**/domain/**', 'src/modules/**/application/**'],
+      thresholds: {
+        lines: 80,
+      },
     },
   },
 });

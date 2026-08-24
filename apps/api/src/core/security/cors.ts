@@ -4,6 +4,7 @@
 // requests working correctly between the API's own origin and the two frontend origins.
 import cors from 'cors';
 import { env } from '../config';
+import { ForbiddenError } from '../exceptions/forbidden.error';
 
 const allowedOrigins = env.CORS_ALLOWED_ORIGINS.split(',')
   .map((origin) => origin.trim())
@@ -17,11 +18,13 @@ export const corsPolicy = cors({
       callback(null, true);
       return;
     }
-    // A rejected origin currently falls through error-handler.middleware.ts's generic 500 branch
-    // (no ForbiddenError/403 class exists yet — core/exceptions/unauthorized.error.ts documents
-    // why). Browsers block the response regardless of status code once CORS fails, so this is a
-    // low-stakes, deliberately deferred refinement, not a security gap.
-    callback(new Error(`Origin ${requestOrigin} is not allowed by CORS policy`));
+    // A rejected origin is a policy denial, so it maps to docs/08 §3.11's 403/FORBIDDEN row, not
+    // the error handler's generic 500 branch. Browsers block the response either way once CORS
+    // fails, but a 500 misreports a working policy as an unexpected server fault: it inflates the
+    // 5xx error rate docs/10 §6.2 alerts on, and lets any unauthenticated caller manufacture 500s
+    // by sending a foreign Origin. The message deliberately does not echo `requestOrigin` back —
+    // docs/09 §11 rule 11 — since the caller controls it and it lands in logs verbatim.
+    callback(new ForbiddenError('Origin is not allowed by CORS policy'));
   },
   credentials: true,
 });

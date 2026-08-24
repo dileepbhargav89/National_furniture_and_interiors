@@ -33,3 +33,6 @@ jobs:
 
       - name: Lint, typecheck, test, build (affected packages only)
         run: pnpm turbo run lint typecheck test build --filter='...[origin/${{ github.base_ref }}]'
+
+      - name: Enforce coverage floor (API)
+        run: pnpm --filter=@nfi/api run test:coverage

@@ -36,6 +36,16 @@ Candidate categories that would need that treatment: general-purpose IaC (Terraf
 
 **None.** This ADR exists to make the gap explicit and route it to the roles that own it, per `docs/18_CLAUDE_CONSTITUTION.md` §7 Rule 3 ("surface the gap explicitly rather than silently deciding on the team's behalf") and Rule 6.
 
+### Supporting analysis added 2026-08-11 (status unchanged — still PROPOSED)
+
+`implementation/01_iac_decision_analysis.md` now supplies the weighted comparison `docs/18` §6.2 requires, covering Terraform, OpenTofu, AWS CDK and CloudFormation against all twelve constraints extracted from the locked documents. It **selects no tool**. Its substantive contribution is a narrowing the approver may accept or reject:
+
+- **AWS CDK and CloudFormation score poorly for this specific architecture** — not on merit, but because `docs/10` §9.4 (MongoDB Atlas) and `docs/07` §19.1 (Vercel) are locked and neither tool covers them, leaving three of five providers outside version control, in tension with `docs/10` §2.2.
+- **Terraform and OpenTofu are functionally equivalent here** (weighted totals 222 vs 223); choosing between them is primarily a licensing/governance question (BUSL-1.1 vs MPL-2.0), which is a CTO decision.
+- **The genuine trade-off requiring a risk-appetite judgement:** multi-provider coverage (favours Terraform/OpenTofu) versus having no state file to secure (favours the AWS-native options, a real security advantage under `docs/09` §5.1).
+
+The decision itself remains with the CTO and Principal DevOps Architect.
+
 ## Consequences
 
 **Until resolved:**

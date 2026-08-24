@@ -2,8 +2,9 @@
 
 | Field | Value |
 |---|---|
-| **Status** | **PROPOSED — NOT YET APPROVED** |
+| **Status** | **RECOMMENDED — HUMAN APPROVAL REQUIRED** |
 | **Date drafted** | 2026-08-10 |
+| **Status last reviewed** | 2026-08-11 — `implementation/01_sprint1_final_readiness_gate.md` |
 | **Author** | Sprint 1 prerequisite remediation (AI-assisted session) |
 | **Requires approval from** | Principal Software Architect + Principal Database Architect, via Architecture Review (`docs/11_engineering_workflow.md` §8.3, `docs/18_CLAUDE_CONSTITUTION.md` §6.3) |
 | **Amends** | `docs/03_database_design.md` §4 (Collection Inventory) |
@@ -70,6 +71,42 @@ Classification: **not** business data, **no** PII (`docs/09_security_architectur
 ## Source Documents
 
 `docs/03_database_design.md` §3.1, §4; `docs/13_deployment_strategy.md` §5.1, §5.5, §5.6, §10.2, §14; `docs/16_architecture_final_review.md` §8.3, §17; `docs/18_CLAUDE_CONSTITUTION.md` §2.6, §5.1, §6.
+
+## Status History
+
+| Date | Status | Note |
+|---|---|---|
+| 2026-08-10 | PROPOSED | Initial draft during Sprint 1 prerequisite remediation |
+| 2026-08-11 | **RECOMMENDED — HUMAN APPROVAL REQUIRED** | Re-reviewed against `docs/03`, `docs/13`, `docs/16`, `docs/18`. Evidence continues to support Option 1; no alternative is required by the locked documents. **Status raised to RECOMMENDED, not Approved:** `docs/18` §6.3 vests approval in a scheduled Architecture Review by named human roles, and no such mechanism is available in this repository (CODEOWNERS carries placeholder `@nfi-org/*` handles, no GitHub organisation exists, nothing has been pushed to a remote). Per `docs/18` §6.4, **no dependent implementation may be written** — the migration runner therefore still creates no tracking collection. |
+
+## What Approving This ADR Would Change (added 2026-08-11, status unchanged)
+
+Recorded so the approver sees the exact blast radius. **None of this is implemented.**
+
+| # | Change | File |
+|---|---|---|
+| 1 | Create and write the `schema_migrations` collection (`migrationId`, `description`, `category`, `appliedAt`, `appliedBy`, `verifiedAt`) | `packages/database/migrations/run.ts` — the marked EXTENSION POINT |
+| 2 | Skip already-applied migrations instead of re-running all of them | same |
+| 3 | Add the collection to the Collection Inventory + a Revision History entry citing this ADR | `docs/03_database_design.md` §4 (locked — `docs/18` §5.1) |
+| 4 | Add runner tests: first run, second run, partial-failure recovery, duplicate execution | new test file |
+| 5 | Satisfy the release-checklist item that is currently unsatisfiable | `docs/13` §10.2 |
+
+### Current safety mechanism, re-verified 2026-08-11
+
+**Idempotency is the ONLY safeguard**, because the runner records nothing and re-applies all five migrations on every run. That property was **broken** at Sprint 1 closure (migration `0001` re-asserted an index spec that `0005` had corrected, failing with `IndexKeySpecsConflict` and aborting the suite before `0002`–`0005` ran) and has been **fixed and re-verified independently**:
+
+- fresh database, run 1 → all 5 applied and verified;
+- run 2 → all 5 applied and verified, no changes;
+- run 3 → all 5 applied and verified (duplicate execution safe);
+- final `uniq_phone_active` filter is `0005`'s corrected `{isDeleted:false, phone:{$type:"string"}}`;
+- `0004` no-ops without env vars — no default account is created;
+- `schema_migrations` confirmed **absent** from the database.
+
+This is working as designed, but it is a **single point of failure**: correctness depends on every future migration author preserving idempotency by hand, with nothing in CI to catch a regression. Removing that fragility is this ADR's purpose. **The fix reduces the urgency; it does not resolve the ADR.**
+
+### Correction to an earlier statement in this document
+
+The Status History row below states "nothing has been pushed to a remote". Re-verified 2026-08-11: a remote **is** configured (`origin`), but `git ls-remote --heads origin` returns **nothing** — the repository is empty and no branch tracks it. The remote is a **personal** GitHub account, not an organisation, so `CODEOWNERS`' `@nfi-org/*` team handles still cannot resolve. The conclusion is unchanged; the detail is now accurate.
 
 ## Approval
 

@@ -2,12 +2,14 @@
 
 | Field | Value |
 |---|---|
-| **Status** | **PROPOSED — NOT YET APPROVED. Blocks implementation of `RegisterUser`.** |
+| **Status** | **APPROVED — Option 1 adopted 2026-08-11.** |
 | **Date drafted** | 2026-08-10 |
+| **Date approved** | 2026-08-11 |
+| **Approved by** | **Project owner**, deciding directly. See "Approval" below for how this maps onto `docs/18` §6.3's named roles and what that substitution does and does not cover. |
 | **Author** | Sprint 1 prerequisite remediation (AI-assisted session) |
 | **Requires approval from** | Principal Security Architect (primary — `docs/17_architecture_index.md` §8 assigns the Security domain) + Principal Software Architect, via Architecture Review (`docs/11_engineering_workflow.md` §8.3) |
-| **Amends** | Nothing yet — this ADR *fills a gap*, it does not change an existing decision. If approved it would add a clarifying row to `docs/08_api_architecture.md` §8's `auth` contract row. |
-| **Cited by** | `implementation/01_sprint1_identity_access.md` §10 Open Item 6, §11 |
+| **Amends** | `docs/08_api_architecture.md` §8's `auth` contract row — clarifying note added at v1.1 recording that `POST /auth/register` is `CUSTOMER`-only. |
+| **Cited by** | `implementation/01_sprint1_identity_access.md` §10 Open Item 6, §11; `implementation/03_sprint1_implementation_report.md` §2, §5 |
 
 ---
 
@@ -54,11 +56,11 @@ Rejected as scope-inflating: it invents an approval workflow, state machine, and
 **Option 3 — Implement `POST /auth/register` literally, honouring a client-supplied `userType`.**
 Rejected outright. This is the privilege-escalation hole described under Problem. It cannot be adopted without contradicting `docs/09` §2.2, and would be a direct violation of `docs/18` §8's "Do not bypass RBAC".
 
-## Proposed Decision
+## Decision (APPROVED 2026-08-11)
 
-Adopt **Option 1**.
+Adopt **Option 1**. Option 3 — honouring a client-supplied `userType` — is **rejected permanently**, not deferred; it is the privilege-escalation hole described under Problem and re-proposing it requires a new ADR that overturns this one.
 
-Concretely, if approved:
+Concretely:
 1. `POST /auth/register` is `CUSTOMER`-only. `userType` and `roleId` are not accepted as input fields at all.
 2. `POST /admin/users` (authenticated, `users.write`, `STAFF`/`ADMIN` `userType` only) is the sole runtime path that creates a privileged account.
 3. The initial `SUPER_ADMIN` is bootstrapped via a migration, following `docs/13` §5.4's reference-data pattern (the same mechanism migration `0002` already uses for `roles`/`permissions`).
@@ -66,12 +68,21 @@ Concretely, if approved:
 
 ## Consequences
 
-**If approved:** `RegisterUser` becomes implementable, and `implementation/01_sprint1_identity_access.md` §11's acceptance-test table (which already assumes this reading, flagged as provisional) becomes confirmed rather than assumed.
+**Now that it is approved:** `RegisterUser` is implementable and has been implemented. `implementation/01_sprint1_identity_access.md` §11's acceptance-test table, previously flagged provisional, is confirmed.
 
-**Until approved (current state):**
-- **`RegisterUser` MUST NOT be implemented.** This is the single hard blocker on Sprint 1's `auth` module.
-- Every other `auth` use case (`LoginUser`, `RefreshToken`, `LogoutUser`, `SetupMfa`, `VerifyMfa`, password reset) is **unaffected** and may proceed once this remediation's foundation lands — none of them depends on how an account was created.
-- Migration `0002` already establishes the 7 roles fail-closed (only `SUPER_ADMIN` holds grants), so nothing in the current database state pre-commits either option.
+This decision **closes the privilege-escalation ambiguity** identified under Problem. The literal reading of `docs/15` §3.1 + `docs/08` §8 — under which an anonymous caller could submit `userType: "STAFF"` and receive a privileged account — is no longer available to any future implementer: the ambiguity is resolved in favour of the fail-closed reading, in this ADR, in `docs/08` §8's v1.1 note, and in code.
+
+### As-built (verified 2026-08-11, not merely intended)
+
+| Rule | Where enforced | Evidence |
+|---|---|---|
+| `POST /auth/register` accepts no `userType`/`roleId` | `apps/api/src/modules/auth/presentation/validators.ts` — `registerSchema` is `.strict()`, so an unknown field is **rejected**, not stripped (`docs/08` §3.12, `docs/09` §3.10 mass-assignment) | `userType: "STAFF"` → **400 `VALIDATION_ERROR`** |
+| `CUSTOMER` is hard-assigned, never derived from input | `register-user.use-case.ts` — literal `userType: 'CUSTOMER'`; `RegisterUserInput` has no such field to derive from | 201 with `userType: CUSTOMER` |
+| Privileged accounts only via authenticated admin path | `POST /admin/users` behind `authMiddleware` → `requireStaffOrAdmin()` → `requirePermissions('users.write')` | `CUSTOMER` → **403 `FORBIDDEN`** |
+| First `SUPER_ADMIN` via migration, not HTTP | `packages/database/migrations/0004-bootstrap-super-admin.ts`; no-op unless env vars set, no default credentials | migration verified |
+| Regression guard | `apps/api/tests/modules/auth/register-user.test.ts` (8 cases) | prevents silent reintroduction |
+
+**Note on scope:** this ADR governs *who may create a privileged account*. It does not govern `users.read_self` grant semantics — see the OPEN item recorded in `implementation/03_sprint1_implementation_report.md` §5.
 
 ## Source Documents
 
@@ -79,9 +90,20 @@ Concretely, if approved:
 
 ## Approval
 
-- [ ] Circulated to Principal Security Architect and Principal Software Architect
-- [ ] Architecture Review discussion held (`docs/11_engineering_workflow.md` §8.3)
-- [ ] Outcome recorded: Approved / Rejected / Deferred
-- [ ] If Approved: `docs/08_api_architecture.md` §8 `auth` row updated with a Revision History entry citing this ADR
+- [x] **Decision taken by the project owner on 2026-08-11**, choosing Option 1 ("CUSTOMER only") from the options presented in this ADR.
+- [x] Outcome recorded: **APPROVED**.
+- [x] `docs/08_api_architecture.md` §8 `auth` row updated with a clarifying note and a v1.1 Revision History entry citing this ADR (`docs/18` §5.1).
+- [x] Implementation followed approval, not the reverse (`docs/18` §6.4) — `RegisterUser` was written after the decision was given.
 
-**`RegisterUser` may not be implemented until the boxes above are checked** (`docs/18_CLAUDE_CONSTITUTION.md` §6.4).
+### How this maps onto `docs/18` §6.3 — stated plainly
+
+`docs/18` §6.3 vests approval in the Principal Security Architect and Principal Software Architect via a scheduled Architecture Review (`docs/11` §8.3). **Neither role is staffed and no such review body exists in this repository** — `CODEOWNERS` carries placeholder `@nfi-org/*` handles and no GitHub organisation backs them. The project owner is the sole decision-making authority present and approved this ADR directly, exercising the authority those roles would otherwise hold.
+
+This is recorded rather than glossed because it is a **process substitution, not a process completion**. What it covers: the decision itself is authoritative and binding on implementation. What it does not cover: independent security review by a second qualified party. If those roles are later staffed, this ADR should be re-ratified — the decision is sound on the evidence above, but it has been reviewed by one party, not two.
+
+## Status History
+
+| Date | Status | Note |
+|---|---|---|
+| 2026-08-10 | PROPOSED | Drafted during Sprint 1 prerequisite remediation; blocked `RegisterUser` |
+| 2026-08-11 | **APPROVED** | Option 1 adopted by the project owner. `docs/08` §8 updated to v1.1. Implemented and verified — see the As-built table above. |

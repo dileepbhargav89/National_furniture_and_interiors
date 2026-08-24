@@ -11,6 +11,14 @@
 //   docs/03 §10.2  — "every 'must be unique' field... indexed as a partial unique index filtered
 //                     on isDeleted: false", generalized by §3.1's soft-delete rule
 //   docs/03 §10.3  — TTL indexes on the three ephemeral auth collections
+//
+// Idempotency note (added at Sprint 1 closure): index creation goes through `ensureIndex`, which
+// skips an index whose NAME already exists. Migration 0005 later corrects `uniq_phone_active`, and
+// a plain `createIndex` here would then re-assert the stale spec and fail with
+// `IndexKeySpecsConflict` on every subsequent run — aborting the suite before 0002–0005 execute.
+// See `ensure-index.ts` for the full reasoning. On a fresh database the resulting schema is
+// unchanged; only the "already exists" path differs.
+import { ensureIndex } from './ensure-index';
 import type { Db } from './types';
 import type { Migration } from './types';
 
@@ -25,54 +33,78 @@ export const migration: Migration = {
 
   async apply(db: Db): Promise<void> {
     // --- users (docs/03 §9.1.1) — §10.6: login lookup, OTP login/dedupe ---
-    await db
-      .collection('users')
-      .createIndex(
-        { email: 1 },
-        { unique: true, partialFilterExpression: NOT_DELETED, name: 'uniq_email_active' },
-      );
-    await db
-      .collection('users')
-      .createIndex(
-        { phone: 1 },
-        { unique: true, partialFilterExpression: NOT_DELETED, name: 'uniq_phone_active' },
-      );
+    await ensureIndex(
+      db,
+      'users',
+      { email: 1 },
+      {
+        unique: true,
+        partialFilterExpression: NOT_DELETED,
+        name: 'uniq_email_active',
+      },
+    );
+    // `uniq_phone_active` is CORRECTED BY MIGRATION 0005 — its partial filter there also requires
+    // `phone: { $type: 'string' }`, because this filter alone made "no phone" a unique value and
+    // capped the platform at one phone-less account. `ensureIndex` leaves 0005's version in place.
+    await ensureIndex(
+      db,
+      'users',
+      { phone: 1 },
+      {
+        unique: true,
+        partialFilterExpression: NOT_DELETED,
+        name: 'uniq_phone_active',
+      },
+    );
 
     // --- roles (docs/03 §9.1.2: `name` unique) / permissions (§9.1.3: `key` unique) ---
     // Both carry the standard audit block (§3) — they are not in §3.1's immutable or ephemeral
     // exception lists — so §3.1's partial-unique rule applies to them exactly as it does to users.
-    await db
-      .collection('roles')
-      .createIndex(
-        { name: 1 },
-        { unique: true, partialFilterExpression: NOT_DELETED, name: 'uniq_role_name_active' },
-      );
-    await db
-      .collection('permissions')
-      .createIndex(
-        { key: 1 },
-        { unique: true, partialFilterExpression: NOT_DELETED, name: 'uniq_permission_key_active' },
-      );
+    await ensureIndex(
+      db,
+      'roles',
+      { name: 1 },
+      {
+        unique: true,
+        partialFilterExpression: NOT_DELETED,
+        name: 'uniq_role_name_active',
+      },
+    );
+    await ensureIndex(
+      db,
+      'permissions',
+      { key: 1 },
+      {
+        unique: true,
+        partialFilterExpression: NOT_DELETED,
+        name: 'uniq_permission_key_active',
+      },
+    );
 
     // --- ephemeral auth collections (docs/03 §10.3) — TTL cleanup, hard delete, no soft delete ---
-    await db
-      .collection('refresh_tokens')
-      .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, name: 'ttl_expires_at' });
-    await db
-      .collection('otp_verifications')
-      .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, name: 'ttl_expires_at' });
-    await db
-      .collection('password_reset_tokens')
-      .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, name: 'ttl_expires_at' });
+    for (const collection of ['refresh_tokens', 'otp_verifications', 'password_reset_tokens']) {
+      await ensureIndex(
+        db,
+        collection,
+        { expiresAt: 1 },
+        {
+          expireAfterSeconds: 0,
+          name: 'ttl_expires_at',
+        },
+      );
+    }
 
     // refresh_tokens is looked up per user on refresh/revoke-all (docs/02 §9's sequence,
     // docs/09 §2.5's per-device session model) — §9.1.4's userId reference.
-    await db.collection('refresh_tokens').createIndex({ userId: 1 }, { name: 'by_user' });
+    await ensureIndex(db, 'refresh_tokens', { userId: 1 }, { name: 'by_user' });
 
     // --- audit_logs (docs/03 §9.8.2, §10.6: entity audit trail) — immutable, append-only ---
-    await db
-      .collection('audit_logs')
-      .createIndex({ entityType: 1, entityId: 1, occurredAt: -1 }, { name: 'entity_audit_trail' });
+    await ensureIndex(
+      db,
+      'audit_logs',
+      { entityType: 1, entityId: 1, occurredAt: -1 },
+      { name: 'entity_audit_trail' },
+    );
   },
 
   // docs/13 §5.5 — a migration is not complete until its own verification passes.
