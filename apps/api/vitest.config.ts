@@ -34,6 +34,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/modules/**/domain/**', 'src/modules/**/application/**'],
+      exclude: ['src/modules/**/application/ports.ts'],
       thresholds: {
         lines: 80,
       },
