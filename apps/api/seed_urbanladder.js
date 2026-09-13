@@ -2,7 +2,11 @@ const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
 
-const uri = process.env.MONGODB_URI || 'mongodb+srv://Nationalinteriors_app:Niwali8174%23@cluster0.w1hyrzh.mongodb.net/nfi_dev?appName=Cluster0';
+const uri = process.env.MONGODB_URI;
+if (!uri) {
+  console.error('MONGODB_URI environment variable is required to run seed script.');
+  process.exit(1);
+}
 
 async function seed() {
   console.log('Connecting to MongoDB...');
