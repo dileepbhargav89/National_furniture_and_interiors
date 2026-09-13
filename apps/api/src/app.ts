@@ -30,6 +30,7 @@ import { createDesignProjectsRouter } from './modules/design-projects/presentati
 import { OrdersController } from './modules/orders/presentation/orders.controller';
 import { createOrdersRouter } from './modules/orders/presentation/orders.routes';
 import { PaymentsController } from './modules/payments/presentation/payments.controller';
+import { InvoicesController } from './modules/payments/presentation/invoices.controller';
 import { createPaymentsRouter } from './modules/payments/presentation/payments.routes';
 import { NotificationsController } from './modules/notifications/presentation/notifications.controller';
 import { createNotificationsRouter } from './modules/notifications/presentation/notifications.routes';
@@ -56,6 +57,7 @@ import { env } from './core/config/env';
  */
 export function createApp(mountBusinessRoutes = true): Express {
   const app = express();
+  app.set('trust proxy', 1);
 
   app.use(requestIdMiddleware);
   app.use(securityHeaders);
@@ -95,7 +97,7 @@ export function createApp(mountBusinessRoutes = true): Express {
       logoutUser: ctx.auth.logoutUser,
       resolveRoleName: (roleId: string) => ctx.admin.permissionResolver.resolveRoleName(roleId),
       resolveRoleIdForUser: (userId: string) =>
-        ctx.authUserRepository.findById(userId).then(u => u!.roleId.toString()),
+        ctx.authUserRepository.findById(userId).then((u) => u!.roleId.toString()),
       authenticateWithGoogle: ctx.auth.authenticateWithGoogle,
       authenticateWithFacebook: ctx.auth.authenticateWithFacebook,
       sendPhoneOtp: ctx.auth.sendPhoneOtp,
@@ -198,17 +200,23 @@ export function createApp(mountBusinessRoutes = true): Express {
       getFunnelMetrics: ctx.designProjects.getFunnelMetrics,
       portfolioRepository: ctx.designProjects.portfolioRepository,
     });
-    app.use('/api/v1/design-projects', createDesignProjectsRouter(designProjectsController, authMiddleware, rbacMiddleware));
+    app.use(
+      '/api/v1/design-projects',
+      createDesignProjectsRouter(designProjectsController, authMiddleware, rbacMiddleware),
+    );
 
     // ---- Sprint 5: Orders -----------------------------------------------------------
     const ordersController = new OrdersController(
       ctx.orders.checkout,
       ctx.orders.getOrders,
       ctx.orders.updateOrderStatus,
-      ctx.orders.getOrderById
+      ctx.orders.getOrderById,
     );
     app.use('/api/v1/orders', createOrdersRouter(ordersController, authMiddleware, rbacMiddleware));
-    app.use('/api/v1/admin/orders', createOrdersRouter(ordersController, authMiddleware, rbacMiddleware));
+    app.use(
+      '/api/v1/admin/orders',
+      createOrdersRouter(ordersController, authMiddleware, rbacMiddleware),
+    );
     app.use('/orders', createOrdersRouter(ordersController, authMiddleware, rbacMiddleware));
     app.use('/admin/orders', createOrdersRouter(ordersController, authMiddleware, rbacMiddleware));
 
@@ -222,15 +230,21 @@ export function createApp(mountBusinessRoutes = true): Express {
       ctx.payments.refundPayment,
       ctx.payments.getPaymentById,
       ctx.payments.getPaymentMetrics,
-      ctx.payments.razorpayAdapter
+      ctx.payments.razorpayAdapter,
     );
-    const { InvoicesController } = require('./modules/payments/presentation/invoices.controller');
+    // InvoicesController is now imported at the top of the file
     const invoicesController = new InvoicesController(ctx.payments.getInvoice);
-    
+
     // NOTE: the router contains express.raw() scoped only to the webhook route,
     // overriding the global express.json() for that endpoint only.
-    app.use('/api/v1', createPaymentsRouter(paymentsController, invoicesController, authMiddleware, rbacMiddleware));
-    app.use('/', createPaymentsRouter(paymentsController, invoicesController, authMiddleware, rbacMiddleware));
+    app.use(
+      '/api/v1',
+      createPaymentsRouter(paymentsController, invoicesController, authMiddleware, rbacMiddleware),
+    );
+    app.use(
+      '/',
+      createPaymentsRouter(paymentsController, invoicesController, authMiddleware, rbacMiddleware),
+    );
 
     // ---- Sprint 7: Notifications ----------------------------------------------------
     const notificationsController = new NotificationsController(
@@ -241,9 +255,12 @@ export function createApp(mountBusinessRoutes = true): Express {
       ctx.notifications.getUnreadCountUseCase,
       ctx.notifications.markAllAsReadUseCase,
       ctx.notifications.sendTestNotificationUseCase,
-      ctx.notifications.getDeliveryStatsUseCase
+      ctx.notifications.getDeliveryStatsUseCase,
     );
-    app.use('/api/v1/notifications', createNotificationsRouter(notificationsController, authMiddleware, rbacMiddleware));
+    app.use(
+      '/api/v1/notifications',
+      createNotificationsRouter(notificationsController, authMiddleware, rbacMiddleware),
+    );
 
     // ---- Sprint 8: CMS --------------------------------------------------------------
     const cmsController = new CmsController(
@@ -263,10 +280,13 @@ export function createApp(mountBusinessRoutes = true): Express {
       ctx.cms.listTestimonialsUseCase,
       ctx.cms.createTestimonialUseCase,
       ctx.cms.subscribeNewsletterUseCase,
-      ctx.cms.listNewsletterSubscribersUseCase
+      ctx.cms.listNewsletterSubscribersUseCase,
     );
     app.use('/api/v1/cms', createCmsRouter(cmsController, authMiddleware, rbacMiddleware));
-    app.use('/api/v1/admin/cms', createCmsAdminRouter(cmsController, authMiddleware, rbacMiddleware));
+    app.use(
+      '/api/v1/admin/cms',
+      createCmsAdminRouter(cmsController, authMiddleware, rbacMiddleware),
+    );
 
     // ---- Sprint 9: Analytics --------------------------------------------------------
     const analyticsAdminController = new AnalyticsAdminController(ctx.analytics.useCases);
@@ -276,7 +296,10 @@ export function createApp(mountBusinessRoutes = true): Express {
 
     // ---- Sprint 11: CRM -------------------------------------------------------------
     const crmController = new CrmController(ctx.crm.useCases);
-    app.use('/api/v1/crm', createCrmRoutes(crmController, authMiddleware, (perm: string) => requirePermissions(perm)));
+    app.use(
+      '/api/v1/crm',
+      createCrmRoutes(crmController, authMiddleware, (perm: string) => requirePermissions(perm)),
+    );
 
     // ---- Sprint 12: Reviews ---------------------------------------------------------
     const reviewsController = new ReviewsController(
@@ -287,7 +310,7 @@ export function createApp(mountBusinessRoutes = true): Express {
       ctx.reviews.adminReplyReview,
       ctx.reviews.toggleHelpfulVote,
       ctx.reviews.getProductReviewStats,
-      ctx.reviews.deleteReview
+      ctx.reviews.deleteReview,
     );
     app.use('/api/v1', createReviewsRoutes(reviewsController, authMiddleware, rbacMiddleware));
   }
