@@ -83,6 +83,7 @@ describe('IssueSession', () => {
       sub: 'u1',
       userType: 'SUPER_ADMIN',
       roleId: 'role-superadmin',
+      roleName: 'SUPER_ADMIN',
       permissions: ['users.write', 'admin.read'],
     });
     expect(refreshTokens.store).toHaveBeenCalledWith({

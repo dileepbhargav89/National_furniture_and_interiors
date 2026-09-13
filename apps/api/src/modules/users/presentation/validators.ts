@@ -34,6 +34,8 @@ export const updateOwnProfileSchema = z
     fullName: z.string().min(1).max(200).optional(),
     phone: z.string().min(6).max(20).nullable().optional(),
     avatarUrl: z.string().url().max(2048).nullable().optional(),
+    companyName: z.string().max(200).nullable().optional(),
+    gstin: z.string().max(25).nullable().optional(),
     addresses: z.array(addressSchema).max(MAX_ADDRESSES).optional(),
   })
   .strict();

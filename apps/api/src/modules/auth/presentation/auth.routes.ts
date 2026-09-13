@@ -16,8 +16,12 @@ export function createAuthRoutes(
 
   // Limiters are constructed HERE, not at module scope: each one opens a Redis-backed store, and
   // importing this module must not create infrastructure connections as a side effect.
-  /** docs/08 §4.4 Strict tier — 5 req/min per IP on login/register/OTP endpoints. */
-  const strictLimiter = createRateLimiter({ windowMs: 60_000, max: 5, keyPrefix: 'auth-strict' });
+  /** docs/08 §4.4 Strict tier — 5 req/min per IP on login/register/OTP endpoints (higher in dev for testing). */
+  const strictLimiter = createRateLimiter({
+    windowMs: 60_000,
+    max: process.env.NODE_ENV === 'development' ? 100 : 5,
+    keyPrefix: 'auth-strict',
+  });
   /** docs/08 §4.4 Standard authenticated tier — 120 req/min. */
   const standardLimiter = createRateLimiter({
     windowMs: 60_000,
@@ -35,6 +39,14 @@ export function createAuthRoutes(
   router.post('/mfa/verify', strictLimiter, controller.mfaVerify);
 
   router.post('/logout', standardLimiter, authMiddleware, controller.logout);
+
+  // Social Auth
+  router.post('/google', strictLimiter, controller.googleLogin);
+  router.post('/facebook', strictLimiter, controller.facebookLogin);
+
+  // Phone OTP
+  router.post('/otp/send', strictLimiter, controller.sendOtp);
+  router.post('/otp/verify', strictLimiter, controller.verifyOtp);
 
   return router;
 }

@@ -17,6 +17,38 @@ import { createAuthMiddleware } from './modules/auth/presentation/auth.middlewar
 import { createAuthRoutes } from './modules/auth/presentation/auth.routes';
 import { createAdminRoutes } from './modules/admin/presentation/admin.routes';
 import { createUsersRoutes } from './modules/users/presentation/users.routes';
+import { createCatalogController } from './modules/catalog/presentation/catalog.controller';
+import { createCatalogRoutes } from './modules/catalog/presentation/catalog.routes';
+import { createMediaController } from './modules/media/presentation/media.controller';
+import { createMediaRoutes } from './modules/media/presentation/media.routes';
+import { createCartController } from './modules/cart/presentation/cart.controller';
+import { createCartRoutes } from './modules/cart/presentation/cart.routes';
+import { createLeadsController } from './modules/leads/presentation/leads.controller';
+import { createLeadsRoutes } from './modules/leads/presentation/leads.routes';
+import { DesignProjectsController } from './modules/design-projects/presentation/design-projects.controller';
+import { createDesignProjectsRouter } from './modules/design-projects/presentation/design-projects.routes';
+import { OrdersController } from './modules/orders/presentation/orders.controller';
+import { createOrdersRouter } from './modules/orders/presentation/orders.routes';
+import { PaymentsController } from './modules/payments/presentation/payments.controller';
+import { createPaymentsRouter } from './modules/payments/presentation/payments.routes';
+import { NotificationsController } from './modules/notifications/presentation/notifications.controller';
+import { createNotificationsRouter } from './modules/notifications/presentation/notifications.routes';
+
+// ---- Sprint 8: CMS -----------------------------------------------------------------
+import { CmsController } from './modules/cms/presentation/cms.controller';
+import { createCmsRouter, createCmsAdminRouter } from './modules/cms/presentation/cms.routes';
+
+import { CrmController } from './modules/crm/presentation/controllers/crm.controller';
+import { createCrmRoutes } from './modules/crm/presentation/routes/crm.routes';
+
+import { ReviewsController } from './modules/reviews/presentation/controllers/reviews.controller';
+import { createReviewsRoutes } from './modules/reviews/presentation/routes/reviews.routes';
+
+import { AnalyticsAdminController } from './modules/analytics/presentation/analytics-admin.controller';
+import { createAnalyticsAdminRouter } from './modules/analytics/presentation/analytics-admin.routes';
+
+import { requirePermissions } from './core/security/rbac.middleware';
+import { env } from './core/config/env';
 
 /**
  * @param mountBusinessRoutes false in unit tests that only exercise the probes, so no Redis-backed
@@ -61,14 +93,13 @@ export function createApp(mountBusinessRoutes = true): Express {
       verifyMfa: ctx.auth.verifyMfa,
       refreshToken: ctx.auth.refreshToken,
       logoutUser: ctx.auth.logoutUser,
-      resolveRoleName: (roleId) => ctx.admin.permissionResolver.resolveRoleName(roleId),
-      resolveRoleIdForUser: async (userId) => {
-        const user = await ctx.authUserRepository.findById(userId);
-        if (!user) {
-          throw new Error('User not found while resolving role');
-        }
-        return user.roleId;
-      },
+      resolveRoleName: (roleId: string) => ctx.admin.permissionResolver.resolveRoleName(roleId),
+      resolveRoleIdForUser: (userId: string) =>
+        ctx.authUserRepository.findById(userId).then(u => u!.roleId.toString()),
+      authenticateWithGoogle: ctx.auth.authenticateWithGoogle,
+      authenticateWithFacebook: ctx.auth.authenticateWithFacebook,
+      sendPhoneOtp: ctx.auth.sendPhoneOtp,
+      verifyPhoneOtp: ctx.auth.verifyPhoneOtp,
     });
 
     // docs/08 §3.17 — URI-based versioning from day one.
@@ -102,6 +133,163 @@ export function createApp(mountBusinessRoutes = true): Express {
         authMiddleware,
       ),
     );
+
+    // ---- Sprint 2: Catalog, Media, Cart --------------------------------------------------
+    const rbacMiddleware = (permission: string) => requirePermissions(permission);
+
+    const catalogController = createCatalogController({
+      listCategories: ctx.catalog.listCategories,
+      listProducts: ctx.catalog.listProducts,
+      getProductDetail: ctx.catalog.getProductDetail,
+      getCategory: ctx.catalog.getCategory,
+      adminListProducts: ctx.catalog.adminListProducts,
+      adminCreateProduct: ctx.catalog.adminCreateProduct,
+      adminUpdateProduct: ctx.catalog.adminUpdateProduct,
+      adminGetProduct: ctx.catalog.adminGetProduct,
+      adminArchiveProduct: ctx.catalog.adminArchiveProduct,
+      adminCreateCategory: ctx.catalog.adminCreateCategory,
+      adminUpdateCategory: ctx.catalog.adminUpdateCategory,
+      adminGetCategory: ctx.catalog.adminGetCategory,
+      adminDeleteCategory: ctx.catalog.adminDeleteCategory,
+      adminAdjustInventory: ctx.catalog.adminAdjustInventory,
+      listCollections: ctx.catalog.listCollections,
+      getCollectionDetail: ctx.catalog.getCollectionDetail,
+      adminListCollections: ctx.catalog.adminListCollections,
+      adminGetCollection: ctx.catalog.adminGetCollection,
+      adminCreateCollection: ctx.catalog.adminCreateCollection,
+      adminUpdateCollection: ctx.catalog.adminUpdateCollection,
+      adminDeleteCollection: ctx.catalog.adminDeleteCollection,
+    });
+    app.use('/api/v1', createCatalogRoutes(catalogController, authMiddleware, rbacMiddleware));
+
+    const mediaController = createMediaController({
+      generateUploadSignature: ctx.media.generateUploadSignature,
+      confirmUpload: ctx.media.confirmUpload,
+      listMediaByOwner: ctx.media.listMediaByOwner,
+    });
+    app.use('/api/v1', createMediaRoutes(mediaController, authMiddleware, rbacMiddleware));
+
+    const cartController = createCartController({
+      getCart: ctx.cart.getCart,
+      addItemToCart: ctx.cart.addItemToCart,
+      removeItemFromCart: ctx.cart.removeItemFromCart,
+      updateItemQuantity: ctx.cart.updateItemQuantity,
+      mergeGuestCart: ctx.cart.mergeGuestCart,
+    });
+    app.use('/api/v1', createCartRoutes(cartController, authMiddleware));
+
+    // ---- Sprint 3: Leads ---------------------------------------------------------------------
+    const leadsController = createLeadsController({
+      submitLeadUseCase: ctx.leads.submitLead,
+      listLeadsUseCase: ctx.leads.listLeads,
+      assignLeadUseCase: ctx.leads.assignLead,
+      updateLeadStatusUseCase: ctx.leads.updateLeadStatus,
+    });
+    app.use('/api/v1', createLeadsRoutes(leadsController, authMiddleware, rbacMiddleware));
+
+    // ---- Sprint 4: Design Projects -----------------------------------------------------------
+    const designProjectsController = new DesignProjectsController({
+      createDesignProject: ctx.designProjects.createDesignProject,
+      advanceProjectStage: ctx.designProjects.advanceProjectStage,
+      addQuotation: ctx.designProjects.addQuotation,
+      approveQuotation: ctx.designProjects.approveQuotation,
+      listDesignProjects: ctx.designProjects.listDesignProjects,
+      getDesignProjectById: ctx.designProjects.getDesignProjectById,
+      getFunnelMetrics: ctx.designProjects.getFunnelMetrics,
+      portfolioRepository: ctx.designProjects.portfolioRepository,
+    });
+    app.use('/api/v1/design-projects', createDesignProjectsRouter(designProjectsController, authMiddleware, rbacMiddleware));
+
+    // ---- Sprint 5: Orders -----------------------------------------------------------
+    const ordersController = new OrdersController(
+      ctx.orders.checkout,
+      ctx.orders.getOrders,
+      ctx.orders.updateOrderStatus,
+      ctx.orders.getOrderById
+    );
+    app.use('/api/v1/orders', createOrdersRouter(ordersController, authMiddleware, rbacMiddleware));
+    app.use('/api/v1/admin/orders', createOrdersRouter(ordersController, authMiddleware, rbacMiddleware));
+    app.use('/orders', createOrdersRouter(ordersController, authMiddleware, rbacMiddleware));
+    app.use('/admin/orders', createOrdersRouter(ordersController, authMiddleware, rbacMiddleware));
+
+    // ---- Sprint 6: Payments ---------------------------------------------------------
+    const paymentsController = new PaymentsController(
+      ctx.payments.confirmWebhook,
+      ctx.payments.listPayments,
+      env.RAZORPAY_WEBHOOK_SECRET,
+      ctx.payments.verifyPayment,
+      ctx.payments.reconcilePayment,
+      ctx.payments.refundPayment,
+      ctx.payments.getPaymentById,
+      ctx.payments.getPaymentMetrics,
+      ctx.payments.razorpayAdapter
+    );
+    const { InvoicesController } = require('./modules/payments/presentation/invoices.controller');
+    const invoicesController = new InvoicesController(ctx.payments.getInvoice);
+    
+    // NOTE: the router contains express.raw() scoped only to the webhook route,
+    // overriding the global express.json() for that endpoint only.
+    app.use('/api/v1', createPaymentsRouter(paymentsController, invoicesController, authMiddleware, rbacMiddleware));
+    app.use('/', createPaymentsRouter(paymentsController, invoicesController, authMiddleware, rbacMiddleware));
+
+    // ---- Sprint 7: Notifications ----------------------------------------------------
+    const notificationsController = new NotificationsController(
+      ctx.notifications.listNotificationsUseCase,
+      ctx.notifications.markNotificationAsReadUseCase,
+      ctx.notifications.createAndSendUseCase,
+      ctx.notifications.getMyNotificationsUseCase,
+      ctx.notifications.getUnreadCountUseCase,
+      ctx.notifications.markAllAsReadUseCase,
+      ctx.notifications.sendTestNotificationUseCase,
+      ctx.notifications.getDeliveryStatsUseCase
+    );
+    app.use('/api/v1/notifications', createNotificationsRouter(notificationsController, authMiddleware, rbacMiddleware));
+
+    // ---- Sprint 8: CMS --------------------------------------------------------------
+    const cmsController = new CmsController(
+      ctx.cms.listBlogsUseCase,
+      ctx.cms.getBlogBySlugUseCase,
+      ctx.cms.createBlogUseCase,
+      ctx.cms.updateBlogUseCase,
+      ctx.cms.listBannersUseCase,
+      ctx.cms.listAdminBannersUseCase,
+      ctx.cms.getBannerByIdUseCase,
+      ctx.cms.createBannerUseCase,
+      ctx.cms.updateBannerUseCase,
+      ctx.cms.deleteBannerUseCase,
+      ctx.cms.toggleBannerStatusUseCase,
+      ctx.cms.trackBannerClickUseCase,
+      ctx.cms.trackBannerImpressionUseCase,
+      ctx.cms.listTestimonialsUseCase,
+      ctx.cms.createTestimonialUseCase,
+      ctx.cms.subscribeNewsletterUseCase,
+      ctx.cms.listNewsletterSubscribersUseCase
+    );
+    app.use('/api/v1/cms', createCmsRouter(cmsController, authMiddleware, rbacMiddleware));
+    app.use('/api/v1/admin/cms', createCmsAdminRouter(cmsController, authMiddleware, rbacMiddleware));
+
+    // ---- Sprint 9: Analytics --------------------------------------------------------
+    const analyticsAdminController = new AnalyticsAdminController(ctx.analytics.useCases);
+    const analyticsRouter = createAnalyticsAdminRouter(analyticsAdminController);
+    app.use('/api/v1/admin/analytics', authMiddleware, analyticsRouter);
+    app.use('/api/v1/analytics', authMiddleware, analyticsRouter);
+
+    // ---- Sprint 11: CRM -------------------------------------------------------------
+    const crmController = new CrmController(ctx.crm.useCases);
+    app.use('/api/v1/crm', createCrmRoutes(crmController, authMiddleware, (perm: string) => requirePermissions(perm)));
+
+    // ---- Sprint 12: Reviews ---------------------------------------------------------
+    const reviewsController = new ReviewsController(
+      ctx.reviews.submitReview,
+      ctx.reviews.moderateReview,
+      ctx.reviews.getProductReviews,
+      ctx.reviews.listReviews,
+      ctx.reviews.adminReplyReview,
+      ctx.reviews.toggleHelpfulVote,
+      ctx.reviews.getProductReviewStats,
+      ctx.reviews.deleteReview
+    );
+    app.use('/api/v1', createReviewsRoutes(reviewsController, authMiddleware, rbacMiddleware));
   }
 
   // Must be registered last — docs/02 §16's centralized error middleware.

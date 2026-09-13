@@ -7,13 +7,16 @@
 //
 // Framework-free: zero imports from express/mongoose/ioredis/bullmq (mechanically enforced by
 // @nfi/eslint-config's module-boundary rule).
-import type { UserStatus, UserType } from './user-type';
+import { requiresMfa, type UserStatus, type UserType } from './user-type';
 
 export interface AuthUser {
   readonly id: string;
   readonly email: string;
   readonly phone: string | null;
   readonly passwordHash: string | null;
+  readonly authProviders: string[];
+  readonly googleId: string | null;
+  readonly facebookId: string | null;
   readonly userType: UserType;
   readonly roleId: string;
   readonly status: UserStatus;
@@ -40,5 +43,5 @@ export function canAuthenticate(user: AuthUser): boolean {
  * MFA setup rather than issuing a full session.
  */
 export function requiresMfaEnrolment(user: AuthUser): boolean {
-  return (user.userType === 'STAFF' || user.userType === 'ADMIN') && !user.mfaEnabled;
+  return requiresMfa(user.userType) && !user.mfaEnabled;
 }

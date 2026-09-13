@@ -8,7 +8,9 @@ import type { IssueSession } from '../application/issue-session.use-case';
 import type { SetupMfa, VerifyMfa } from '../application/mfa.use-cases';
 import type { RegisterUser } from '../application/register-user.use-case';
 import type { LogoutUser, RefreshTokenUseCase } from '../application/refresh-token.use-case';
-import { loginSchema, mfaSetupSchema, mfaVerifySchema, registerSchema } from './validators';
+import type { AuthenticateWithGoogle, AuthenticateWithFacebook } from '../application/social-auth.use-cases';
+import type { SendPhoneOtp, VerifyPhoneOtp } from '../application/otp-auth.use-cases';
+import { loginSchema, mfaSetupSchema, mfaVerifySchema, registerSchema, googleAuthSchema, facebookAuthSchema, sendOtpSchema, verifyOtpSchema } from './validators';
 import { sendSuccess } from '../../../core/exceptions';
 import { REFRESH_COOKIE_NAME, refreshCookieOptions } from './response';
 
@@ -22,6 +24,10 @@ export interface AuthControllerDeps {
   logoutUser: LogoutUser;
   resolveRoleName: (roleId: string) => Promise<string>;
   resolveRoleIdForUser: (userId: string) => Promise<string>;
+  authenticateWithGoogle: AuthenticateWithGoogle;
+  authenticateWithFacebook: AuthenticateWithFacebook;
+  sendPhoneOtp: SendPhoneOtp;
+  verifyPhoneOtp: VerifyPhoneOtp;
 }
 
 function deviceInfo(req: Request): { userAgent: string; ip: string } {
@@ -32,12 +38,36 @@ export function createAuthController(deps: AuthControllerDeps) {
   const isProduction = env.NODE_ENV === 'production';
 
   return {
-    /** POST /auth/register — ADR-0002 Option A: creates CUSTOMER accounts only. */
+    /** POST /auth/register — ADR-0002 Option A: creates CUSTOMER accounts only and issues session. */
     async register(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
         const body = registerSchema.parse(req.body);
-        const result = await deps.registerUser.execute(body);
-        sendSuccess(req, res, 201, result);
+        const result = await deps.registerUser.execute({
+          email: body.email,
+          password: body.password,
+          fullName: body.fullName,
+          ...(body.phone !== undefined ? { phone: body.phone } : {}),
+        });
+
+        // Automatically issue authenticated session for customer convenience upon registration
+        const roleId = await deps.resolveRoleIdForUser(result.userId);
+        const tokens = await deps.issueSession.execute({
+          userId: result.userId,
+          roleName: await deps.resolveRoleName(roleId),
+          deviceInfo: deviceInfo(req),
+        });
+
+        res.cookie(
+          REFRESH_COOKIE_NAME,
+          tokens.refreshToken,
+          refreshCookieOptions(tokens.refreshTokenExpiresAt, isProduction),
+        );
+
+        sendSuccess(req, res, 201, {
+          ...result,
+          status: 'AUTHENTICATED',
+          accessToken: tokens.accessToken,
+        });
       } catch (error) {
         next(error);
       }
@@ -142,6 +172,103 @@ export function createAuthController(deps: AuthControllerDeps) {
         await deps.logoutUser.execute(req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined);
         res.clearCookie(REFRESH_COOKIE_NAME, { path: '/api/v1/auth/refresh' });
         sendSuccess(req, res, 200, null);
+      } catch (error) {
+        next(error);
+      }
+    },
+
+    async googleLogin(req: Request, res: Response, next: NextFunction): Promise<void> {
+      try {
+        const body = googleAuthSchema.parse(req.body);
+        const outcome = await deps.authenticateWithGoogle.execute(body.idToken);
+
+        if (outcome.status !== 'AUTHENTICATED') {
+          sendSuccess(req, res, 200, { status: outcome.status, userId: outcome.userId });
+          return;
+        }
+
+        const roleId = await deps.resolveRoleIdForUser(outcome.userId);
+        const tokens = await deps.issueSession.execute({
+          userId: outcome.userId,
+          roleName: await deps.resolveRoleName(roleId),
+          deviceInfo: deviceInfo(req),
+        });
+
+        res.cookie(
+          REFRESH_COOKIE_NAME,
+          tokens.refreshToken,
+          refreshCookieOptions(tokens.refreshTokenExpiresAt, isProduction),
+        );
+        sendSuccess(req, res, 200, { status: 'AUTHENTICATED', accessToken: tokens.accessToken });
+      } catch (error) {
+        next(error);
+      }
+    },
+
+    async facebookLogin(req: Request, res: Response, next: NextFunction): Promise<void> {
+      try {
+        const body = facebookAuthSchema.parse(req.body);
+        const outcome = await deps.authenticateWithFacebook.execute(body.accessToken);
+
+        if (outcome.status !== 'AUTHENTICATED') {
+          sendSuccess(req, res, 200, { status: outcome.status, userId: outcome.userId });
+          return;
+        }
+
+        const roleId = await deps.resolveRoleIdForUser(outcome.userId);
+        const tokens = await deps.issueSession.execute({
+          userId: outcome.userId,
+          roleName: await deps.resolveRoleName(roleId),
+          deviceInfo: deviceInfo(req),
+        });
+
+        res.cookie(
+          REFRESH_COOKIE_NAME,
+          tokens.refreshToken,
+          refreshCookieOptions(tokens.refreshTokenExpiresAt, isProduction),
+        );
+        sendSuccess(req, res, 200, { status: 'AUTHENTICATED', accessToken: tokens.accessToken });
+      } catch (error) {
+        next(error);
+      }
+    },
+
+    async sendOtp(req: Request, res: Response, next: NextFunction): Promise<void> {
+      try {
+        const body = sendOtpSchema.parse(req.body);
+        const code = await deps.sendPhoneOtp.execute(body.phone);
+        sendSuccess(req, res, 200, {
+          message: 'OTP sent successfully',
+          ...(isProduction ? {} : { demoOtp: code }),
+        });
+      } catch (error) {
+        next(error);
+      }
+    },
+
+    async verifyOtp(req: Request, res: Response, next: NextFunction): Promise<void> {
+      try {
+        const body = verifyOtpSchema.parse(req.body);
+        const outcome = await deps.verifyPhoneOtp.execute(body.phone, body.code);
+
+        if (outcome.status !== 'AUTHENTICATED') {
+          sendSuccess(req, res, 200, { status: outcome.status, userId: outcome.userId });
+          return;
+        }
+
+        const roleId = await deps.resolveRoleIdForUser(outcome.userId);
+        const tokens = await deps.issueSession.execute({
+          userId: outcome.userId,
+          roleName: await deps.resolveRoleName(roleId),
+          deviceInfo: deviceInfo(req),
+        });
+
+        res.cookie(
+          REFRESH_COOKIE_NAME,
+          tokens.refreshToken,
+          refreshCookieOptions(tokens.refreshTokenExpiresAt, isProduction),
+        );
+        sendSuccess(req, res, 200, { status: 'AUTHENTICATED', accessToken: tokens.accessToken });
       } catch (error) {
         next(error);
       }

@@ -7,6 +7,7 @@
 import type { AuthUser } from '../domain/auth-user';
 import type { UserStatus, UserType } from '../domain/user-type';
 import type { CreateAuthUserInput, IAuthUserRepository } from '../application/ports';
+import { ConflictError } from '../../../core/exceptions';
 import { UserModel } from './user.schema';
 
 interface UserDocument {
@@ -14,6 +15,9 @@ interface UserDocument {
   email: string;
   phone: string | null;
   passwordHash: string | null;
+  authProviders: string[];
+  googleId: string | null;
+  facebookId: string | null;
   userType: UserType;
   roleId: { toString(): string };
   status: UserStatus;
@@ -37,6 +41,9 @@ function toDomain(doc: UserDocument): AuthUser {
     email: doc.email,
     phone: doc.phone,
     passwordHash: doc.passwordHash,
+    authProviders: doc.authProviders || [],
+    googleId: doc.googleId || null,
+    facebookId: doc.facebookId || null,
     userType: doc.userType,
     roleId: doc.roleId.toString(),
     status: doc.status,
@@ -51,6 +58,11 @@ function toDomain(doc: UserDocument): AuthUser {
 export class MongoAuthUserRepository implements IAuthUserRepository {
   async findByEmail(email: string): Promise<AuthUser | null> {
     const doc = await UserModel.findOne({ email, isDeleted: false }).lean<UserDocument | null>();
+    return doc ? toDomain(doc) : null;
+  }
+
+  async findByPhone(phone: string): Promise<AuthUser | null> {
+    const doc = await UserModel.findOne({ phone, isDeleted: false }).lean<UserDocument | null>();
     return doc ? toDomain(doc) : null;
   }
 
@@ -77,24 +89,39 @@ export class MongoAuthUserRepository implements IAuthUserRepository {
   }
 
   async create(input: CreateAuthUserInput): Promise<AuthUser> {
-    const created = await UserModel.create({
-      fullName: input.fullName,
-      email: input.email,
-      phone: input.phone,
-      passwordHash: input.passwordHash,
-      authProviders: ['LOCAL'],
-      userType: input.userType,
-      roleId: input.roleId,
-      status: input.status,
-      isEmailVerified: false,
-      isPhoneVerified: false,
-      mfaEnabled: false,
-      mfaSecret: null,
-      failedLoginAttempts: 0,
-      lockedUntil: null,
-      passwordHistory: [input.passwordHash],
-    });
-    return toDomain(created.toObject() as unknown as UserDocument);
+    try {
+      const created = await UserModel.create({
+        fullName: input.fullName,
+        email: input.email,
+        phone: input.phone,
+        passwordHash: input.passwordHash,
+        authProviders: input.authProviders,
+        googleId: input.googleId,
+        facebookId: input.facebookId,
+        userType: input.userType,
+        roleId: input.roleId,
+        status: input.status,
+        isEmailVerified: false,
+        isPhoneVerified: false,
+        mfaEnabled: false,
+        mfaSecret: null,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+        passwordHistory: input.passwordHash ? [input.passwordHash] : [],
+      });
+      return toDomain(created.toObject() as unknown as UserDocument);
+    } catch (err: any) {
+      if (err?.code === 11000) {
+        if (err.keyPattern?.phone) {
+          throw new ConflictError('An account with this phone number already exists');
+        }
+        if (err.keyPattern?.email) {
+          throw new ConflictError('An account with this email already exists');
+        }
+        throw new ConflictError('An account with these credentials already exists');
+      }
+      throw err;
+    }
   }
 
   async updateLockout(

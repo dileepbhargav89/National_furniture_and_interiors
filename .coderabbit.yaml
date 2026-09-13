@@ -1,0 +1,84 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+tone_instructions: >-
+  You are an expert Principal Engineer and Lead Enterprise Architect reviewing code
+  for National Furniture & Interiors (a luxury omnichannel furniture, interior design,
+  and B2B contract platform). You uphold the highest standards of software engineering,
+  clean architecture, type safety, security, performance, accessibility, and luxury UI/UX aesthetics.
+  Be constructive, precise, and provide concrete code snippets when suggesting improvements.
+
+early_access: false
+enable_free_tier: true
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "main"
+      - "master"
+      - "staging"
+      - "develop"
+
+  path_filters:
+    - "!node_modules/**"
+    - "!pnpm-lock.yaml"
+    - "!dist/**"
+    - "!.turbo/**"
+    - "!.next/**"
+    - "!coverage/**"
+    - "!**/*.min.js"
+    - "!**/*.map"
+    - "!assets/**"
+    - "!public/fonts/**"
+
+  path_instructions:
+    - path: "apps/api/**"
+      instructions: >-
+        Strictly enforce Clean Architecture boundaries:
+        1. Domain layer (`domain/`) must remain pure business logic and interfaces with NO external framework dependencies.
+        2. Application layer (`application/`) orchestrates use cases and services.
+        3. Infrastructure layer (`infrastructure/`) implements repositories, database schemas (Mongoose/MongoDB), Redis cache, and external adapters.
+        4. Presentation layer (`presentation/`) handles HTTP routing, controllers, and Zod DTO validators.
+        5. Zero tolerance for `any` types. Ensure exactOptionalPropertyTypes compliance.
+        6. Security & ADR-0002 compliance: Public registration (`POST /api/v1/auth/register`) must ONLY allow `role: 'CUSTOMER'`. Any attempt to register `ADMIN` or `STAFF` via public endpoints is a critical security vulnerability.
+        7. All incoming request payloads must be validated using Zod schemas with appropriate field constraints.
+        8. Password hashing must use Argon2id or Bcrypt with appropriate work factors. Sensitive fields (password hash, OTP secrets) must NEVER be returned in API responses.
+
+    - path: "apps/storefront/**"
+      instructions: >-
+        Enforce modern Next.js 15 App Router standards and luxury e-commerce guidelines:
+        1. Aesthetic palette: Obsidian `#171717`, Taupe `#8C7355`, Warm Gold `#C5A059` / `#D4AF37`, Alabaster `#FAF9F6`.
+        2. Core Web Vitals (CWV): Next.js `<Image>` components must include responsive `sizes`, explicit dimensions or `fill`, and `priority` for above-the-fold hero images. Eliminate Cumulative Layout Shift (CLS).
+        3. Accessibility (WCAG 2.1 AA): Minimum contrast ratio >= 4.5:1, semantic HTML5 tags (`<main>`, `<nav>`, `<article>`, `<header>`, `<footer>`), ARIA attributes for modals and dropdowns, keyboard navigable (`Escape` to close modals, visible focus indicators).
+        4. Currency formatting: Prices in Indian Rupees (`₹`) must use standard Indian numbering grouping (`en-IN`).
+        5. Server vs Client Components: Default to Server Components (`RSC`); only mark components with `'use client'` when state, effects, or browser event listeners are required.
+
+    - path: "apps/admin/**"
+      instructions: >-
+        Enforce Executive Operations Portal standards:
+        1. Strict RBAC permission checks for all management actions (Catalog, Orders, CRM, CMS, Inventory, Analytics).
+        2. Clean data table layouts with responsive horizontal scrolling, accessible modals, and toast feedback for mutations.
+        3. Resilient error handling and empty states for every data view.
+
+    - path: "packages/shared/**"
+      instructions: >-
+        Shared domain contracts, Zod schemas, and utility functions:
+        1. Ensure schemas and types exported here remain backward compatible.
+        2. Password validation rules must strictly match across frontend and backend.
+        3. No circular imports between packages.
+
+    - path: "packages/database/**"
+      instructions: >-
+        Database schemas, Mongoose models, and indexing strategies:
+        1. Verify compound indexes exist for frequent query paths (e.g. `slug`, `category`, `status`, `createdAt`).
+        2. Ensure soft-delete or audit timestamps (`createdAt`, `updatedAt`) are properly configured.
+
+chat:
+  auto_reply: true

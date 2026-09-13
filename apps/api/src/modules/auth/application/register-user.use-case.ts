@@ -26,9 +26,9 @@ export interface RegisterUserInput {
   readonly email: string;
   readonly password: string;
   readonly fullName: string;
-  // `| undefined` is explicit because tsconfig.base.json enables exactOptionalPropertyTypes:
-  // an absent key and an explicit `phone: undefined` are distinct types under that flag.
-  readonly phone?: string | null | undefined;
+  // `?:` forces the caller to either omit the key entirely or provide a string/null,
+  // preventing explicit assignment of `undefined` under `exactOptionalPropertyTypes: true`.
+  readonly phone?: string | null;
 }
 
 export interface RegisterUserResult {
@@ -64,14 +64,24 @@ export class RegisterUser {
       throw new ConflictError('An account with this email already exists');
     }
 
+    if (input.phone) {
+      const existingPhoneUser = await this.users.findByPhone(input.phone);
+      if (existingPhoneUser) {
+        throw new ConflictError('An account with this phone number already exists');
+      }
+    }
+
     const passwordHash = await this.hasher.hash(input.password);
     const roleId = await this.resolveCustomerRoleId();
 
     const created = await this.users.create({
       email: input.email,
-      phone: input.phone ?? null,
+      phone: input.phone ? input.phone : null,
       passwordHash,
       fullName: input.fullName,
+      authProviders: ['LOCAL'],
+      googleId: null,
+      facebookId: null,
       // Hard-assigned. Never derived from input. See the ADR-0002 banner above.
       userType: 'CUSTOMER',
       roleId,

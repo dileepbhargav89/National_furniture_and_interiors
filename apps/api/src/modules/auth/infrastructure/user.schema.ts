@@ -30,6 +30,7 @@ const userSchema = new Schema(
     passwordHash: { type: String, default: null },
     authProviders: { type: [String], default: ['LOCAL'] },
     googleId: { type: String, default: null },
+    facebookId: { type: String, default: null },
     isEmailVerified: { type: Boolean, default: false },
     isPhoneVerified: { type: Boolean, default: false },
     userType: { type: String, enum: USER_TYPES, required: true },

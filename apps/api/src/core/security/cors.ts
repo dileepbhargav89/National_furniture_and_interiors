@@ -7,17 +7,38 @@ import { env } from '../config';
 import { ForbiddenError } from '../exceptions/forbidden.error';
 
 const allowedOrigins = env.CORS_ALLOWED_ORIGINS.split(',')
-  .map((origin) => origin.trim())
+  .map((origin) => origin.trim().replace(/\/$/, ''))
   .filter((origin) => origin.length > 0);
 
 export const corsPolicy = cors({
   origin(requestOrigin, callback) {
     // No Origin header (server-to-server, curl, same-origin) is allowed through; browsers always
     // send Origin on cross-origin requests, so this does not weaken the browser-facing policy.
-    if (!requestOrigin || allowedOrigins.includes(requestOrigin)) {
+    if (!requestOrigin) {
       callback(null, true);
       return;
     }
+
+    const cleanOrigin = requestOrigin.replace(/\/$/, '');
+
+    // Allow explicitly configured origins
+    if (allowedOrigins.includes(cleanOrigin)) {
+      callback(null, true);
+      return;
+    }
+
+    // In non-production environments, allow localhost, loopback, and private LAN origins
+    if (env.NODE_ENV !== 'production') {
+      const isLoopbackOrLocal =
+        /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(cleanOrigin) ||
+        /^https?:\/\/(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(cleanOrigin);
+
+      if (isLoopbackOrLocal) {
+        callback(null, true);
+        return;
+      }
+    }
+
     // A rejected origin is a policy denial, so it maps to docs/08 §3.11's 403/FORBIDDEN row, not
     // the error handler's generic 500 branch. Browsers block the response either way once CORS
     // fails, but a 500 misreports a working policy as an unexpected server fault: it inflates the
@@ -28,3 +49,4 @@ export const corsPolicy = cors({
   },
   credentials: true,
 });
+

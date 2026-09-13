@@ -20,8 +20,15 @@ export const registerSchema = z
   .object({
     email: z.string().email('must be a valid email address').max(320),
     password: z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH),
+    confirmPassword: z.string().optional(),
     fullName: z.string().min(1).max(200),
-    phone: z.string().min(6).max(20).optional(),
+    phone: z
+      .string()
+      .optional()
+      .transform((v) => (v ? v.replace(/[\s\-()]/g, '') : v))
+      .refine((v) => !v || /^\+?[1-9]\d{1,14}$/.test(v), {
+        message: 'Valid phone number is required',
+      }),
   })
   .strict();
 
@@ -32,12 +39,39 @@ export const loginSchema = z
   })
   .strict();
 
-export const mfaVerifySchema = z
-  .object({
-    userId: z.string().min(1),
-    code: z.string().regex(/^\d{6}$/, 'must be a 6-digit TOTP code'),
-  })
-  .strict();
+export const mfaVerifySchema = z.object({
+  userId: z.string().min(1, 'userId is required'),
+  code: z
+    .string()
+    .length(6, 'TOTP code must be 6 digits')
+    .regex(/^\d+$/, 'TOTP code must contain only digits'),
+});
+
+export const googleAuthSchema = z.object({
+  idToken: z.string().min(1, 'idToken is required'),
+});
+
+export const facebookAuthSchema = z.object({
+  accessToken: z.string().min(1, 'accessToken is required'),
+});
+
+export const sendOtpSchema = z.object({
+  phone: z
+    .string()
+    .transform((v) => v.replace(/[\s\-()]/g, ''))
+    .pipe(z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Valid phone number is required')),
+});
+
+export const verifyOtpSchema = z.object({
+  phone: z
+    .string()
+    .transform((v) => v.replace(/[\s\-()]/g, ''))
+    .pipe(z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Valid phone number is required')),
+  code: z
+    .string()
+    .length(6, 'OTP code must be 6 digits')
+    .regex(/^\d+$/, 'OTP code must contain only digits'),
+});
 
 export const mfaSetupSchema = z
   .object({

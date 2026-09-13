@@ -38,3 +38,14 @@ Thumbs.db
 # Misc
 *.pem
 .vercel/
+scratch/
+scratch*
+test_*.js
+test-login.js
+generate_token.js
+client-demo-report.json
+seed_cat.mjs
+temp/
+test-*.cjs
+test-*.js
+test_*.js

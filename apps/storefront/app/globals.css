@@ -1,0 +1,180 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ═══════════════════════════════════════════════════
+       NFI BRAND PALETTE — Extracted from Official Logo
+       Primary: Deep Walnut #5C2D10
+       Accent:  Vivid Burnt Orange #E07020 (the arrow)
+       BG:      Warm Cream #FDF8F2
+    ═══════════════════════════════════════════════════ */
+
+    /* Core Brand Colors */
+    --nfi-orange:          #E07020;   /* Logo arrow — primary CTA */
+    --nfi-orange-dark:     #B85A10;   /* Hover / pressed */
+    --nfi-orange-light:    #F5A060;   /* Tints / badges */
+    --nfi-orange-tint:     #FEF2E8;   /* Subtle background tints */
+
+    --nfi-brown:           #5C2D10;   /* Logo "N" — brand dark */
+    --nfi-brown-dark:      #3D1A08;   /* Deepest mahogany — footer/dark surfaces */
+    --nfi-brown-mid:       #7A4020;   /* Mid-tone brown */
+
+    /* Background & Surface */
+    --nfi-cream:           #FDF8F2;   /* Warm page background — not cold white */
+    --nfi-sand:            #F5EDE0;   /* Alternate section bg */
+    --nfi-surface:         #FFFFFF;   /* Cards, inputs */
+    --nfi-surface-dark:    #EDE4D8;   /* Pressed/focus surfaces */
+
+    /* Borders */
+    --nfi-border:          #DDD0BE;   /* Card/input borders */
+    --nfi-border-light:    #EDE4D8;   /* Subtle dividers */
+
+    /* Text */
+    --nfi-text:            #1C0D04;   /* Primary text — rich dark brown */
+    --nfi-text-secondary:  #7A5C45;   /* Muted / secondary text */
+    --nfi-text-inverse:    #FDF8F2;   /* On dark backgrounds */
+
+    /* Feedback */
+    --nfi-success:         #1E6B3A;
+    --nfi-warning:         #B85A10;
+    --nfi-danger:          #C0281C;
+
+    /* ── shadcn/ui token remapping ─────────────────────
+       Maps all @nfi/ui component tokens to NFI brand values
+    ── */
+    --background:             36 71% 97%;       /* #FDF8F2 warm cream */
+    --foreground:             20 85% 6%;        /* #1C0D04 deep brown text */
+
+    --card:                   0 0% 100%;
+    --card-foreground:        20 85% 6%;
+
+    --popover:                0 0% 100%;
+    --popover-foreground:     20 85% 6%;
+
+    --primary:                26 77% 50%;       /* #E07020 brand orange */
+    --primary-foreground:     0 0% 100%;        /* white on orange */
+
+    --secondary:              32 55% 92%;       /* #F5EDE0 warm sand */
+    --secondary-foreground:   21 71% 21%;       /* #5C2D10 walnut */
+
+    --muted:                  34 30% 88%;       /* #EDE4D8 */
+    --muted-foreground:       22 26% 37%;       /* #7A5C45 */
+
+    --accent:                 26 77% 50%;       /* Orange accent */
+    --accent-foreground:      0 0% 100%;
+
+    --destructive:            4 65% 44%;        /* #C0281C */
+    --destructive-foreground: 0 0% 100%;
+
+    --border:                 34 27% 80%;       /* #DDD0BE */
+    --input:                  34 27% 80%;
+    --ring:                   26 77% 50%;       /* Orange focus ring */
+    --radius:                 0.5rem;
+  }
+
+  * {
+    box-sizing: border-box;
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--nfi-cream);
+    color: var(--nfi-text);
+  }
+
+  /* Selection highlight — brand orange */
+  ::selection {
+    background-color: rgba(224, 112, 32, 0.2);
+    color: var(--nfi-brown-dark);
+  }
+}
+
+@layer utilities {
+  /* ── NFI Brand Utility Classes ─────────────────────── */
+
+  /* Primary CTA button */
+  .btn-nfi-primary {
+    background-color: var(--nfi-orange);
+    color: #fff;
+    transition: background-color 0.18s ease, transform 0.1s ease;
+  }
+  .btn-nfi-primary:hover {
+    background-color: var(--nfi-orange-dark);
+  }
+  .btn-nfi-primary:active {
+    transform: scale(0.98);
+  }
+
+  /* Secondary/outline button */
+  .btn-nfi-secondary {
+    background-color: transparent;
+    color: var(--nfi-brown);
+    border: 1.5px solid var(--nfi-brown);
+    transition: all 0.18s ease;
+  }
+  .btn-nfi-secondary:hover {
+    background-color: var(--nfi-brown);
+    color: var(--nfi-text-inverse);
+  }
+
+  /* Orange underline nav indicator */
+  .nav-indicator {
+    position: relative;
+  }
+  .nav-indicator::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: var(--nfi-orange);
+    border-radius: 1px;
+  }
+
+  /* NFI focus ring */
+  .nfi-focus:focus {
+    outline: none;
+    border-color: var(--nfi-orange);
+    box-shadow: 0 0 0 3px rgba(224, 112, 32, 0.2);
+  }
+
+  /* Scrollbar hiding */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+
+  /* Luxury sleek scrollbar */
+  .luxury-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .luxury-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .luxury-scrollbar::-webkit-scrollbar-thumb {
+    background: #D8D2C6;
+    border-radius: 9999px;
+  }
+  .luxury-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #8C7355;
+  }
+  .luxury-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #D8D2C6 transparent;
+  }
+}

@@ -18,6 +18,8 @@ export interface UserProfile {
   readonly addresses: readonly Address[];
   readonly mfaEnabled: boolean;
   readonly createdAt: Date;
+  readonly companyName?: string | null;
+  readonly gstin?: string | null;
 }
 
 // `| undefined` on every optional member: tsconfig.base.json enables exactOptionalPropertyTypes,
@@ -27,6 +29,8 @@ export interface UpdateOwnProfileInput {
   readonly phone?: string | null | undefined;
   readonly avatarUrl?: string | null | undefined;
   readonly addresses?: readonly Address[] | undefined;
+  readonly companyName?: string | null | undefined;
+  readonly gstin?: string | null | undefined;
 }
 
 export interface AdminCreateUserInput {

@@ -6,19 +6,21 @@ import { connectDatabase } from './core/database';
 import { logger } from './core/logger';
 
 async function bootstrap(): Promise<void> {
+  try {
+    await connectDatabase();
+  } catch (error: unknown) {
+    logger.error({ err: error }, 'Initial MongoDB connection attempt failed');
+  }
+
+  try {
+    await connectCache();
+  } catch (error: unknown) {
+    logger.error({ err: error }, 'Initial Redis connection attempt failed');
+  }
+
   const app = createApp();
   app.listen(env.PORT, () => {
     logger.info(`apps/api listening on port ${env.PORT}`);
-  });
-
-  // Connection outcomes are reflected in GET /health's mongoConnected/redisConnected fields
-  // (docs/10_devops_architecture.md §11 liveness/readiness probe pattern) rather than blocking
-  // the process from binding its port — a transient DB/cache outage should not crash-loop the API.
-  void connectDatabase().catch((error: unknown) => {
-    logger.error({ err: error }, 'Initial MongoDB connection attempt failed');
-  });
-  void connectCache().catch((error: unknown) => {
-    logger.error({ err: error }, 'Initial Redis connection attempt failed');
   });
 }
 

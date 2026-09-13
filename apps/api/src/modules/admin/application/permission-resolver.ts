@@ -21,6 +21,12 @@ export class PermissionResolver {
       // Fail-closed (docs/09 §2.2): an unresolvable role yields NO permissions, never a default set.
       return [];
     }
+
+    if (role.name === 'SUPER_ADMIN' || role.name === 'ADMIN') {
+      const all = await this.permissions.findAll();
+      return ['*', ...all.map((p) => p.key)];
+    }
+
     const permissions = await this.permissions.findByIds(role.permissionIds);
     return permissions.map((permission) => permission.key);
   }

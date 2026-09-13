@@ -27,6 +27,7 @@ export interface RequestAuthClaims {
   sub: string;
   userType: string;
   roleId: string;
+  roleName?: string;
   permissions: string[];
 }
 
@@ -53,8 +54,34 @@ export function requirePermissions(...requiredKeys: string[]) {
       return;
     }
 
+    // Super Admin and Admin have universal authority across the entire website
+    if (
+      claims.userType === 'ADMIN' ||
+      claims.roleName === 'SUPER_ADMIN' ||
+      claims.roleName === 'ADMIN' ||
+      claims.permissions.includes('*')
+    ) {
+      next();
+      return;
+    }
+
     const held = new Set(claims.permissions);
-    if (requiredKeys.some((key) => !held.has(key))) {
+    const hasPerm = (neededKey: string): boolean => {
+      if (held.has(neededKey)) return true;
+      // Interoperability between hyphen and underscore (e.g. design-projects vs design_projects)
+      const altKey = neededKey.includes('-')
+        ? neededKey.replace(/-/g, '_')
+        : neededKey.replace(/_/g, '-');
+      if (held.has(altKey)) return true;
+      // Interoperability between .manage and .write (e.g. payments.manage vs payments.write)
+      if (neededKey.endsWith('.manage') && held.has(neededKey.replace(/\.manage$/, '.write'))) return true;
+      if (neededKey.endsWith('.write') && held.has(neededKey.replace(/\.write$/, '.manage'))) return true;
+      // Interoperability for self actions (e.g. reviews.write_self, cart.read_self) for authenticated customers
+      if (neededKey.endsWith('_self') && (held.has(neededKey.replace(/_self$/, '')) || claims.userType === 'CUSTOMER' || claims.roleName === 'CUSTOMER')) return true;
+      return false;
+    };
+
+    if (requiredKeys.some((key) => !hasPerm(key))) {
       // Deliberately names no key — see the docs/08 §4.3 note above.
       next(new ForbiddenError());
       return;

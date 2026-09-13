@@ -41,6 +41,7 @@ export class JwtTokenService implements ITokenService {
         sub: decoded.sub as string,
         userType: decoded.userType as AccessTokenClaims['userType'],
         roleId: decoded.roleId as string,
+        roleName: (decoded.roleName as string) ?? undefined,
         permissions: (decoded.permissions as string[]) ?? [],
       };
     } catch {

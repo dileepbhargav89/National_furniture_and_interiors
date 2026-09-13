@@ -12,8 +12,20 @@ export async function connectDatabase(): Promise<typeof mongoose> {
     return mongoose;
   }
   if (!connectPromise) {
+    mongoose.connection.on('error', (err) => {
+      logger.error({ err }, 'MongoDB connection error event');
+    });
+    mongoose.connection.on('disconnected', () => {
+      logger.warn('MongoDB disconnected');
+    });
+    mongoose.connection.on('reconnected', () => {
+      logger.info('MongoDB reconnected');
+    });
+
     connectPromise = mongoose
-      .connect(env.MONGODB_URI)
+      .connect(env.MONGODB_URI, {
+        serverSelectionTimeoutMS: 5000,
+      })
       .then((connection) => {
         logger.info('MongoDB connected');
         return connection;

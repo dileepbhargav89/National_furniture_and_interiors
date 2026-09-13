@@ -27,6 +27,10 @@ export const envSchema = z.object({
     .regex(/^\d+[smhd]$/, 'JWT_REFRESH_TTL must look like "15m", "1h", "7d"'),
   MFA_TOTP_ISSUER: z.string().min(1, 'MFA_TOTP_ISSUER is required'),
 
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  FACEBOOK_APP_ID: z.string().optional(),
+  FACEBOOK_APP_SECRET: z.string().optional(),
+
   RAZORPAY_KEY_ID: z.string().min(1, 'RAZORPAY_KEY_ID is required'),
   RAZORPAY_KEY_SECRET: z.string().min(1, 'RAZORPAY_KEY_SECRET is required'),
   RAZORPAY_WEBHOOK_SECRET: z.string().min(1, 'RAZORPAY_WEBHOOK_SECRET is required'),

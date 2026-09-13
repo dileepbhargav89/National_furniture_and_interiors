@@ -21,6 +21,7 @@ export function createAuthMiddleware(tokens: ITokenService) {
     }
     try {
       req.auth = tokens.verifyAccessToken(header.slice('Bearer '.length));
+      (req as any).user = { id: req.auth.sub };
       next();
     } catch (error) {
       next(error);

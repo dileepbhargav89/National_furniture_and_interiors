@@ -55,14 +55,14 @@ export class LoginUser {
     const reset = resetLockout();
     await this.users.updateLockout(user.id, reset.failedLoginAttempts, reset.lockedUntil);
 
-    // docs/09 §2.8 — privileged accounts must enrol MFA before privileged access. A session is
-    // NOT issued here; the caller is routed to /auth/mfa/setup.
-    if (requiresMfaEnrolment(user)) {
-      return { status: 'MFA_ENROLMENT_REQUIRED', userId: user.id };
+    // If MFA is actively enabled on the account, challenge for TOTP verification.
+    if (user.mfaEnabled) {
+      return { status: 'MFA_REQUIRED', userId: user.id };
     }
 
-    if (requiresMfa(user.userType)) {
-      return { status: 'MFA_REQUIRED', userId: user.id };
+    // docs/09 §2.8: privileged accounts (STAFF, ADMIN, SUPER_ADMIN) must enroll in MFA
+    if (user.userType !== 'CUSTOMER') {
+      return { status: 'MFA_ENROLMENT_REQUIRED', userId: user.id };
     }
 
     await this.users.recordSuccessfulLogin(user.id);

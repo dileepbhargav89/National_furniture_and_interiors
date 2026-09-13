@@ -8,7 +8,10 @@ import type { UserStatus, UserType } from '../domain/user-type';
 export interface CreateAuthUserInput {
   email: string;
   phone: string | null;
-  passwordHash: string;
+  passwordHash: string | null;
+  authProviders: string[];
+  googleId: string | null;
+  facebookId: string | null;
   fullName: string;
   userType: UserType;
   roleId: string;
@@ -17,6 +20,7 @@ export interface CreateAuthUserInput {
 
 export interface IAuthUserRepository {
   findByEmail(email: string): Promise<AuthUser | null>;
+  findByPhone(phone: string): Promise<AuthUser | null>;
   findById(id: string): Promise<AuthUser | null>;
   existsByEmail(email: string): Promise<boolean>;
   create(input: CreateAuthUserInput): Promise<AuthUser>;
@@ -59,6 +63,7 @@ export interface AccessTokenClaims {
   sub: string;
   userType: UserType;
   roleId: string;
+  roleName?: string;
   /** docs/02 §9.1 — the access token carries resolved PERMISSION KEYS, not just a role name. */
   permissions: string[];
 }
@@ -74,6 +79,30 @@ export interface ITotpService {
   generateSecret(): string;
   buildOtpAuthUrl(secret: string, accountLabel: string): string;
   verify(secret: string, code: string): boolean;
+}
+
+export interface GooglePayload {
+  email: string;
+  sub: string;
+  name?: string | undefined;
+}
+
+export interface FacebookPayload {
+  email: string;
+  id: string;
+  name?: string | undefined;
+}
+
+export interface IGoogleAuthService {
+  verifyIdToken(idToken: string): Promise<GooglePayload>;
+}
+
+export interface IFacebookAuthService {
+  verifyAccessToken(accessToken: string): Promise<FacebookPayload>;
+}
+
+export interface ISmsService {
+  sendOtp(phone: string, code: string): Promise<void>;
 }
 
 /**

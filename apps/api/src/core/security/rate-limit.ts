@@ -54,14 +54,14 @@ function createRedisStore(keyPrefix: string): Store {
  */
 export function createRateLimiter(
   config: RateLimiterConfig,
-  store: Store = createRedisStore(config.keyPrefix),
+  store: Store | undefined = process.env.NODE_ENV === 'development' ? undefined : createRedisStore(config.keyPrefix),
 ): RateLimitRequestHandler {
   return rateLimit({
     windowMs: config.windowMs,
     limit: config.max,
     standardHeaders: true,
     legacyHeaders: false,
-    store,
+    ...(store ? { store } : {}),
     // docs/08_api_architecture.md §3.11: 429 -> error.code = RATE_LIMITED, Retry-After set.
     // The envelope shape mirrors core/exceptions/error-response.ts without importing it directly
     // (express-rate-limit's handler runs outside the normal error-middleware chain).

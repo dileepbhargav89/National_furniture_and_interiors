@@ -60,6 +60,7 @@ export class IssueSession {
       sub: user.id,
       userType: user.userType,
       roleId: user.roleId,
+      roleName: input.roleName,
       permissions: permissionKeys,
     });
 

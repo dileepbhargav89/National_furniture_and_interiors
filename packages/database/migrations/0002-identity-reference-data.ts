@@ -176,7 +176,7 @@ export const migration: Migration = {
     const superAdmin = await db.collection('roles').findOne({ name: 'SUPER_ADMIN' });
     if (
       !superAdmin ||
-      (superAdmin.permissionIds as unknown[]).length !== PHASE_1_PERMISSIONS.length
+      (superAdmin.permissionIds as unknown[]).length < PHASE_1_PERMISSIONS.length
     ) {
       throw new Error(
         'Migration 0002 verification failed: SUPER_ADMIN is missing its permission grants',

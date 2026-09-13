@@ -21,9 +21,19 @@ import { migration as m0002 } from './0002-identity-reference-data';
 import { migration as m0003 } from './0003-role-permission-grants';
 import { migration as m0004 } from './0004-bootstrap-super-admin';
 import { migration as m0005 } from './0005-fix-optional-unique-indexes';
+import { migration as m0006 } from './0006-leads-permissions';
+import { migration as m0007 } from './0007-design-projects-permissions';
+import { migration as m0008 } from './0008-orders-permissions';
+import { migration as m0009 } from './0009-payments-permissions';
+import { migration as m0010 } from './0010-notifications-permissions';
+
+import { migration as m0011 } from './0011-cms-permissions';
+import { migration as m0012 } from './0012-analytics-permissions';
+import { migration as m0013 } from './0013-catalog-permissions-and-admin-repair';
+import { migration as m0014 } from './0014-catalog-product-extended-fields';
 
 /** Ordered by `id`. Adding a migration means adding it here — explicit, not filesystem-magic. */
-const MIGRATIONS: Migration[] = [m0001, m0002, m0003, m0004, m0005];
+const MIGRATIONS: Migration[] = [m0001, m0002, m0003, m0004, m0005, m0006, m0007, m0008, m0009, m0010, m0011, m0012, m0013, m0014];
 
 async function main(): Promise<void> {
   const uri = process.env.MONGODB_URI;

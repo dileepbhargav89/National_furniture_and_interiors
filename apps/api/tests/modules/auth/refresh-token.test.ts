@@ -163,4 +163,54 @@ describe('RefreshTokenUseCase', () => {
       UnauthorizedError,
     );
   });
+
+  describe('linkRotation', () => {
+    it('marks the old token as rotated if it exists', async () => {
+      const { useCase, refreshTokens } = build({});
+      await useCase.linkRotation('old-hash', 'new-id');
+      expect(refreshTokens.markRotated).toHaveBeenCalledWith('token-1', 'new-id');
+    });
+
+    it('does nothing if the old token is not found', async () => {
+      const { useCase, refreshTokens } = build(null);
+      await useCase.linkRotation('old-hash', 'new-id');
+      expect(refreshTokens.markRotated).not.toHaveBeenCalled();
+    });
+  });
+});
+
+import { LogoutUser } from '../../../src/modules/auth/application/refresh-token.use-case';
+
+describe('LogoutUser', () => {
+  it('revokes the stored refresh token when logging out', async () => {
+    const { refreshTokens, tokens } = build({});
+    const useCase = new LogoutUser(refreshTokens, tokens);
+
+    await useCase.execute('presented-token');
+
+    expect(tokens.hashRefreshToken).toHaveBeenCalledWith('presented-token');
+    expect(refreshTokens.findByHash).toHaveBeenCalledWith('hash(presented-token)');
+    expect(refreshTokens.revoke).toHaveBeenCalledWith('token-1');
+  });
+
+  it('is a no-op if the token is not provided (e.g. logging out when already logged out)', async () => {
+    const { refreshTokens, tokens } = build({});
+    const useCase = new LogoutUser(refreshTokens, tokens);
+
+    await useCase.execute(undefined);
+
+    expect(tokens.hashRefreshToken).not.toHaveBeenCalled();
+    expect(refreshTokens.findByHash).not.toHaveBeenCalled();
+    expect(refreshTokens.revoke).not.toHaveBeenCalled();
+  });
+
+  it('is a no-op if the token is not found in the repository', async () => {
+    const { refreshTokens, tokens } = build(null);
+    const useCase = new LogoutUser(refreshTokens, tokens);
+
+    await useCase.execute('presented-token');
+
+    expect(refreshTokens.findByHash).toHaveBeenCalledWith('hash(presented-token)');
+    expect(refreshTokens.revoke).not.toHaveBeenCalled();
+  });
 });

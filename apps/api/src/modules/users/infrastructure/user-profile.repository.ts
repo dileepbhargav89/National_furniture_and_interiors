@@ -33,6 +33,8 @@ const SAFE_PROJECTION = {
   addresses: 1,
   mfaEnabled: 1,
   createdAt: 1,
+  companyName: 1,
+  gstin: 1,
 } as const;
 
 interface ProfileDoc {
@@ -47,6 +49,8 @@ interface ProfileDoc {
   addresses?: Address[];
   mfaEnabled?: boolean;
   createdAt: Date;
+  companyName?: string | null;
+  gstin?: string | null;
 }
 
 function toProfile(doc: ProfileDoc): UserProfile {
@@ -62,6 +66,8 @@ function toProfile(doc: ProfileDoc): UserProfile {
     addresses: doc.addresses ?? [],
     mfaEnabled: doc.mfaEnabled ?? false,
     createdAt: doc.createdAt,
+    companyName: doc.companyName ?? null,
+    gstin: doc.gstin ?? null,
   };
 }
 
@@ -98,6 +104,8 @@ export class MongoUserProfileRepository implements IUserProfileRepository {
     if (input.phone !== undefined) update.phone = input.phone;
     if (input.avatarUrl !== undefined) update.avatarUrl = input.avatarUrl;
     if (input.addresses !== undefined) update.addresses = input.addresses;
+    if (input.companyName !== undefined) update.companyName = input.companyName;
+    if (input.gstin !== undefined) update.gstin = input.gstin;
 
     if (Object.keys(update).length === 0) {
       return this.findById(id);

@@ -7,17 +7,19 @@ import { logger } from '../logger';
 
 export const redisClient = new Redis(env.REDIS_URL, {
   lazyConnect: true,
-  maxRetriesPerRequest: 3,
+  maxRetriesPerRequest: null,
 });
 
 redisClient.on('error', (error: unknown) => {
-  logger.error({ err: error }, 'Redis client error');
+  if (process.env.NODE_ENV !== 'development') {
+    logger.error({ err: error }, 'Redis client error');
+  }
 });
 
 let connectPromise: Promise<void> | null = null;
 
 export async function connectCache(): Promise<void> {
-  if (redisClient.status === 'ready') {
+  if (redisClient.status === 'ready' || redisClient.status === 'connecting' || redisClient.status === 'connect') {
     return;
   }
   if (!connectPromise) {

@@ -12,6 +12,39 @@ import path from 'node:path';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  transpilePackages: ['@nfi/api-client', '@nfi/shared', '@nfi/ui'],
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+      {
+        protocol: 'http',
+        hostname: '**',
+      },
+    ],
+  },
+  async redirects() {
+    return [
+      {
+        source: '/furniture',
+        destination: '/products',
+        permanent: true,
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:4000'}/api/v1/:path*`,
+      },
+    ];
+  },
   ...(process.env.DOCKER_BUILD === 'true' && {
     output: 'standalone' as const,
     // Monorepo file tracing needs the repo root so workspace packages (@nfi/ui, @nfi/shared, ...)

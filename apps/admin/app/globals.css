@@ -1,0 +1,155 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ═══════════════════════════════════════════════════
+       NFI BRAND PALETTE — Unified with Storefront
+       Primary: Vivid Burnt Orange #E07020 (logo arrow)
+       Dark:    Deep Walnut #5C2D10
+       BG:      Warm Cream #FDF8F2
+    ═══════════════════════════════════════════════════ */
+
+    /* Core Brand Colors */
+    --nfi-orange:          #E07020;
+    --nfi-orange-dark:     #B85A10;
+    --nfi-orange-light:    #F5A060;
+    --nfi-orange-tint:     #FEF2E8;
+
+    --nfi-brown:           #5C2D10;
+    --nfi-brown-dark:      #3D1A08;
+    --nfi-brown-mid:       #7A4020;
+
+    /* Background & Surface */
+    --nfi-cream:           #FDF8F2;
+    --nfi-sand:            #F5EDE0;
+    --nfi-surface:         #FFFFFF;
+    --nfi-surface-muted:   #F5EDE0;
+
+    /* Sidebar (dark mahogany) */
+    --nfi-sidebar-bg:      #3D1A08;
+    --nfi-sidebar-hover:   #5C2D10;
+    --nfi-sidebar-active:  #E07020;
+    --nfi-sidebar-text:    #F5EDE0;
+    --nfi-sidebar-muted:   #C9A080;
+    --nfi-sidebar-border:  rgba(253, 248, 242, 0.08);
+
+    /* Borders */
+    --nfi-border:          #DDD0BE;
+    --nfi-border-light:    #EDE4D8;
+
+    /* Text */
+    --nfi-text:            #1C0D04;
+    --nfi-text-secondary:  #7A5C45;
+
+    /* Feedback */
+    --nfi-success:         #1E6B3A;
+    --nfi-warning:         #B85A10;
+    --nfi-danger:          #C0281C;
+
+    /* ── shadcn/ui token remapping ───────────────────── */
+    --background:             36 71% 97%;       /* #FDF8F2 */
+    --foreground:             20 85% 6%;        /* #1C0D04 */
+
+    --card:                   0 0% 100%;
+    --card-foreground:        20 85% 6%;
+
+    --popover:                0 0% 100%;
+    --popover-foreground:     20 85% 6%;
+
+    --primary:                26 77% 50%;       /* #E07020 orange */
+    --primary-foreground:     0 0% 100%;
+
+    --secondary:              32 55% 92%;       /* #F5EDE0 sand */
+    --secondary-foreground:   21 71% 21%;       /* #5C2D10 walnut */
+
+    --muted:                  34 30% 88%;
+    --muted-foreground:       22 26% 37%;
+
+    --accent:                 26 77% 50%;
+    --accent-foreground:      0 0% 100%;
+
+    --destructive:            4 65% 44%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border:                 34 27% 80%;
+    --input:                  34 27% 80%;
+    --ring:                   26 77% 50%;
+    --radius:                 0.375rem;
+  }
+
+  * {
+    box-sizing: border-box;
+    border-color: hsl(var(--border));
+  }
+
+  html, body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--nfi-cream);
+    color: var(--nfi-text);
+  }
+
+  ::selection {
+    background-color: rgba(224, 112, 32, 0.2);
+    color: var(--nfi-brown-dark);
+  }
+}
+
+/* ── Admin Shell Layout ─────────────────────────── */
+@layer utilities {
+  .admin-shell {
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--nfi-cream);
+  }
+
+  .admin-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .admin-main {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background-color: var(--nfi-cream);
+  }
+
+  /* NFI orange focus ring */
+  .nfi-focus:focus {
+    outline: none;
+    border-color: var(--nfi-orange);
+    box-shadow: 0 0 0 3px rgba(224, 112, 32, 0.2);
+  }
+
+  /* Sidebar nav utilities */
+  .nav-item {
+    border-left: 3px solid transparent;
+    transition: all 0.15s ease;
+  }
+
+  .nav-active {
+    background-color: rgba(224, 112, 32, 0.15);
+    color: var(--nfi-orange);
+    border-left: 3px solid var(--nfi-orange);
+  }
+
+  /* Scrollbar hiding */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+}
