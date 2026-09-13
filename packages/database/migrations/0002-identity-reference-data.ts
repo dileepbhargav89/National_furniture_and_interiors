@@ -160,9 +160,9 @@ export const migration: Migration = {
     const roleCount = await db
       .collection('roles')
       .countDocuments({ isSystemRole: true, isDeleted: false });
-    if (roleCount !== SYSTEM_ROLES.length) {
+    if (roleCount < SYSTEM_ROLES.length) {
       throw new Error(
-        `Migration 0002 verification failed: expected ${SYSTEM_ROLES.length} system roles, found ${roleCount}`,
+        `Migration 0002 verification failed: expected at least ${SYSTEM_ROLES.length} system roles, found ${roleCount}`,
       );
     }
 

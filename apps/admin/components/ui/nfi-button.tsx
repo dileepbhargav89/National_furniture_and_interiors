@@ -11,10 +11,10 @@ interface NfiButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles = {
   primary: {
-    background: 'var(--nfi-primary)',
+    background: 'var(--nfi-primary, #E07020)',
     color: '#FFFFFF',
-    border: '1px solid var(--nfi-primary)',
-    hoverBg: 'var(--nfi-primary-hover)',
+    border: '1px solid var(--nfi-primary, #E07020)',
+    hoverBg: 'var(--nfi-primary-hover, #B85A10)',
   },
   secondary: {
     background: 'var(--nfi-surface)',
@@ -60,7 +60,7 @@ export function NfiButton({
     <button
       {...props}
       disabled={disabled || loading}
-      className={`inline-flex items-center justify-center font-medium rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed ${sizeStyles[size]} ${className}`}
+      className={`inline-flex items-center justify-center rounded-md font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 ${sizeStyles[size]} ${className}`}
       style={{
         backgroundColor: v.background,
         color: v.color,
@@ -81,11 +81,7 @@ export function NfiButton({
       }}
     >
       {loading ? (
-        <svg
-          className="animate-spin w-4 h-4 flex-shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
+        <svg className="h-4 w-4 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
           <circle
             className="opacity-25"
             cx="12"

@@ -64,7 +64,7 @@ export default function AdminCategoriesPage() {
     try {
       await CatalogService.adminUpdateCategory(id, { isActive: !cat.isActive });
       setCategories((prev) =>
-        prev.map((c) => ((c.id || c._id) === id ? { ...c, isActive: !c.isActive } : c))
+        prev.map((c) => ((c.id || c._id) === id ? { ...c, isActive: !c.isActive } : c)),
       );
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Failed to toggle category status');
@@ -76,7 +76,7 @@ export default function AdminCategoriesPage() {
     const filtered = categories.filter(
       (c) =>
         c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.slug.toLowerCase().includes(searchQuery.toLowerCase())
+        c.slug.toLowerCase().includes(searchQuery.toLowerCase()),
     );
 
     if (searchQuery) return filtered.map((c) => ({ ...c, depth: 0 }));
@@ -87,9 +87,7 @@ export default function AdminCategoriesPage() {
 
     const appendWithChildren = (parent: Category, depth: number) => {
       result.push({ ...parent, depth });
-      const children = filtered.filter(
-        (c) => c.parentId === (parent.id || parent._id)
-      );
+      const children = filtered.filter((c) => c.parentId === (parent.id || parent._id));
       children.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
       children.forEach((child) => appendWithChildren(child, depth + 1));
     };
@@ -116,26 +114,35 @@ export default function AdminCategoriesPage() {
         breadcrumbs={[{ label: 'Catalog' }, { label: 'Categories' }]}
         action={
           <div className="flex items-center gap-2">
-            <NfiButton
-              variant="secondary"
-              size="sm"
-              onClick={fetchCategories}
-              disabled={loading}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            <NfiButton variant="secondary" size="sm" onClick={fetchCategories} disabled={loading}>
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
               </svg>
               Refresh
             </NfiButton>
             <Link
               href="/catalog/categories/new"
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md text-white transition-colors"
-              style={{ backgroundColor: 'var(--nfi-primary)' }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--nfi-primary-hover)')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--nfi-primary)')}
+              className="shadow-xs inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-colors"
+              style={{ backgroundColor: 'var(--nfi-primary, #E07020)' }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor = 'var(--nfi-primary-hover, #B85A10)')
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor = 'var(--nfi-primary, #E07020)')
+              }
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
               Add Category
             </Link>
@@ -145,7 +152,7 @@ export default function AdminCategoriesPage() {
 
       {error && (
         <div
-          className="mb-5 p-4 rounded-md text-sm border"
+          className="mb-5 rounded-md border p-4 text-sm"
           style={{
             backgroundColor: 'rgba(198, 40, 40, 0.05)',
             color: 'var(--nfi-danger)',
@@ -158,57 +165,71 @@ export default function AdminCategoriesPage() {
 
       {/* Search toolbar */}
       <div
-        className="bg-white rounded-lg border p-4 mb-4 flex items-center justify-between gap-3"
+        className="mb-4 flex items-center justify-between gap-3 rounded-lg border bg-white p-4"
         style={{ borderColor: 'var(--nfi-border)' }}
       >
         <div className="relative w-full sm:w-80">
-          <svg className="h-4 w-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          <svg
+            className="absolute left-3 top-2.5 h-4 w-4 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
           </svg>
           <input
             type="text"
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-md border"
+            className="w-full rounded-md border py-2 pl-9 pr-3 text-sm"
             style={{ borderColor: 'var(--nfi-border)' }}
             placeholder="Search categories..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <p className="text-xs text-gray-400">
-          {categories.length} total categories
-        </p>
+        <p className="text-xs text-gray-400">{categories.length} total categories</p>
       </div>
 
       {/* Data Table */}
       <div
-        className="bg-white rounded-lg border overflow-hidden shadow-sm"
+        className="overflow-hidden rounded-lg border bg-white shadow-sm"
         style={{ borderColor: 'var(--nfi-border)' }}
       >
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y" style={{ borderColor: 'var(--nfi-border)' }}>
             <thead style={{ backgroundColor: 'var(--nfi-surface-muted)' }}>
               <tr>
-                {['Category Name', 'Slug', 'Hierarchy Level', 'Sort Order', 'Status', ''].map((col, i) => (
-                  <th
-                    key={i}
-                    scope="col"
-                    className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${
-                      i === 5 ? 'text-right' : ''
-                    }`}
-                    style={{ color: 'var(--nfi-text-secondary)' }}
-                  >
-                    {col || <span className="sr-only">Actions</span>}
-                  </th>
-                ))}
+                {['Category Name', 'Slug', 'Hierarchy Level', 'Sort Order', 'Status', ''].map(
+                  (col, i) => (
+                    <th
+                      key={i}
+                      scope="col"
+                      className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${
+                        i === 5 ? 'text-right' : ''
+                      }`}
+                      style={{ color: 'var(--nfi-text-secondary)' }}
+                    >
+                      {col || <span className="sr-only">Actions</span>}
+                    </th>
+                  ),
+                )}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y" style={{ borderColor: 'var(--nfi-border)' }}>
+            <tbody className="divide-y bg-white" style={{ borderColor: 'var(--nfi-border)' }}>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-sm" style={{ color: 'var(--nfi-text-secondary)' }}>
+                  <td
+                    colSpan={6}
+                    className="px-5 py-12 text-center text-sm"
+                    style={{ color: 'var(--nfi-text-secondary)' }}
+                  >
                     <div className="flex flex-col items-center gap-3">
                       <div
-                        className="w-7 h-7 rounded-full border-2 border-t-transparent animate-spin"
+                        className="h-7 w-7 animate-spin rounded-full border-2 border-t-transparent"
                         style={{ borderColor: 'var(--nfi-primary)' }}
                       />
                       Loading categories…
@@ -223,7 +244,7 @@ export default function AdminCategoriesPage() {
                     </p>
                     <Link
                       href="/catalog/categories/new"
-                      className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md text-white"
+                      className="mt-2 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-white"
                       style={{ backgroundColor: 'var(--nfi-primary)' }}
                     >
                       Add First Category
@@ -236,56 +257,61 @@ export default function AdminCategoriesPage() {
                   const depth = category.depth || 0;
 
                   return (
-                    <tr
-                      key={id}
-                      className="group transition-colors hover:bg-gray-50/70"
-                    >
+                    <tr key={id} className="group transition-colors hover:bg-gray-50/70">
                       <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2" style={{ paddingLeft: `${depth * 24}px` }}>
+                        <div
+                          className="flex items-center gap-2"
+                          style={{ paddingLeft: `${depth * 24}px` }}
+                        >
                           {depth > 0 ? (
-                            <span className="text-gray-300 font-mono text-sm">↳</span>
+                            <span className="font-mono text-sm text-gray-300">↳</span>
                           ) : (
-                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--nfi-primary)' }} />
+                            <span
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: 'var(--nfi-primary)' }}
+                            />
                           )}
                           <div>
                             <p className="text-sm font-medium" style={{ color: 'var(--nfi-text)' }}>
                               {category.name}
                             </p>
                             {category.description && (
-                              <p className="text-xs text-gray-400 line-clamp-1">
+                              <p className="line-clamp-1 text-xs text-gray-400">
                                 {category.description}
                               </p>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-xs font-mono text-gray-600">
+                      <td className="whitespace-nowrap px-5 py-3.5 font-mono text-xs text-gray-600">
                         {category.slug}
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-xs text-gray-600">
+                      <td className="whitespace-nowrap px-5 py-3.5 text-xs text-gray-600">
                         {depth === 0 ? (
-                          <span className="px-2 py-0.5 rounded bg-gray-100 font-medium">Root</span>
+                          <span className="rounded bg-gray-100 px-2 py-0.5 font-medium">Root</span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-medium">
+                          <span className="rounded bg-amber-50 px-2 py-0.5 font-medium text-amber-800">
                             Subcategory (L{depth})
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-xs font-mono text-gray-600">
+                      <td className="whitespace-nowrap px-5 py-3.5 font-mono text-xs text-gray-600">
                         {category.sortOrder ?? 0}
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap">
+                      <td className="whitespace-nowrap px-5 py-3.5">
                         <button
                           type="button"
                           onClick={() => handleToggleActive(category)}
-                          className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
-                            category.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                          className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                            category.isActive
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : 'bg-gray-100 text-gray-500'
                           }`}
                         >
                           {category.isActive ? 'Active' : 'Inactive'}
                         </button>
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-right text-xs">
+                      <td className="whitespace-nowrap px-5 py-3.5 text-right text-xs">
                         <div className="flex items-center justify-end gap-3">
                           <Link
                             href={`/catalog/categories/${id}/edit`}

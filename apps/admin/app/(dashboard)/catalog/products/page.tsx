@@ -114,8 +114,8 @@ export default function AdminProductsPage() {
     try {
       await Promise.all(
         Array.from(selectedIds).map((id) =>
-          CatalogService.adminUpdateProduct(id, { status: newStatus })
-        )
+          CatalogService.adminUpdateProduct(id, { status: newStatus }),
+        ),
       );
       setSelectedIds(new Set());
       await fetchInitialData();
@@ -150,20 +150,34 @@ export default function AdminProductsPage() {
         action={
           <div className="flex gap-2">
             <NfiButton variant="secondary" size="sm" onClick={fetchInitialData} disabled={loading}>
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
               </svg>
               Refresh
             </NfiButton>
             <Link
               href="/catalog/products/new"
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md text-white transition-colors"
-              style={{ backgroundColor: 'var(--nfi-primary)' }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--nfi-primary-hover)')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--nfi-primary)')}
+              className="shadow-xs inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-colors"
+              style={{ backgroundColor: 'var(--nfi-primary, #E07020)' }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor = 'var(--nfi-primary-hover, #B85A10)')
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor = 'var(--nfi-primary, #E07020)')
+              }
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
               Add Product
             </Link>
@@ -173,8 +187,12 @@ export default function AdminProductsPage() {
 
       {error && (
         <div
-          className="mb-5 p-4 rounded-md text-sm border"
-          style={{ backgroundColor: 'rgba(198,40,40,0.05)', color: 'var(--nfi-danger)', borderColor: 'rgba(198,40,40,0.2)' }}
+          className="mb-5 rounded-md border p-4 text-sm"
+          style={{
+            backgroundColor: 'rgba(198,40,40,0.05)',
+            color: 'var(--nfi-danger)',
+            borderColor: 'rgba(198,40,40,0.2)',
+          }}
         >
           {error}
         </div>
@@ -182,19 +200,29 @@ export default function AdminProductsPage() {
 
       {/* Filter and Search Toolbar */}
       <div
-        className="bg-white rounded-lg border p-4 mb-4 space-y-3"
+        className="mb-4 space-y-3 rounded-lg border bg-white p-4"
         style={{ borderColor: 'var(--nfi-border)' }}
       >
-        <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
-          <div className="relative w-full md:w-80 flex-shrink-0">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        <div className="flex flex-col items-center justify-between gap-3 md:flex-row">
+          <div className="relative w-full flex-shrink-0 md:w-80">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <svg
+                className="h-4 w-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
             </div>
             <input
               type="text"
-              className="block w-full pl-9 pr-3 py-2 text-sm rounded-md border"
+              className="block w-full rounded-md border py-2 pl-9 pr-3 text-sm"
               style={{ borderColor: 'var(--nfi-border)', color: 'var(--nfi-text)' }}
               placeholder="Search by name or SKU…"
               value={searchQuery}
@@ -205,9 +233,9 @@ export default function AdminProductsPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full md:w-auto">
+          <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4 md:w-auto">
             <select
-              className="py-2 pl-3 pr-8 text-xs rounded-md border bg-white"
+              className="rounded-md border bg-white py-2 pl-3 pr-8 text-xs"
               style={{ borderColor: 'var(--nfi-border)', color: 'var(--nfi-text)' }}
               value={categoryFilter}
               onChange={(e) => {
@@ -224,7 +252,7 @@ export default function AdminProductsPage() {
             </select>
 
             <select
-              className="py-2 pl-3 pr-8 text-xs rounded-md border bg-white"
+              className="rounded-md border bg-white py-2 pl-3 pr-8 text-xs"
               style={{ borderColor: 'var(--nfi-border)', color: 'var(--nfi-text)' }}
               value={statusFilter}
               onChange={(e) => {
@@ -239,7 +267,7 @@ export default function AdminProductsPage() {
             </select>
 
             <select
-              className="py-2 pl-3 pr-8 text-xs rounded-md border bg-white"
+              className="rounded-md border bg-white py-2 pl-3 pr-8 text-xs"
               style={{ borderColor: 'var(--nfi-border)', color: 'var(--nfi-text)' }}
               value={typeFilter}
               onChange={(e) => {
@@ -253,10 +281,12 @@ export default function AdminProductsPage() {
             </select>
 
             <select
-              className="py-2 pl-3 pr-8 text-xs rounded-md border bg-white"
+              className="rounded-md border bg-white py-2 pl-3 pr-8 text-xs"
               style={{ borderColor: 'var(--nfi-border)', color: 'var(--nfi-text)' }}
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'newest' | 'price-asc' | 'price-desc' | 'name')}
+              onChange={(e) =>
+                setSortBy(e.target.value as 'newest' | 'price-asc' | 'price-desc' | 'name')
+              }
             >
               <option value="newest">Newest First</option>
               <option value="price-asc">Price: Low to High</option>
@@ -268,7 +298,10 @@ export default function AdminProductsPage() {
 
         {/* Bulk Action Bar if items selected */}
         {selectedIds.size > 0 && (
-          <div className="pt-2 border-t flex items-center justify-between text-xs" style={{ borderColor: 'var(--nfi-border)' }}>
+          <div
+            className="flex items-center justify-between border-t pt-2 text-xs"
+            style={{ borderColor: 'var(--nfi-border)' }}
+          >
             <span className="font-medium" style={{ color: 'var(--nfi-text)' }}>
               {selectedIds.size} product{selectedIds.size > 1 ? 's' : ''} selected
             </span>
@@ -296,7 +329,7 @@ export default function AdminProductsPage() {
 
       {/* Products Table */}
       <div
-        className="bg-white rounded-lg border overflow-hidden"
+        className="overflow-hidden rounded-lg border bg-white"
         style={{ borderColor: 'var(--nfi-border)' }}
       >
         <div className="overflow-x-auto">
@@ -314,7 +347,14 @@ export default function AdminProductsPage() {
                     className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
                   />
                 </th>
-                {['Product Info', 'Category', 'Pricing', 'Type & Variants', 'Status', 'Actions'].map((col, i) => (
+                {[
+                  'Product Info',
+                  'Category',
+                  'Pricing',
+                  'Type & Variants',
+                  'Status',
+                  'Actions',
+                ].map((col, i) => (
                   <th
                     key={i}
                     className={`px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider ${
@@ -327,12 +367,19 @@ export default function AdminProductsPage() {
                 ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y" style={{ borderColor: 'var(--nfi-border)' }}>
+            <tbody className="divide-y bg-white" style={{ borderColor: 'var(--nfi-border)' }}>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-sm" style={{ color: 'var(--nfi-text-secondary)' }}>
+                  <td
+                    colSpan={7}
+                    className="px-5 py-12 text-center text-sm"
+                    style={{ color: 'var(--nfi-text-secondary)' }}
+                  >
                     <div className="flex flex-col items-center gap-3">
-                      <div className="w-7 h-7 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--nfi-primary)' }} />
+                      <div
+                        className="h-7 w-7 animate-spin rounded-full border-2 border-t-transparent"
+                        style={{ borderColor: 'var(--nfi-primary)' }}
+                      />
                       Loading catalog…
                     </div>
                   </td>
@@ -341,15 +388,25 @@ export default function AdminProductsPage() {
                 <tr>
                   <td colSpan={7} className="px-5 py-14 text-center">
                     <div className="flex flex-col items-center gap-3">
-                      <svg className="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      <svg
+                        className="h-10 w-10 text-gray-300"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                        />
                       </svg>
                       <p className="text-sm font-medium" style={{ color: 'var(--nfi-text)' }}>
                         No products match your filters
                       </p>
                       <Link
                         href="/catalog/products/new"
-                        className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md text-white"
+                        className="mt-1 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-white"
                         style={{ backgroundColor: 'var(--nfi-primary)' }}
                       >
                         Add Product
@@ -361,7 +418,9 @@ export default function AdminProductsPage() {
                 paginatedProducts.map((product) => {
                   const id = product.id || product._id || '';
                   const isSelected = selectedIds.has(id);
-                  const catName = categories.find((c) => (c.id || c._id) === product.categoryId)?.name || 'General';
+                  const catName =
+                    categories.find((c) => (c.id || c._id) === product.categoryId)?.name ||
+                    'General';
 
                   return (
                     <tr
@@ -379,7 +438,7 @@ export default function AdminProductsPage() {
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
                           <div
-                            className="h-11 w-11 flex-shrink-0 rounded border flex items-center justify-center overflow-hidden bg-gray-50"
+                            className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded border bg-gray-50"
                             style={{ borderColor: 'var(--nfi-border)' }}
                           >
                             {product.images?.[0]?.url ? (
@@ -392,53 +451,77 @@ export default function AdminProductsPage() {
                                 className="h-full w-full object-cover"
                               />
                             ) : (
-                              <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              <svg
+                                className="h-4 w-4 text-gray-300"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={1.5}
+                                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                />
                               </svg>
                             )}
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <Link href={`/catalog/products/${id}`} className="text-sm font-medium hover:underline" style={{ color: 'var(--nfi-text)' }}>
+                              <Link
+                                href={`/catalog/products/${id}`}
+                                className="text-sm font-medium hover:underline"
+                                style={{ color: 'var(--nfi-text)' }}
+                              >
                                 {product.name}
                               </Link>
                               {product.videos && product.videos.length > 0 && (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-amber-50 text-amber-900 border border-amber-300">
+                                <span className="inline-flex items-center gap-0.5 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-900">
                                   ▶ Video
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs font-mono mt-0.5" style={{ color: 'var(--nfi-text-secondary)' }}>
+                            <p
+                              className="mt-0.5 font-mono text-xs"
+                              style={{ color: 'var(--nfi-text-secondary)' }}
+                            >
                               {product.sku}
                             </p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-xs text-gray-600">
+                      <td className="whitespace-nowrap px-5 py-3.5 text-xs text-gray-600">
                         {catName}
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap">
+                      <td className="whitespace-nowrap px-5 py-3.5">
                         <p className="text-sm font-medium" style={{ color: 'var(--nfi-text)' }}>
-                          ₹{product.basePrice ? (product.basePrice.amount / 100).toLocaleString('en-IN') : '—'}
+                          ₹
+                          {product.basePrice
+                            ? (product.basePrice.amount / 100).toLocaleString('en-IN')
+                            : '—'}
                         </p>
                         {product.mrp && product.mrp.amount > (product.basePrice?.amount || 0) && (
-                          <p className="text-[11px] line-through text-gray-400">
+                          <p className="text-[11px] text-gray-400 line-through">
                             MRP ₹{(product.mrp.amount / 100).toLocaleString('en-IN')}
                           </p>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap">
+                      <td className="whitespace-nowrap px-5 py-3.5">
                         <p className="text-xs font-medium" style={{ color: 'var(--nfi-text)' }}>
-                          {product.productType === 'MADE_TO_ORDER' ? 'Made to Order' : 'Ready to Ship'}
+                          {product.productType === 'MADE_TO_ORDER'
+                            ? 'Made to Order'
+                            : 'Ready to Ship'}
                         </p>
                         <p className="text-[11px]" style={{ color: 'var(--nfi-text-secondary)' }}>
-                          {product.variants?.length ? `${product.variants.length} variant(s)` : 'Standard'}
+                          {product.variants?.length
+                            ? `${product.variants.length} variant(s)`
+                            : 'Standard'}
                         </p>
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap">
+                      <td className="whitespace-nowrap px-5 py-3.5">
                         <StatusBadge status={product.status?.toLowerCase() ?? 'draft'} />
                       </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-right text-xs">
+                      <td className="whitespace-nowrap px-5 py-3.5 text-right text-xs">
                         <div className="flex items-center justify-end gap-2.5">
                           <Link
                             href={`/catalog/products/${id}`}
@@ -475,12 +558,16 @@ export default function AdminProductsPage() {
         {/* Pagination Bar */}
         {!loading && filteredProducts.length > 0 && (
           <div
-            className="px-5 py-3 border-t flex flex-col sm:flex-row items-center justify-between gap-3"
-            style={{ borderColor: 'var(--nfi-border)', backgroundColor: 'var(--nfi-surface-muted)' }}
+            className="flex flex-col items-center justify-between gap-3 border-t px-5 py-3 sm:flex-row"
+            style={{
+              borderColor: 'var(--nfi-border)',
+              backgroundColor: 'var(--nfi-surface-muted)',
+            }}
           >
             <p className="text-xs" style={{ color: 'var(--nfi-text-secondary)' }}>
               Showing {(currentPage - 1) * pageSize + 1} to{' '}
-              {Math.min(currentPage * pageSize, filteredProducts.length)} of {filteredProducts.length} products
+              {Math.min(currentPage * pageSize, filteredProducts.length)} of{' '}
+              {filteredProducts.length} products
             </p>
 
             <div className="flex items-center gap-2">
@@ -492,7 +579,7 @@ export default function AdminProductsPage() {
               >
                 Previous
               </NfiButton>
-              <span className="text-xs px-2 text-gray-600">
+              <span className="px-2 text-xs text-gray-600">
                 Page {currentPage} of {totalPages}
               </span>
               <NfiButton

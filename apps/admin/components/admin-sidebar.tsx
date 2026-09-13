@@ -46,8 +46,16 @@ const navGroups: NavGroup[] = [
   {
     section: 'Operations',
     items: [
-      { label: 'Design Projects', href: '/design-projects', requiredPermission: 'design-projects.read' },
-      { label: 'Design Portfolio', href: '/design-projects/portfolio', requiredPermission: 'design-projects.read' },
+      {
+        label: 'Design Projects',
+        href: '/design-projects',
+        requiredPermission: 'design-projects.read',
+      },
+      {
+        label: 'Design Portfolio',
+        href: '/design-projects/portfolio',
+        requiredPermission: 'design-projects.read',
+      },
       { label: 'Customers (CRM)', href: '/crm', requiredPermission: 'leads.read' },
       { label: 'Notifications', href: '/notifications', requiredPermission: 'notifications.read' },
     ],
@@ -98,8 +106,8 @@ export function AdminSidebar() {
                     atob(base64)
                       .split('')
                       .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-                      .join('')
-                  )
+                      .join(''),
+                  ),
                 );
               } catch {
                 return null;
@@ -180,7 +188,7 @@ export function AdminSidebar() {
     <>
       {/* Brand Header */}
       <div
-        className="h-16 flex items-center px-5 flex-shrink-0 justify-between"
+        className="flex h-16 flex-shrink-0 items-center justify-between px-5"
         style={{ borderBottom: '1px solid rgba(253, 248, 242, 0.08)' }}
       >
         <Link
@@ -191,19 +199,22 @@ export function AdminSidebar() {
           }}
         >
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-black shadow tracking-wider"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-black tracking-wider text-white shadow"
             style={{ backgroundColor: 'var(--nfi-orange)' }}
           >
             NFI
           </div>
           <div>
             <span
-              className="text-xs font-bold tracking-tight block leading-none"
+              className="block text-xs font-bold leading-none tracking-tight"
               style={{ color: 'var(--nfi-cream)' }}
             >
               National Furniture
             </span>
-            <span className="text-[10px] font-medium tracking-wide" style={{ color: 'var(--nfi-sidebar-muted)' }}>
+            <span
+              className="text-[10px] font-medium tracking-wide"
+              style={{ color: 'var(--nfi-sidebar-muted)' }}
+            >
               Executive Portal
             </span>
           </div>
@@ -213,18 +224,23 @@ export function AdminSidebar() {
           <button
             type="button"
             onClick={closeMobileNav}
-            className="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="rounded-lg p-1.5 text-stone-400 transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Close navigation"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-3 px-3">
+      <nav className="no-scrollbar flex-1 overflow-y-auto px-3 py-3">
         {navGroups.map((group, gi) => {
           const visibleItems = group.items.filter(canViewItem);
           if (visibleItems.length === 0) return null;
@@ -233,7 +249,7 @@ export function AdminSidebar() {
             <div key={gi} className={gi > 0 ? 'mt-4' : ''}>
               {group.section && (
                 <p
-                  className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-wider"
+                  className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-wider"
                   style={{ color: 'var(--nfi-sidebar-muted)' }}
                 >
                   {group.section}
@@ -249,29 +265,33 @@ export function AdminSidebar() {
                         onClick={() => {
                           if (isMobile) closeMobileNav();
                         }}
-                        className={`nav-item flex items-center px-3 py-2.5 text-xs font-medium rounded-lg transition-all ${
-                          active
-                            ? 'font-semibold'
-                            : ''
+                        className={`nav-item flex items-center rounded-lg px-3 py-2.5 text-xs font-medium transition-all ${
+                          active ? 'font-semibold' : ''
                         }`}
-                        style={active ? {
-                          backgroundColor: 'rgba(224, 112, 32, 0.18)',
-                          color: '#F5A060',
-                          borderLeft: '3px solid var(--nfi-orange)',
-                        } : {
-                          color: 'rgba(245, 237, 224, 0.75)',
-                          borderLeft: '3px solid transparent',
-                        }}
-                        onMouseEnter={e => {
+                        style={
+                          active
+                            ? {
+                                backgroundColor: 'rgba(224, 112, 32, 0.18)',
+                                color: '#F5A060',
+                                borderLeft: '3px solid var(--nfi-orange)',
+                              }
+                            : {
+                                color: 'rgba(245, 237, 224, 0.75)',
+                                borderLeft: '3px solid transparent',
+                              }
+                        }
+                        onMouseEnter={(e) => {
                           if (!active) {
-                            (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(253, 248, 242, 0.06)';
+                            (e.currentTarget as HTMLElement).style.backgroundColor =
+                              'rgba(253, 248, 242, 0.06)';
                             (e.currentTarget as HTMLElement).style.color = 'var(--nfi-cream)';
                           }
                         }}
-                        onMouseLeave={e => {
+                        onMouseLeave={(e) => {
                           if (!active) {
                             (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
-                            (e.currentTarget as HTMLElement).style.color = 'rgba(245, 237, 224, 0.75)';
+                            (e.currentTarget as HTMLElement).style.color =
+                              'rgba(245, 237, 224, 0.75)';
                           }
                         }}
                       >
@@ -288,36 +308,69 @@ export function AdminSidebar() {
 
       {/* User Footer with Role Badge */}
       <div
-        className="p-3 flex-shrink-0"
-        style={{ borderTop: '1px solid rgba(253, 248, 242, 0.08)', backgroundColor: 'rgba(0,0,0,0.15)' }}
+        className="flex-shrink-0 p-3"
+        style={{
+          borderTop: '1px solid rgba(253, 248, 242, 0.08)',
+          backgroundColor: 'rgba(0,0,0,0.15)',
+        }}
       >
-        <div className="flex items-center gap-2.5 px-1 py-1 rounded-md">
+        <div className="flex items-center gap-2.5 rounded-md px-1 py-1">
           <div
-            className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${getAvatarBadgeClass()}`}
+            className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${getAvatarBadgeClass()}`}
           >
             {getInitials(user?.fullName)}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold truncate leading-tight" style={{ color: 'var(--nfi-cream)' }}>
+          <div className="min-w-0 flex-1">
+            <p
+              className="truncate text-xs font-semibold leading-tight"
+              style={{ color: 'var(--nfi-cream)' }}
+            >
               {user?.fullName || 'Administrator'}
             </p>
-            <p className="text-[10px] truncate leading-tight mt-0.5" style={{ color: 'var(--nfi-sidebar-muted)' }}>
+            <p
+              className="mt-0.5 truncate text-[10px] leading-tight"
+              style={{ color: 'var(--nfi-sidebar-muted)' }}
+            >
               {user?.email || 'admin@nationalinteriors.com'}
             </p>
             <div className="mt-1">
               {user?.roleName === 'SUPER_ADMIN' ? (
-                <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: 'rgba(224,112,32,0.2)', color: '#F5A060', border: '1px solid rgba(224,112,32,0.35)' }}>
-                  <span className="w-1 h-1 rounded-full" style={{ backgroundColor: 'var(--nfi-orange)' }}></span>
+                <span
+                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold"
+                  style={{
+                    backgroundColor: 'rgba(224,112,32,0.2)',
+                    color: '#F5A060',
+                    border: '1px solid rgba(224,112,32,0.35)',
+                  }}
+                >
+                  <span
+                    className="h-1 w-1 rounded-full"
+                    style={{ backgroundColor: 'var(--nfi-orange)' }}
+                  ></span>
                   SUPER ADMIN
                 </span>
               ) : user?.roleName === 'ADMIN' ? (
-                <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: 'rgba(253,248,242,0.1)', color: 'rgba(245,237,224,0.85)', border: '1px solid rgba(253,248,242,0.15)' }}>
-                  <span className="w-1 h-1 rounded-full bg-amber-400"></span>
+                <span
+                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold"
+                  style={{
+                    backgroundColor: 'rgba(253,248,242,0.1)',
+                    color: 'rgba(245,237,224,0.85)',
+                    border: '1px solid rgba(253,248,242,0.15)',
+                  }}
+                >
+                  <span className="h-1 w-1 rounded-full bg-amber-400"></span>
                   ADMINISTRATOR
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded" style={{ backgroundColor: 'rgba(253,248,242,0.08)', color: 'rgba(245,237,224,0.7)', border: '1px solid rgba(253,248,242,0.12)' }}>
-                  <span className="w-1 h-1 rounded-full bg-blue-400"></span>
+                <span
+                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold"
+                  style={{
+                    backgroundColor: 'rgba(253,248,242,0.08)',
+                    color: 'rgba(245,237,224,0.7)',
+                    border: '1px solid rgba(253,248,242,0.12)',
+                  }}
+                >
+                  <span className="h-1 w-1 rounded-full bg-blue-400"></span>
                   {user?.roleName ? user.roleName.replace(/_/g, ' ') : 'STAFF'}
                 </span>
               )}
@@ -327,12 +380,18 @@ export function AdminSidebar() {
             onClick={handleLogout}
             title="Sign out"
             aria-label="Sign out"
-            className="p-1.5 rounded-lg transition-colors flex-shrink-0"
+            className="flex-shrink-0 rounded-lg p-1.5 transition-colors"
             style={{ color: 'rgba(245,237,224,0.45)' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#FF6B6B'; (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(192,40,28,0.15)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(245,237,224,0.45)'; (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.color = '#FF6B6B';
+              (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(192,40,28,0.15)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.color = 'rgba(245,237,224,0.45)';
+              (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+            }}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -350,8 +409,8 @@ export function AdminSidebar() {
     <>
       {/* Desktop Persistent Sidebar */}
       <aside
-        className="w-64 flex-shrink-0 flex flex-col hidden md:flex select-none"
-        style={{ 
+        className="flex hidden w-64 flex-shrink-0 select-none flex-col md:flex"
+        style={{
           backgroundColor: 'var(--nfi-brown-dark)',
           borderRight: '1px solid rgba(253, 248, 242, 0.06)',
         }}
@@ -361,18 +420,18 @@ export function AdminSidebar() {
 
       {/* Mobile Slide-Over Navigation Drawer */}
       {mobileNavOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex">
+        <div className="fixed inset-0 z-50 flex md:hidden">
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300"
+            className="backdrop-blur-xs fixed inset-0 bg-black/60 transition-opacity duration-300"
             onClick={closeMobileNav}
             aria-hidden="true"
           />
 
           {/* Drawer Sidebar */}
           <div
-            className="relative w-[85%] max-w-[300px] h-full flex flex-col z-10 shadow-2xl animate-in slide-in-from-left duration-200 overflow-y-auto"
-            style={{ 
+            className="animate-in slide-in-from-left relative z-10 flex h-full w-[85%] max-w-[300px] flex-col overflow-y-auto shadow-2xl duration-200"
+            style={{
               backgroundColor: 'var(--nfi-brown-dark)',
               borderRight: '1px solid rgba(253, 248, 242, 0.1)',
             }}

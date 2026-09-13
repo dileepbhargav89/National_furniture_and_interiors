@@ -1,7 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, ChevronDown, Sparkles, Phone, MessageSquare, ArrowRight, ShieldCheck } from 'lucide-react';
+import {
+  X,
+  ChevronDown,
+  Sparkles,
+  Phone,
+  MessageSquare,
+  ArrowRight,
+  ShieldCheck,
+} from 'lucide-react';
 import Link from 'next/link';
 
 interface MobileMenuProps {
@@ -30,38 +38,38 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   return (
     <div className="fixed inset-0 z-[100] flex">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300"
+      <div
+        className="backdrop-blur-xs absolute inset-0 bg-black/60 transition-opacity duration-300"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Menu Panel — Slides in from Left */}
-      <div 
-        className="relative w-[85%] max-w-[380px] h-full bg-[#FAF9F6] shadow-2xl flex flex-col animate-slide-in-left overflow-y-auto border-r border-[#EAE7E1]"
+      <div
+        className="animate-slide-in-left relative flex h-full w-[85%] max-w-[380px] flex-col overflow-y-auto border-r border-[#EAE7E1] bg-[#FAF9F6] shadow-2xl"
         style={{ animationDuration: '300ms' }}
         role="dialog"
         aria-modal="true"
         aria-label="Navigation Menu"
       >
         {/* Header Strip */}
-        <div className="flex items-center justify-between p-5 border-b border-stone-200 bg-white">
+        <div className="flex items-center justify-between border-b border-stone-200 bg-white p-5">
           <Link href="/" className="flex items-center gap-2" onClick={onClose}>
-            <div className="w-8 h-8 rounded-lg bg-[#E07020] text-white flex items-center justify-center font-bold text-xs shadow-xs">
+            <div className="shadow-xs flex h-8 w-8 items-center justify-center rounded-lg bg-[#E07020] text-xs font-bold text-white">
               NFI
             </div>
             <div>
-              <span className="text-sm font-bold tracking-tight text-[#171717] block leading-none">
+              <span className="block text-sm font-bold leading-none tracking-tight text-[#171717]">
                 National Interiors
               </span>
-              <span className="text-[10px] text-[#8C7355] font-medium tracking-wide">
+              <span className="text-[10px] font-medium tracking-wide text-[#8C7355]">
                 Est. 1998 · Bengaluru
               </span>
             </div>
           </Link>
-          <button 
-            onClick={onClose} 
-            className="text-stone-400 hover:text-stone-900 transition-colors p-2 rounded-lg hover:bg-stone-100"
+          <button
+            onClick={onClose}
+            className="rounded-lg p-2 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-900"
             aria-label="Close menu"
           >
             <X strokeWidth={1.5} size={22} />
@@ -69,7 +77,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto py-6 px-6 flex flex-col gap-6">
+        <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-6">
           {/* Main Navigation with Expandable Subsections */}
           <nav className="flex flex-col gap-1">
             {/* Furniture Dropdown Accordion */}
@@ -77,7 +85,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
               <div className="flex items-center justify-between py-2">
                 <Link
                   href="/products"
-                  className="text-xl font-serif text-[#171717] tracking-tight hover:text-[#8C7355] transition-colors"
+                  className="font-serif text-xl tracking-tight text-[#171717] transition-colors hover:text-[#8C7355]"
                   onClick={onClose}
                 >
                   Furniture
@@ -85,7 +93,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                 <button
                   type="button"
                   onClick={() => setFurnitureOpen(!furnitureOpen)}
-                  className="p-2 text-stone-400 hover:text-stone-900 transition-colors"
+                  className="p-2 text-stone-400 transition-colors hover:text-stone-900"
                   aria-label="Toggle furniture categories"
                 >
                   <ChevronDown
@@ -96,31 +104,31 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
               </div>
 
               {furnitureOpen && (
-                <div className="pl-3 pt-2 pb-1 space-y-2 border-l-2 border-[#8C7355]/40 ml-1 mt-1 text-xs">
+                <div className="ml-1 mt-1 space-y-2 border-l-2 border-[#8C7355]/40 pb-1 pl-3 pt-2 text-xs">
                   <Link
                     href="/products?category=living-room"
-                    className="block py-1.5 text-stone-700 hover:text-[#8C7355] transition-colors"
+                    className="block py-1.5 text-stone-700 transition-colors hover:text-[#8C7355]"
                     onClick={onClose}
                   >
                     Living &amp; Modular Sofas
                   </Link>
                   <Link
                     href="/products?category=dining"
-                    className="block py-1.5 text-stone-700 hover:text-[#8C7355] transition-colors"
+                    className="block py-1.5 text-stone-700 transition-colors hover:text-[#8C7355]"
                     onClick={onClose}
                   >
                     Sculptural Dining Tables
                   </Link>
                   <Link
                     href="/products?category=bedroom"
-                    className="block py-1.5 text-stone-700 hover:text-[#8C7355] transition-colors"
+                    className="block py-1.5 text-stone-700 transition-colors hover:text-[#8C7355]"
                     onClick={onClose}
                   >
                     Teakwood Bedroom Suites
                   </Link>
                   <Link
                     href="/products?category=office"
-                    className="block py-1.5 text-stone-700 hover:text-[#8C7355] transition-colors"
+                    className="block py-1.5 text-stone-700 transition-colors hover:text-[#8C7355]"
                     onClick={onClose}
                   >
                     Executive Study &amp; Desks
@@ -142,7 +150,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
               <div className="flex items-center justify-between py-2">
                 <Link
                   href="/design-services"
-                  className="text-xl font-serif text-[#171717] tracking-tight hover:text-[#8C7355] transition-colors"
+                  className="font-serif text-xl tracking-tight text-[#171717] transition-colors hover:text-[#8C7355]"
                   onClick={onClose}
                 >
                   Design Services
@@ -150,7 +158,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                 <button
                   type="button"
                   onClick={() => setDesignOpen(!designOpen)}
-                  className="p-2 text-stone-400 hover:text-stone-900 transition-colors"
+                  className="p-2 text-stone-400 transition-colors hover:text-stone-900"
                   aria-label="Toggle design services"
                 >
                   <ChevronDown
@@ -161,24 +169,24 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
               </div>
 
               {designOpen && (
-                <div className="pl-3 pt-2 pb-1 space-y-2 border-l-2 border-[#8C7355]/40 ml-1 mt-1 text-xs">
+                <div className="ml-1 mt-1 space-y-2 border-l-2 border-[#8C7355]/40 pb-1 pl-3 pt-2 text-xs">
                   <Link
                     href="/design-services#residential"
-                    className="block py-1.5 text-stone-700 hover:text-[#8C7355] transition-colors"
+                    className="block py-1.5 text-stone-700 transition-colors hover:text-[#8C7355]"
                     onClick={onClose}
                   >
                     Turnkey Residential Villas &amp; Apts
                   </Link>
                   <Link
                     href="/design-services#commercial"
-                    className="block py-1.5 text-stone-700 hover:text-[#8C7355] transition-colors"
+                    className="block py-1.5 text-stone-700 transition-colors hover:text-[#8C7355]"
                     onClick={onClose}
                   >
                     Commercial, Hospitality &amp; Retail
                   </Link>
                   <Link
                     href="/design-services#cost-estimator"
-                    className="block py-1.5 text-stone-700 hover:text-[#8C7355] transition-colors font-medium text-[#E07020]"
+                    className="block py-1.5 font-medium text-[#E07020] text-stone-700 transition-colors hover:text-[#8C7355]"
                     onClick={onClose}
                   >
                     Bangalore Cost Estimator ➔
@@ -190,21 +198,28 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
             {/* Standard Links */}
             <Link
               href="/collections"
-              className="text-xl font-serif text-[#171717] tracking-tight py-3 border-b border-stone-200/80 hover:text-[#8C7355] transition-colors"
+              className="border-b border-stone-200/80 py-3 font-serif text-xl tracking-tight text-[#171717] transition-colors hover:text-[#8C7355]"
               onClick={onClose}
             >
               Collections
             </Link>
             <Link
+              href="/blogs"
+              className="border-b border-stone-200/80 py-3 font-serif text-xl tracking-tight text-[#171717] transition-colors hover:text-[#8C7355]"
+              onClick={onClose}
+            >
+              Journal
+            </Link>
+            <Link
               href="/our-story"
-              className="text-xl font-serif text-[#171717] tracking-tight py-3 border-b border-stone-200/80 hover:text-[#8C7355] transition-colors"
+              className="border-b border-stone-200/80 py-3 font-serif text-xl tracking-tight text-[#171717] transition-colors hover:text-[#8C7355]"
               onClick={onClose}
             >
               Our Story
             </Link>
             <Link
               href="/contact"
-              className="text-xl font-serif text-[#171717] tracking-tight py-3 hover:text-[#8C7355] transition-colors"
+              className="py-3 font-serif text-xl tracking-tight text-[#171717] transition-colors hover:text-[#8C7355]"
               onClick={onClose}
             >
               Experience Studios
@@ -212,36 +227,36 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
           </nav>
 
           {/* Primary CTA: Consultation */}
-          <Link href="/contact" onClick={onClose} className="block mt-2">
-            <button className="w-full py-3.5 bg-[#171717] text-white text-xs font-semibold tracking-wider uppercase hover:bg-[#8C7355] transition-colors rounded-xl flex items-center justify-center gap-2 shadow-sm">
+          <Link href="/contact" onClick={onClose} className="mt-2 block">
+            <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#171717] py-3.5 text-xs font-semibold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-[#8C7355]">
               <Sparkles size={14} className="text-[#D4AF37]" />
               <span>Book 3D Consultation</span>
             </button>
           </Link>
 
           {/* User & Order Shortcuts */}
-          <div className="bg-white rounded-xl border border-stone-200 p-3.5 space-y-2 text-xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8C7355] block mb-1">
+          <div className="space-y-2 rounded-xl border border-stone-200 bg-white p-3.5 text-xs">
+            <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-[#8C7355]">
               Patron Services
             </span>
             <div className="grid grid-cols-3 gap-2 text-center">
               <Link
                 href="/profile"
-                className="p-2 rounded-lg bg-stone-50 hover:bg-stone-100 text-stone-800 transition-colors"
+                className="rounded-lg bg-stone-50 p-2 text-stone-800 transition-colors hover:bg-stone-100"
                 onClick={onClose}
               >
                 Account
               </Link>
               <Link
                 href="/wishlist"
-                className="p-2 rounded-lg bg-stone-50 hover:bg-stone-100 text-stone-800 transition-colors"
+                className="rounded-lg bg-stone-50 p-2 text-stone-800 transition-colors hover:bg-stone-100"
                 onClick={onClose}
               >
                 Wishlist
               </Link>
               <Link
                 href="/cart"
-                className="p-2 rounded-lg bg-stone-50 hover:bg-stone-100 text-stone-800 transition-colors"
+                className="rounded-lg bg-stone-50 p-2 text-stone-800 transition-colors hover:bg-stone-100"
                 onClick={onClose}
               >
                 Cart
@@ -250,27 +265,27 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
           </div>
 
           {/* Direct Concierge Contact Buttons */}
-          <div className="pt-2 border-t border-stone-200/80 space-y-2.5 pb-6">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+          <div className="space-y-2.5 border-t border-stone-200/80 pb-6 pt-2">
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-stone-400">
               Direct Workshop Concierge
             </span>
             <a
               href="https://wa.me/919663628302?text=Hello%20National%20Furniture%20%26%20Interiors%20Concierge"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-medium border border-emerald-200"
+              className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800"
             >
               <MessageSquare size={15} className="text-emerald-600" />
               <span>WhatsApp Concierge (+91 96636 28302)</span>
             </a>
             <a
               href="tel:+919663628302"
-              className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-stone-100 text-stone-800 text-xs font-medium"
+              className="flex items-center gap-2.5 rounded-xl bg-stone-100 px-3 py-2 text-xs font-medium text-stone-800"
             >
               <Phone size={15} className="text-stone-600" />
               <span>Call Flagship Studio</span>
             </a>
-            <div className="flex items-center gap-1.5 text-[11px] text-stone-500 pt-1">
+            <div className="flex items-center gap-1.5 pt-1 text-[11px] text-stone-500">
               <ShieldCheck size={14} className="text-[#8C7355]" />
               <span>10-Yr Warranty · Free White-Glove Handover</span>
             </div>
