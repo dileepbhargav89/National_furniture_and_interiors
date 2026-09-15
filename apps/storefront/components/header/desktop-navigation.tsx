@@ -27,7 +27,7 @@ export function DesktopNavigation() {
 
   return (
     <nav
-      className="relative hidden h-full items-center gap-7 lg:flex xl:gap-8"
+      className="relative hidden h-full items-center gap-3.5 lg:flex xl:gap-6 2xl:gap-8"
       onMouseLeave={handleMouseLeaveNav}
     >
       {NAV_ITEMS.map((item) => {
@@ -37,12 +37,12 @@ export function DesktopNavigation() {
         return (
           <div
             key={item.id}
-            className="relative flex h-full items-center"
+            className="relative flex h-full shrink-0 items-center"
             onMouseEnter={() => item.type !== 'link' && setActiveMenu(item.id)}
           >
             <Link
               href={item.href}
-              className={`relative flex h-full items-center text-[14px] font-medium tracking-wide transition-colors ${
+              className={`relative flex h-full items-center whitespace-nowrap text-[13px] font-medium tracking-wide transition-colors xl:text-[14px] ${
                 isActive || isHovered ? 'text-[#3D1A08]' : 'text-[#7A5C45] hover:text-[#3D1A08]'
               } `}
             >

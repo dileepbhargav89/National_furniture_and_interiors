@@ -11,6 +11,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import Link from 'next/link';
+import { Logo } from './logo';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -54,19 +55,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
       >
         {/* Header Strip */}
         <div className="flex items-center justify-between border-b border-stone-200 bg-white p-5">
-          <Link href="/" className="flex items-center gap-2" onClick={onClose}>
-            <div className="shadow-xs flex h-8 w-8 items-center justify-center rounded-lg bg-[#E07020] text-xs font-bold text-white">
-              NFI
-            </div>
-            <div>
-              <span className="block text-sm font-bold leading-none tracking-tight text-[#171717]">
-                National Interiors
-              </span>
-              <span className="text-[10px] font-medium tracking-wide text-[#8C7355]">
-                Est. 1998 · Bengaluru
-              </span>
-            </div>
-          </Link>
+          <Logo variant="mobile" onClick={onClose} />
           <button
             onClick={onClose}
             className="rounded-lg p-2 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-900"

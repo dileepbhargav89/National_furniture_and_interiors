@@ -41,11 +41,11 @@ export function HeaderActions({ onSearchClick }: { onSearchClick: () => void }) 
   }, []);
 
   return (
-    <div className="flex items-center gap-2 sm:gap-3.5 md:gap-5">
+    <div className="xl:gap-4.5 flex shrink-0 items-center gap-1 sm:gap-2.5 md:gap-3.5">
       {/* Search */}
-      <button 
+      <button
         onClick={onSearchClick}
-        className="text-gray-900 hover:text-black transition-colors p-1.5 rounded-full hover:bg-stone-100/60"
+        className="rounded-full p-1.5 text-gray-900 transition-colors hover:bg-stone-100/60 hover:text-black"
         aria-label="Search"
       >
         <Search strokeWidth={1.2} size={20} />
@@ -53,82 +53,82 @@ export function HeaderActions({ onSearchClick }: { onSearchClick: () => void }) 
 
       {/* Account Dropdown */}
       <div className="relative" ref={accountRef}>
-        <button 
+        <button
           onClick={() => setAccountOpen(!accountOpen)}
-          className={`transition-colors p-1.5 rounded-full hover:bg-stone-100/60 ${
+          className={`rounded-full p-1.5 transition-colors hover:bg-stone-100/60 ${
             isAuthenticated ? 'text-black' : 'text-gray-900 hover:text-black'
           }`}
           aria-label="Account"
         >
           <User strokeWidth={1.2} size={20} />
         </button>
-        
+
         {/* Account Menu */}
         {accountOpen && (
-          <div className="absolute right-0 mt-3 w-56 bg-white border border-[#E5DFD5] shadow-xl rounded-xl py-2 z-50 transform origin-top-right transition-all duration-200 divide-y divide-gray-100">
+          <div className="absolute right-0 z-50 mt-3 w-56 origin-top-right transform divide-y divide-gray-100 rounded-xl border border-[#E5DFD5] bg-white py-2 shadow-xl transition-all duration-200">
             {isAuthenticated ? (
               <>
-                <div className="px-4 py-2.5 bg-stone-50/60">
-                  <p className="text-xs font-serif font-bold text-gray-900 truncate">
+                <div className="bg-stone-50/60 px-4 py-2.5">
+                  <p className="truncate font-serif text-xs font-bold text-gray-900">
                     {user?.fullName || 'Atelier Patron'}
                   </p>
-                  <p className="text-[11px] text-gray-500 truncate">{user?.email}</p>
+                  <p className="truncate text-[11px] text-gray-500">{user?.email}</p>
                 </div>
                 <div className="py-1">
-                  <Link 
-                    href="/profile" 
-                    className="flex items-center justify-between px-4 py-2 text-xs font-semibold text-gray-800 hover:bg-[#FBF9F5] hover:text-[#8C6D3F] transition-colors"
+                  <Link
+                    href="/profile"
+                    className="flex items-center justify-between px-4 py-2 text-xs font-semibold text-gray-800 transition-colors hover:bg-[#FBF9F5] hover:text-[#8C6D3F]"
                     onClick={() => setAccountOpen(false)}
                   >
                     <span>My Profile</span>
-                    <Sparkles className="w-3.5 h-3.5 text-[#C5A880]" />
+                    <Sparkles className="h-3.5 w-3.5 text-[#C5A880]" />
                   </Link>
-                  <Link 
-                    href="/profile" 
-                    className="flex items-center justify-between px-4 py-2 text-xs text-gray-600 hover:bg-[#FBF9F5] hover:text-[#8C6D3F] transition-colors" 
+                  <Link
+                    href="/profile"
+                    className="flex items-center justify-between px-4 py-2 text-xs text-gray-600 transition-colors hover:bg-[#FBF9F5] hover:text-[#8C6D3F]"
                     onClick={() => setAccountOpen(false)}
                   >
                     <span>Orders & Invoices</span>
-                    <Package className="w-3.5 h-3.5 text-gray-400" />
+                    <Package className="h-3.5 w-3.5 text-gray-400" />
                   </Link>
-                  <Link 
-                    href="/profile" 
-                    className="flex items-center justify-between px-4 py-2 text-xs text-gray-600 hover:bg-[#FBF9F5] hover:text-[#8C6D3F] transition-colors" 
+                  <Link
+                    href="/profile"
+                    className="flex items-center justify-between px-4 py-2 text-xs text-gray-600 transition-colors hover:bg-[#FBF9F5] hover:text-[#8C6D3F]"
                     onClick={() => setAccountOpen(false)}
                   >
                     <span>Interior Projects</span>
-                    <Compass className="w-3.5 h-3.5 text-gray-400" />
+                    <Compass className="h-3.5 w-3.5 text-gray-400" />
                   </Link>
-                  <Link 
-                    href="/wishlist" 
-                    className="block px-4 py-2 text-xs text-gray-600 hover:bg-[#FBF9F5] hover:text-[#8C6D3F] transition-colors" 
+                  <Link
+                    href="/wishlist"
+                    className="block px-4 py-2 text-xs text-gray-600 transition-colors hover:bg-[#FBF9F5] hover:text-[#8C6D3F]"
                     onClick={() => setAccountOpen(false)}
                   >
                     Saved Wishlist
                   </Link>
                 </div>
                 <div className="pt-1">
-                  <button 
-                    className="w-full flex items-center justify-between px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors font-medium" 
+                  <button
+                    className="flex w-full items-center justify-between px-4 py-2 text-xs font-medium text-rose-600 transition-colors hover:bg-rose-50"
                     onClick={handleSignOut}
                   >
                     <span>Sign Out</span>
-                    <LogOut className="w-3.5 h-3.5" />
+                    <LogOut className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </>
             ) : (
               <div className="py-1">
-                <Link 
-                  href="/login" 
-                  className="block px-4 py-2.5 text-xs font-semibold text-gray-900 hover:bg-gray-50 transition-colors" 
+                <Link
+                  href="/login"
+                  className="block px-4 py-2.5 text-xs font-semibold text-gray-900 transition-colors hover:bg-gray-50"
                   onClick={() => setAccountOpen(false)}
                 >
                   Sign In
                 </Link>
-                <Link 
-                  href="/register" 
-                  className="block px-4 py-2 text-xs text-gray-600 hover:bg-gray-50 transition-colors" 
+                <Link
+                  href="/register"
+                  className="block px-4 py-2 text-xs text-gray-600 transition-colors hover:bg-gray-50"
                   onClick={() => setAccountOpen(false)}
                 >
                   Create Account
@@ -140,10 +140,18 @@ export function HeaderActions({ onSearchClick }: { onSearchClick: () => void }) 
       </div>
 
       {/* Wishlist */}
-      <Link href="/wishlist" className="text-gray-900 hover:text-black transition-colors relative p-1.5 rounded-full hover:bg-stone-100/60" aria-label="Wishlist">
-        <Heart strokeWidth={1.2} size={20} className={wishlistCount > 0 ? 'fill-[#8C7355] text-[#8C7355]' : ''} />
+      <Link
+        href="/wishlist"
+        className="relative rounded-full p-1.5 text-gray-900 transition-colors hover:bg-stone-100/60 hover:text-black"
+        aria-label="Wishlist"
+      >
+        <Heart
+          strokeWidth={1.2}
+          size={20}
+          className={wishlistCount > 0 ? 'fill-[#8C7355] text-[#8C7355]' : ''}
+        />
         {wishlistCount > 0 && (
-          <span className="absolute top-0 right-0 bg-[#8C7355] text-white text-[10px] font-medium w-4 h-4 flex items-center justify-center rounded-full shadow-sm">
+          <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-[#8C7355] text-[10px] font-medium text-white shadow-sm">
             {wishlistCount}
           </span>
         )}
@@ -153,22 +161,22 @@ export function HeaderActions({ onSearchClick }: { onSearchClick: () => void }) 
       <NotificationBell />
 
       {/* Cart */}
-      <button 
+      <button
         onClick={openCart}
-        className="text-gray-900 hover:text-black transition-colors relative p-1.5 rounded-full hover:bg-stone-100/60"
+        className="relative rounded-full p-1.5 text-gray-900 transition-colors hover:bg-stone-100/60 hover:text-black"
         aria-label="Cart"
       >
         <ShoppingBag strokeWidth={1.2} size={20} />
         {itemCount > 0 && (
-          <span className="absolute top-0 right-0 bg-gray-900 text-white text-[10px] font-medium w-4 h-4 flex items-center justify-center rounded-full">
+          <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-gray-900 text-[10px] font-medium text-white">
             {itemCount}
           </span>
         )}
       </button>
 
       {/* CTA */}
-      <Link href="/contact" className="hidden lg:block ml-3">
-        <button className="bg-[#1a1a1a] text-white px-6 py-2.5 text-[13px] tracking-wide font-medium hover:bg-black transition-colors">
+      <Link href="/contact" className="ml-2 hidden shrink-0 lg:block xl:ml-3">
+        <button className="whitespace-nowrap bg-[#1a1a1a] px-3.5 py-2 text-xs font-medium tracking-wide text-white transition-colors hover:bg-black xl:px-5 xl:text-[13px]">
           Book Consultation
         </button>
       </Link>
