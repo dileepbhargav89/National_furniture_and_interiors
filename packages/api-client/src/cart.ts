@@ -36,6 +36,15 @@ export interface AddItemRequest {
   unitPrice?: number;
 }
 
+export interface ActiveCoupon {
+  code: string;
+  type: 'PERCENTAGE' | 'FIXED';
+  value: number;
+  minOrderValue: number;
+  maxDiscountAmount: number | null;
+  description: string;
+}
+
 function sessionHeaders(sessionId?: string): Record<string, string> | undefined {
   return sessionId ? { 'x-session-id': sessionId } : undefined;
 }
@@ -53,20 +62,45 @@ export const CartService = {
       variantId: item.variantId,
       quantity: item.quantity,
     };
-    return apiClient.post<Cart>('/api/v1/cart/items', apiPayload, headers ? { headers } : undefined);
+    return apiClient.post<Cart>(
+      '/api/v1/cart/items',
+      apiPayload,
+      headers ? { headers } : undefined,
+    );
   },
 
   updateItem: async (variantId: string, quantity: number, sessionId?: string) => {
     const headers = sessionHeaders(sessionId);
-    return apiClient.patch<Cart>(`/api/v1/cart/items/${variantId}`, { quantity }, headers ? { headers } : undefined);
+    return apiClient.patch<Cart>(
+      `/api/v1/cart/items/${variantId}`,
+      { quantity },
+      headers ? { headers } : undefined,
+    );
   },
 
   removeItem: async (variantId: string, sessionId?: string) => {
     const headers = sessionHeaders(sessionId);
-    return apiClient.delete<Cart>(`/api/v1/cart/items/${variantId}`, headers ? { headers } : undefined);
+    return apiClient.delete<Cart>(
+      `/api/v1/cart/items/${variantId}`,
+      headers ? { headers } : undefined,
+    );
   },
 
   mergeCart: async (sessionId: string) => {
     return apiClient.post<Cart>('/api/v1/cart/merge', { sessionId });
-  }
+  },
+
+  applyCoupon: async (code: string, sessionId?: string) => {
+    const headers = sessionHeaders(sessionId);
+    return apiClient.post<Cart>('/api/v1/cart/coupon', { code }, headers ? { headers } : undefined);
+  },
+
+  removeCoupon: async (sessionId?: string) => {
+    const headers = sessionHeaders(sessionId);
+    return apiClient.delete<Cart>('/api/v1/cart/coupon', headers ? { headers } : undefined);
+  },
+
+  getActiveCoupons: async () => {
+    return apiClient.get<ActiveCoupon[]>('/api/v1/cart/coupons/active');
+  },
 };

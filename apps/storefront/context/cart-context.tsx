@@ -13,7 +13,37 @@ interface CartContextType {
   updateItem: (variantId: string, quantity: number) => Promise<void>;
   removeItem: (variantId: string) => Promise<void>;
   clearCart: () => void;
+  applyCoupon: (code: string) => Promise<{ success: boolean; message?: string }>;
+  removeCoupon: () => Promise<void>;
   itemCount: number;
+}
+
+const KNOWN_COUPONS: Record<
+  string,
+  {
+    type: 'PERCENTAGE' | 'FIXED';
+    value: number;
+    minOrderValue: number;
+    maxDiscountAmount: number | null;
+  }
+> = {
+  SPRING2026: { type: 'PERCENTAGE', value: 10, minOrderValue: 5000000, maxDiscountAmount: 1500000 },
+  EXTRA10K: { type: 'FIXED', value: 1000000, minOrderValue: 10000000, maxDiscountAmount: null },
+  NFI10: { type: 'PERCENTAGE', value: 10, minOrderValue: 7500000, maxDiscountAmount: 2500000 },
+  WELCOME5: { type: 'PERCENTAGE', value: 5, minOrderValue: 3000000, maxDiscountAmount: 1000000 },
+};
+
+function calculateDiscount(couponCode: string | null, subtotal: number): number {
+  if (!couponCode) return 0;
+  const c = KNOWN_COUPONS[couponCode.toUpperCase()];
+  if (!c) return 0;
+  if (subtotal < c.minOrderValue) return 0;
+  if (c.type === 'FIXED') {
+    return Math.min(c.value, subtotal);
+  } else {
+    const raw = Math.round((subtotal * c.value) / 100);
+    return c.maxDiscountAmount ? Math.min(raw, c.maxDiscountAmount) : raw;
+  }
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -96,7 +126,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (sessionId) {
       fetchCart();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
   const fetchCart = async () => {
@@ -136,7 +165,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         variantId: item.variantId,
         sku: item.sku || `NFI-${item.productId.slice(0, 6).toUpperCase()}`,
         name: item.name || 'Bespoke Solid Wood Commission',
-        image: item.image || 'https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?q=80&w=600&auto=format&fit=crop',
+        image:
+          item.image ||
+          'https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?q=80&w=600&auto=format&fit=crop',
         unitPrice: item.unitPrice || 6800000,
         quantity: item.quantity,
         addedAt: new Date().toISOString(),
@@ -146,18 +177,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
       let newItems: CartItem[];
       if (existingIndex >= 0) {
         newItems = current.items.map((i, idx) =>
-          idx === existingIndex ? { ...i, quantity: i.quantity + item.quantity } : i
+          idx === existingIndex ? { ...i, quantity: i.quantity + item.quantity } : i,
         );
       } else {
         newItems = [...current.items, mockItem];
       }
 
       const subtotal = newItems.reduce((acc, i) => acc + i.unitPrice * i.quantity, 0);
+      const discount = calculateDiscount(current.couponCode, subtotal);
+      const total = Math.max(0, subtotal - discount);
       const updatedCart: Cart = {
         ...current,
         items: newItems,
         subtotal,
-        total: subtotal,
+        discount,
+        total,
       };
 
       saveLocalCart(updatedCart);
@@ -188,7 +222,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         newItems = prev.items.map((i) => (i.variantId === variantId ? { ...i, quantity } : i));
       }
       const subtotal = newItems.reduce((acc, i) => acc + i.unitPrice * i.quantity, 0);
-      const updated: Cart = { ...prev, items: newItems, subtotal, total: subtotal };
+      const discount = calculateDiscount(prev.couponCode, subtotal);
+      const total = Math.max(0, subtotal - discount);
+      const updated: Cart = { ...prev, items: newItems, subtotal, discount, total };
       saveLocalCart(updated);
       return updated;
     });
@@ -210,7 +246,92 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (!prev) return null;
       const newItems = prev.items.filter((i) => i.variantId !== variantId);
       const subtotal = newItems.reduce((acc, i) => acc + i.unitPrice * i.quantity, 0);
-      const updated: Cart = { ...prev, items: newItems, subtotal, total: subtotal };
+      const discount = calculateDiscount(prev.couponCode, subtotal);
+      const total = Math.max(0, subtotal - discount);
+      const updated: Cart = { ...prev, items: newItems, subtotal, discount, total };
+      saveLocalCart(updated);
+      return updated;
+    });
+  };
+
+  const applyCoupon = async (code: string): Promise<{ success: boolean; message?: string }> => {
+    const trimmed = code.trim().toUpperCase();
+    if (!trimmed) {
+      return { success: false, message: 'Please enter a privilege code.' };
+    }
+
+    try {
+      const response = await CartService.applyCoupon(trimmed, sessionId);
+      if (response?.data) {
+        setCart(response.data);
+        saveLocalCart(response.data);
+        return { success: true };
+      }
+    } catch (err: unknown) {
+      // If server returned a business message, let's surface it
+      const apiMsg =
+        (err as { response?: { data?: { error?: { message?: string }; message?: string } } })
+          ?.response?.data?.error?.message ||
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      if (apiMsg) {
+        return { success: false, message: apiMsg };
+      }
+    }
+
+    // Resilient local fallback
+    const couponInfo = KNOWN_COUPONS[trimmed];
+    if (!couponInfo) {
+      return { success: false, message: 'Invalid or unrecognized privilege code.' };
+    }
+
+    const currentCart = cart || getLocalCart(sessionId);
+    if (!currentCart.items.length) {
+      return {
+        success: false,
+        message: 'Your bag is empty. Add pieces before applying privilege codes.',
+      };
+    }
+
+    if (currentCart.subtotal < couponInfo.minOrderValue) {
+      const minINR = Math.round(couponInfo.minOrderValue / 100).toLocaleString('en-IN');
+      return {
+        success: false,
+        message: `Privilege code requires a minimum order of ₹${minINR}.`,
+      };
+    }
+
+    const discount = calculateDiscount(trimmed, currentCart.subtotal);
+    const updated: Cart = {
+      ...currentCart,
+      couponCode: trimmed,
+      discount,
+      total: Math.max(0, currentCart.subtotal - discount),
+    };
+    setCart(updated);
+    saveLocalCart(updated);
+    return { success: true };
+  };
+
+  const removeCoupon = async () => {
+    try {
+      const response = await CartService.removeCoupon(sessionId);
+      if (response?.data) {
+        setCart(response.data);
+        saveLocalCart(response.data);
+        return;
+      }
+    } catch {
+      // Local fallback
+    }
+
+    setCart((prev) => {
+      if (!prev) return null;
+      const updated: Cart = {
+        ...prev,
+        couponCode: null,
+        discount: 0,
+        total: prev.subtotal,
+      };
       saveLocalCart(updated);
       return updated;
     });
@@ -250,6 +371,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         updateItem,
         removeItem,
         clearCart,
+        applyCoupon,
+        removeCoupon,
         itemCount,
       }}
     >

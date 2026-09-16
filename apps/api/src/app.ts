@@ -177,6 +177,9 @@ export function createApp(mountBusinessRoutes = true): Express {
       removeItemFromCart: ctx.cart.removeItemFromCart,
       updateItemQuantity: ctx.cart.updateItemQuantity,
       mergeGuestCart: ctx.cart.mergeGuestCart,
+      applyCouponToCart: ctx.cart.applyCouponToCart,
+      removeCouponFromCart: ctx.cart.removeCouponFromCart,
+      getActiveCoupons: ctx.cart.getActiveCoupons,
     });
     app.use('/api/v1', createCartRoutes(cartController, authMiddleware));
 

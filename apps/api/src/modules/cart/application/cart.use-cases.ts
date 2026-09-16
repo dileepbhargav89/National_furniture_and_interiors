@@ -3,7 +3,13 @@
 import { NotFoundError, ValidationError } from '../../../core/exceptions';
 import { canAddItem, calculateCartTotals } from '../domain/cart.types';
 import type { Cart, CartItem } from '../domain/cart.types';
-import type { AddItemInput, ICartRepository, IProductSnapshotProvider } from './ports';
+import type {
+  AddItemInput,
+  ICartRepository,
+  IProductSnapshotProvider,
+  ICouponService,
+  ActiveCouponSummary,
+} from './ports';
 
 type CartIdentity = { userId: string } | { sessionId: string };
 
@@ -39,7 +45,7 @@ export class AddItemToCart {
       throw new NotFoundError('Product variant not available');
     }
 
-    let cart = await this.getOrCreate(identity);
+    const cart = await this.getOrCreate(identity);
 
     if (!canAddItem(cart, input.quantity)) {
       throw new ValidationError('Cart item limit reached (max 50 items)');
@@ -76,9 +82,10 @@ export class AddItemToCart {
   }
 
   private async getOrCreate(identity: CartIdentity): Promise<Cart> {
-    const existing = 'userId' in identity
-      ? await this.carts.findByUser(identity.userId)
-      : await this.carts.findBySession(identity.sessionId);
+    const existing =
+      'userId' in identity
+        ? await this.carts.findByUser(identity.userId)
+        : await this.carts.findBySession(identity.sessionId);
 
     if (existing) return existing;
 
@@ -103,9 +110,10 @@ export class RemoveItemFromCart {
   }
 
   private async getCart(identity: CartIdentity): Promise<Cart> {
-    const cart = 'userId' in identity
-      ? await this.carts.findByUser(identity.userId)
-      : await this.carts.findBySession(identity.sessionId);
+    const cart =
+      'userId' in identity
+        ? await this.carts.findByUser(identity.userId)
+        : await this.carts.findBySession(identity.sessionId);
 
     if (!cart) throw new NotFoundError('Cart not found');
     return cart;
@@ -122,9 +130,10 @@ export class UpdateItemQuantity {
       throw new ValidationError('Quantity must be between 0 and 100');
     }
 
-    const cart = 'userId' in identity
-      ? await this.carts.findByUser(identity.userId)
-      : await this.carts.findBySession(identity.sessionId);
+    const cart =
+      'userId' in identity
+        ? await this.carts.findByUser(identity.userId)
+        : await this.carts.findBySession(identity.sessionId);
 
     if (!cart) throw new NotFoundError('Cart not found');
 
@@ -170,5 +179,65 @@ export class MergeGuestCart {
     }
 
     return this.carts.mergeAndDelete(guestCart.id, userCart.id);
+  }
+}
+
+// ---- ApplyCouponToCart -----------------------------------------------------------------------
+
+export class ApplyCouponToCart {
+  constructor(
+    private readonly carts: ICartRepository,
+    private readonly couponService: ICouponService,
+  ) {}
+
+  async execute(identity: CartIdentity, couponCode: string): Promise<Cart> {
+    if (!couponCode || !couponCode.trim()) {
+      throw new ValidationError('Privilege code cannot be empty');
+    }
+
+    const cart =
+      'userId' in identity
+        ? await this.carts.findByUser(identity.userId)
+        : await this.carts.findBySession(identity.sessionId);
+
+    if (!cart || cart.items.length === 0) {
+      throw new ValidationError('Your bag is empty. Add pieces before applying privilege codes.');
+    }
+
+    const userId = 'userId' in identity ? identity.userId : null;
+    const result = await this.couponService.validateAndCalculate(couponCode, cart.subtotal, userId);
+
+    if (!result.isValid) {
+      throw new ValidationError(result.message || 'Invalid privilege code');
+    }
+
+    return this.carts.updateCoupon(cart.id, result.couponCode, result.discountAmount);
+  }
+}
+
+// ---- RemoveCouponFromCart --------------------------------------------------------------------
+
+export class RemoveCouponFromCart {
+  constructor(private readonly carts: ICartRepository) {}
+
+  async execute(identity: CartIdentity): Promise<Cart> {
+    const cart =
+      'userId' in identity
+        ? await this.carts.findByUser(identity.userId)
+        : await this.carts.findBySession(identity.sessionId);
+
+    if (!cart) throw new NotFoundError('Cart not found');
+
+    return this.carts.updateCoupon(cart.id, null, 0);
+  }
+}
+
+// ---- GetActiveCoupons ------------------------------------------------------------------------
+
+export class GetActiveCoupons {
+  constructor(private readonly couponService: ICouponService) {}
+
+  async execute(): Promise<ActiveCouponSummary[]> {
+    return this.couponService.getActiveCoupons();
   }
 }

@@ -7,8 +7,16 @@ import type {
   MergeGuestCart,
   RemoveItemFromCart,
   UpdateItemQuantity,
+  ApplyCouponToCart,
+  RemoveCouponFromCart,
+  GetActiveCoupons,
 } from '../application/cart.use-cases';
-import { addItemSchema, mergeCartSchema, updateItemSchema } from './cart.validators';
+import {
+  addItemSchema,
+  mergeCartSchema,
+  updateItemSchema,
+  applyCouponSchema,
+} from './cart.validators';
 
 export interface CartControllerDeps {
   getCart: GetCart;
@@ -16,6 +24,9 @@ export interface CartControllerDeps {
   removeItemFromCart: RemoveItemFromCart;
   updateItemQuantity: UpdateItemQuantity;
   mergeGuestCart: MergeGuestCart;
+  applyCouponToCart: ApplyCouponToCart;
+  removeCouponFromCart: RemoveCouponFromCart;
+  getActiveCoupons: GetActiveCoupons;
 }
 
 type AuthRequest = Request & { user?: { id: string } };
@@ -59,7 +70,10 @@ export function createCartController(deps: CartControllerDeps) {
     async removeItem(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
       try {
         const identity = getIdentity(req);
-        const cart = await deps.removeItemFromCart.execute(identity, req.params['variantId'] as string);
+        const cart = await deps.removeItemFromCart.execute(
+          identity,
+          req.params['variantId'] as string,
+        );
         sendSuccess(req, res, 200, cart);
       } catch (error) {
         next(error);
@@ -93,6 +107,39 @@ export function createCartController(deps: CartControllerDeps) {
         }
         const cart = await deps.mergeGuestCart.execute(body.sessionId, userId);
         sendSuccess(req, res, 200, cart);
+      } catch (error) {
+        next(error);
+      }
+    },
+
+    /** POST /cart/coupon — apply a privilege coupon to the cart */
+    async applyCoupon(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+      try {
+        const body = applyCouponSchema.parse(req.body);
+        const identity = getIdentity(req);
+        const cart = await deps.applyCouponToCart.execute(identity, body.code);
+        sendSuccess(req, res, 200, cart);
+      } catch (error) {
+        next(error);
+      }
+    },
+
+    /** DELETE /cart/coupon — remove active coupon from cart */
+    async removeCoupon(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+      try {
+        const identity = getIdentity(req);
+        const cart = await deps.removeCouponFromCart.execute(identity);
+        sendSuccess(req, res, 200, cart);
+      } catch (error) {
+        next(error);
+      }
+    },
+
+    /** GET /cart/coupons/active — list available privilege offers */
+    async getActiveCoupons(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+      try {
+        const coupons = await deps.getActiveCoupons.execute();
+        sendSuccess(req, res, 200, coupons);
       } catch (error) {
         next(error);
       }

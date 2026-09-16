@@ -13,12 +13,30 @@ export class CatalogProductSnapshotProvider implements IProductSnapshotProvider 
   async getSnapshot(
     productId: string,
     variantId: string,
-  ): Promise<{ sku: string; name: string; image: string; unitPrice: number; isAvailable: boolean } | null> {
+  ): Promise<{
+    sku: string;
+    name: string;
+    image: string;
+    unitPrice: number;
+    isAvailable: boolean;
+  } | null> {
     const product = await this.products.findById(productId);
     if (!product || product.status !== 'PUBLISHED') return null;
 
     const variant = product.variants.find((v) => v.variantId === variantId);
-    if (!variant || !variant.isActive) return null;
+    if (!variant || !variant.isActive) {
+      if (product.variants.length === 0 || variantId === productId) {
+        const primaryImage = product.images.find((i) => i.isPrimary) ?? product.images[0];
+        return {
+          sku: product.sku,
+          name: product.name,
+          image: primaryImage?.url ?? '',
+          unitPrice: product.basePrice.amount,
+          isAvailable: true,
+        };
+      }
+      return null;
+    }
 
     const primaryImage = product.images.find((i) => i.isPrimary) ?? product.images[0];
     const effectivePrice = variant.priceOverride ?? product.basePrice;

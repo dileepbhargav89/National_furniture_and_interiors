@@ -41,8 +41,9 @@ const cartSchema = new Schema(
 // TTL index managed by database migration, not here.
 cartSchema.set('autoIndex', false);
 
-const CartModel = (mongoose.models.Cart ??
-  mongoose.model('Cart', cartSchema)) as mongoose.Model<Record<string, unknown>>;
+const CartModel = (mongoose.models.Cart ?? mongoose.model('Cart', cartSchema)) as mongoose.Model<
+  Record<string, unknown>
+>;
 
 function toCart(doc: Record<string, unknown>): Cart {
   return {
@@ -80,7 +81,10 @@ export class MongoCartRepository implements ICartRepository {
   }
 
   async findBySession(sessionId: string): Promise<Cart | null> {
-    const doc = await CartModel.findOne({ sessionId, status: 'ACTIVE' }).lean<Record<string, unknown> | null>();
+    const doc = await CartModel.findOne({ sessionId, status: 'ACTIVE' }).lean<Record<
+      string,
+      unknown
+    > | null>();
     return doc ? toCart(doc) : null;
   }
 
@@ -120,6 +124,29 @@ export class MongoCartRepository implements ICartRepository {
     return toCart(doc);
   }
 
+  async updateCoupon(cartId: string, couponCode: string | null, discount: number): Promise<Cart> {
+    const existing = await CartModel.findById(cartId).lean<Record<string, unknown> | null>();
+    if (!existing) throw new Error('Cart not found');
+    const subtotal = Number(existing.subtotal || 0);
+    const validDiscount = Math.min(discount, subtotal);
+    const total = Math.max(0, subtotal - validDiscount);
+
+    const doc = await CartModel.findByIdAndUpdate(
+      cartId,
+      {
+        $set: {
+          couponCode,
+          discount: validDiscount,
+          total,
+        },
+      },
+      { new: true },
+    ).lean<Record<string, unknown> | null>();
+
+    if (!doc) throw new Error('Cart not found during coupon update');
+    return toCart(doc);
+  }
+
   async markConverted(cartId: string): Promise<void> {
     await CartModel.findByIdAndUpdate(cartId, { $set: { status: 'CONVERTED' } });
   }
@@ -140,7 +167,10 @@ export class MongoCartRepository implements ICartRepository {
     for (const guestItem of guestCart.items) {
       const idx = mergedItems.findIndex((i) => i.variantId === guestItem.variantId);
       if (idx >= 0) {
-        mergedItems[idx] = { ...mergedItems[idx]!, quantity: mergedItems[idx]!.quantity + guestItem.quantity };
+        mergedItems[idx] = {
+          ...mergedItems[idx]!,
+          quantity: mergedItems[idx]!.quantity + guestItem.quantity,
+        };
       } else {
         mergedItems.push(guestItem);
       }

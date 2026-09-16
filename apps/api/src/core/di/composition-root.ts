@@ -44,7 +44,10 @@ import { OtplibTotpService } from '../../modules/auth/infrastructure/totp.servic
 import { GoogleAuthService } from '../../modules/auth/infrastructure/google-auth.service';
 import { FacebookAuthService } from '../../modules/auth/infrastructure/facebook-auth.service';
 import { MockSmsService as AuthSmsService } from '../../modules/auth/infrastructure/sms.service';
-import { AuthenticateWithGoogle, AuthenticateWithFacebook } from '../../modules/auth/application/social-auth.use-cases';
+import {
+  AuthenticateWithGoogle,
+  AuthenticateWithFacebook,
+} from '../../modules/auth/application/social-auth.use-cases';
 import { SendPhoneOtp, VerifyPhoneOtp } from '../../modules/auth/application/otp-auth.use-cases';
 
 import {
@@ -102,9 +105,14 @@ import {
   MergeGuestCart,
   RemoveItemFromCart,
   UpdateItemQuantity,
+  ApplyCouponToCart,
+  RemoveCouponFromCart,
+  GetActiveCoupons,
 } from '../../modules/cart/application/cart.use-cases';
 import { MongoCartRepository } from '../../modules/cart/infrastructure/cart.repository';
 import { CatalogProductSnapshotProvider } from '../../modules/cart/infrastructure/catalog-snapshot.provider';
+import { CouponServiceAdapter } from './adapters/coupon-service.adapter';
+import { MongoCouponRepository } from '../../modules/orders/infrastructure/repositories/coupon.repository';
 
 import {
   SubmitLeadUseCase,
@@ -123,21 +131,29 @@ import {
   ApproveQuotationUseCase,
   ListDesignProjectsUseCase,
   GetDesignFunnelUseCase,
-  GetDesignProjectByIdUseCase
+  GetDesignProjectByIdUseCase,
 } from '../../modules/design-projects/application/design-projects.use-cases';
 import { MongoDesignProjectRepository } from '../../modules/design-projects/infrastructure/repositories/mongo-design-project.repository';
 import { MongoPortfolioRepository } from '../../modules/design-projects/infrastructure/repositories/mongo-portfolio.repository';
 import { DEFAULT_PORTFOLIO_PROJECTS } from '../../modules/design-projects/domain/default-portfolio-data';
 
 // ---- Sprint 5: Orders -------------------------------------------------------------
-import { CheckoutUseCase, GetOrdersUseCase, UpdateOrderStatusUseCase, GetSalesMetricsUseCase, GetOrderByIdUseCase } from '../../modules/orders/application/orders.use-cases';
+import {
+  CheckoutUseCase,
+  GetOrdersUseCase,
+  UpdateOrderStatusUseCase,
+  GetSalesMetricsUseCase,
+  GetOrderByIdUseCase,
+} from '../../modules/orders/application/orders.use-cases';
 import { MongoOrderRepository } from '../../modules/orders/infrastructure/repositories/mongo-order.repository';
-import { CartProviderAdapter, CatalogInventoryAdapter } from '../../modules/orders/infrastructure/orders.adapters';
-import { ICartProvider, IInventoryProvider } from '../../modules/orders/application/ports';
+import {
+  CartProviderAdapter,
+  CatalogInventoryAdapter,
+} from '../../modules/orders/infrastructure/orders.adapters';
+import { PaymentStatus } from '../../modules/orders/domain/orders.types';
 
 // ---- Sprint 6: Payments ------------------------------------------------------------
 import {
-  CreateRazorpayOrderUseCase,
   ConfirmWebhookPaymentUseCase,
   ListPaymentsUseCase,
   VerifyPaymentUseCase,
@@ -177,16 +193,30 @@ import {
 import { OutboxPoller } from '../../modules/notifications/infrastructure/workers/outbox-poller';
 
 // ---- Sprint 8: CMS -----------------------------------------------------------------
-import { 
-  MongoBlogRepository, MongoBannerRepository, MongoTestimonialRepository, MongoNewsletterRepository 
+import {
+  MongoBlogRepository,
+  MongoBannerRepository,
+  MongoTestimonialRepository,
+  MongoNewsletterRepository,
 } from '../../modules/cms/infrastructure/repositories/mongo-cms.repository';
-import { 
-  ListBlogsUseCase, GetBlogBySlugUseCase, CreateBlogUseCase, UpdateBlogUseCase,
-  ListBannersUseCase, ListAdminBannersUseCase, GetBannerByIdUseCase, CreateBannerUseCase,
-  UpdateBannerUseCase, DeleteBannerUseCase, ToggleBannerStatusUseCase,
-  TrackBannerClickUseCase, TrackBannerImpressionUseCase,
-  ListTestimonialsUseCase, CreateTestimonialUseCase,
-  SubscribeNewsletterUseCase, ListNewsletterSubscribersUseCase
+import {
+  ListBlogsUseCase,
+  GetBlogBySlugUseCase,
+  CreateBlogUseCase,
+  UpdateBlogUseCase,
+  ListBannersUseCase,
+  ListAdminBannersUseCase,
+  GetBannerByIdUseCase,
+  CreateBannerUseCase,
+  UpdateBannerUseCase,
+  DeleteBannerUseCase,
+  ToggleBannerStatusUseCase,
+  TrackBannerClickUseCase,
+  TrackBannerImpressionUseCase,
+  ListTestimonialsUseCase,
+  CreateTestimonialUseCase,
+  SubscribeNewsletterUseCase,
+  ListNewsletterSubscribersUseCase,
 } from '../../modules/cms/application/cms.use-cases';
 
 // ---- Sprint 9: Analytics -----------------------------------------------------------
@@ -195,11 +225,11 @@ import { AnalyticsJobProcessor } from '../../modules/analytics/infrastructure/an
 
 // ---- Sprint 11: CRM ----------------------------------------------------------------
 import { CrmUseCases } from '../../modules/crm/application/crm.use-cases';
-import { 
-  MongoCustomerRepository, 
-  MongoLeadActivityRepository, 
+import {
+  MongoCustomerRepository,
+  MongoLeadActivityRepository,
   MongoLeadStatusHistoryRepository,
-  MongoSalesRepresentativeRepository 
+  MongoSalesRepresentativeRepository,
 } from '../../modules/crm/infrastructure/crm.repositories';
 import { DEFAULT_SALES_REPRESENTATIVES } from '../../modules/crm/domain/default-crm-data';
 
@@ -215,7 +245,10 @@ import {
   DeleteReviewUseCase,
 } from '../../modules/reviews/application/reviews.use-cases';
 import { MongoReviewRepository } from '../../modules/reviews/infrastructure/reviews.repository';
-import { OrderPurchaseProvider, CatalogRatingProvider } from '../../modules/reviews/infrastructure/reviews.adapters';
+import {
+  OrderPurchaseProvider,
+  CatalogRatingProvider,
+} from '../../modules/reviews/infrastructure/reviews.adapters';
 
 export interface AppContext {
   readonly logger: Logger;
@@ -286,6 +319,9 @@ export interface AppContext {
     removeItemFromCart: RemoveItemFromCart;
     updateItemQuantity: UpdateItemQuantity;
     mergeGuestCart: MergeGuestCart;
+    applyCouponToCart: ApplyCouponToCart;
+    removeCouponFromCart: RemoveCouponFromCart;
+    getActiveCoupons: GetActiveCoupons;
   };
   readonly leads: {
     submitLead: SubmitLeadUseCase;
@@ -519,6 +555,8 @@ export function buildAppContext(): AppContext {
 
   // ---- Sprint 2: Cart ---------------------------------------------------------------------
   const cartRepository = new MongoCartRepository();
+  const couponRepository = new MongoCouponRepository();
+  const couponService = new CouponServiceAdapter(couponRepository);
   // Cross-module dependency: Cart -> Catalog resolved through IProductSnapshotProvider.
   const productSnapshotProvider = new CatalogProductSnapshotProvider(
     productRepository,
@@ -531,6 +569,9 @@ export function buildAppContext(): AppContext {
     removeItemFromCart: new RemoveItemFromCart(cartRepository),
     updateItemQuantity: new UpdateItemQuantity(cartRepository),
     mergeGuestCart: new MergeGuestCart(cartRepository),
+    applyCouponToCart: new ApplyCouponToCart(cartRepository, couponService),
+    removeCouponFromCart: new RemoveCouponFromCart(cartRepository),
+    getActiveCoupons: new GetActiveCoupons(couponService),
   };
 
   // ---- Sprint 7: Outbox & Notifications ----------------------------------------------------
@@ -545,7 +586,7 @@ export function buildAppContext(): AppContext {
     notificationRepository,
     emailAdapter,
     smsAdapter,
-    whatsappAdapter
+    whatsappAdapter,
   );
   const listNotificationsUseCase = new ListNotificationsUseCase(notificationRepository);
   const getMyNotificationsUseCase = new GetMyNotificationsUseCase(notificationRepository);
@@ -556,19 +597,19 @@ export function buildAppContext(): AppContext {
     notificationRepository,
     emailAdapter,
     smsAdapter,
-    whatsappAdapter
+    whatsappAdapter,
   );
 
   const sendNotificationByIdUseCase = new SendNotificationByIdUseCase(
     notificationRepository,
     emailAdapter,
     smsAdapter,
-    whatsappAdapter
+    whatsappAdapter,
   );
 
   const sendTestNotificationUseCase = new SendTestNotificationUseCase(
     createAndSendUseCase,
-    sendNotificationByIdUseCase
+    sendNotificationByIdUseCase,
   );
 
   const getDeliveryStatsUseCase = new GetDeliveryStatsUseCase(notificationRepository);
@@ -659,30 +700,36 @@ export function buildAppContext(): AppContext {
   // Order payment port — adapts IOrderPaymentPort by delegating to MongoOrderRepository.
   const orderPaymentPort: IOrderPaymentPort = {
     markOrderPaid: async (orderId: string) => {
-      const order = await orderRepository.updatePaymentStatus(orderId, 'PAID' as any);
+      const order = await orderRepository.updatePaymentStatus(orderId, PaymentStatus.PAID);
       return order?.items || [];
     },
     markOrderPaymentFailed: async (orderId: string) => {
-      const order = await orderRepository.updatePaymentStatus(orderId, 'FAILED' as any);
+      const order = await orderRepository.updatePaymentStatus(orderId, PaymentStatus.FAILED);
       return order?.items || [];
     },
   };
 
   // Inventory commit port — stub (real implementation when catalog is wired for reservations).
   const inventoryCommitPort: IInventoryCommitPort = {
-    commitStockDeduction: async (referenceId: string, items: any[]) => {
+    commitStockDeduction: async (
+      referenceId: string,
+      items: Array<{ productId: string; variantId?: string | undefined; quantity: number }>,
+    ) => {
       for (const item of items) {
         const invs = await inventoryRepository.findByProduct(item.productId);
-        const inv = invs.find(i => !item.variantId || i.variantId === item.variantId);
+        const inv = invs.find((i) => !item.variantId || i.variantId === item.variantId);
         if (inv) {
           await inventoryRepository.atomicCommit(inv.id, item.quantity, referenceId);
         }
       }
     },
-    releaseReservation: async (referenceId: string, items: any[]) => {
+    releaseReservation: async (
+      referenceId: string,
+      items: Array<{ productId: string; variantId?: string | undefined; quantity: number }>,
+    ) => {
       for (const item of items) {
         const invs = await inventoryRepository.findByProduct(item.productId);
-        const inv = invs.find(i => !item.variantId || i.variantId === item.variantId);
+        const inv = invs.find((i) => !item.variantId || i.variantId === item.variantId);
         if (inv) {
           await inventoryRepository.atomicRelease(inv.id, item.quantity, referenceId);
         }
@@ -695,10 +742,26 @@ export function buildAppContext(): AppContext {
   const cloudinaryInvoiceUploader = new CloudinaryInvoiceUploaderAdapter(cloudinaryService);
 
   const payments = {
-    confirmWebhook: new ConfirmWebhookPaymentUseCase(paymentRepository, orderPaymentPort, inventoryCommitPort, outboxRepository),
+    confirmWebhook: new ConfirmWebhookPaymentUseCase(
+      paymentRepository,
+      orderPaymentPort,
+      inventoryCommitPort,
+      outboxRepository,
+    ),
     listPayments: new ListPaymentsUseCase(paymentRepository),
-    verifyPayment: new VerifyPaymentUseCase(paymentRepository, orderPaymentPort, inventoryCommitPort, env.RAZORPAY_KEY_SECRET || env.RAZORPAY_WEBHOOK_SECRET, outboxRepository),
-    reconcilePayment: new ReconcilePaymentUseCase(paymentRepository, orderPaymentPort, inventoryCommitPort, outboxRepository),
+    verifyPayment: new VerifyPaymentUseCase(
+      paymentRepository,
+      orderPaymentPort,
+      inventoryCommitPort,
+      env.RAZORPAY_KEY_SECRET || env.RAZORPAY_WEBHOOK_SECRET,
+      outboxRepository,
+    ),
+    reconcilePayment: new ReconcilePaymentUseCase(
+      paymentRepository,
+      orderPaymentPort,
+      inventoryCommitPort,
+      outboxRepository,
+    ),
     refundPayment: new RefundPaymentUseCase(paymentRepository),
     getPaymentById: new GetPaymentByIdUseCase(paymentRepository),
     getPaymentMetrics: new GetPaymentMetricsUseCase(paymentRepository),
@@ -707,13 +770,18 @@ export function buildAppContext(): AppContext {
       paymentRepository,
       invoiceRepository,
       pdfGeneratorAdapter,
-      cloudinaryInvoiceUploader
+      cloudinaryInvoiceUploader,
     ),
-    getInvoice: new GetInvoiceUseCase(invoiceRepository)
+    getInvoice: new GetInvoiceUseCase(invoiceRepository),
   };
 
   const orders = {
-    checkout: new CheckoutUseCase(orderRepository, cartProvider, inventoryProvider, razorpayAdapter),
+    checkout: new CheckoutUseCase(
+      orderRepository,
+      cartProvider,
+      inventoryProvider,
+      razorpayAdapter,
+    ),
     getOrders: new GetOrdersUseCase(orderRepository),
     getOrderById: new GetOrderByIdUseCase(orderRepository),
     updateOrderStatus: new UpdateOrderStatusUseCase(orderRepository),
@@ -755,7 +823,7 @@ export function buildAppContext(): AppContext {
     jobProcessor: new AnalyticsJobProcessor(
       getLeadsFunnelUseCase,
       getDesignFunnelUseCase,
-      getSalesMetricsUseCase
+      getSalesMetricsUseCase,
     ),
   };
 
@@ -765,7 +833,7 @@ export function buildAppContext(): AppContext {
       customerRepository,
       leadActivityRepository,
       leadStatusHistoryRepository,
-      salesRepresentativeRepository
+      salesRepresentativeRepository,
     ),
   };
 
