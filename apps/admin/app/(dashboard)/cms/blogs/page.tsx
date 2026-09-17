@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { CmsService } from '@nfi/api-client';
 import type { Blog } from '@nfi/api-client';
 import { BlogStatus } from '@nfi/api-client';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { NfiButton } from '@/components/ui/nfi-button';
+import { getStorefrontUrl } from '@/lib/storefront';
 
 interface BlogFormData {
   title: string;
@@ -178,7 +178,11 @@ export default function BlogsPage() {
       setIsModalOpen(false);
       await fetchBlogs();
     } catch (err: unknown) {
-      setModalError(err instanceof Error ? err.message : 'Failed to save chronicle. Please verify data integrity.');
+      setModalError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to save chronicle. Please verify data integrity.',
+      );
     } finally {
       setIsSaving(false);
     }
@@ -191,12 +195,16 @@ export default function BlogsPage() {
       await CmsService.updateBlog(blog.id, { status: nextStatus });
       await fetchBlogs();
     } catch (err: unknown) {
-      alert(err instanceof Error ? `Could not update status: ${err.message}` : 'Could not update status');
+      alert(
+        err instanceof Error
+          ? `Could not update status: ${err.message}`
+          : 'Could not update status',
+      );
     }
   };
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto">
+    <div className="mx-auto max-w-7xl p-6 md:p-8">
       {/* 1. Page Header */}
       <PageHeader
         title="Journal & Editorial Chronicles"
@@ -214,46 +222,46 @@ export default function BlogsPage() {
       />
 
       {/* 2. Top Executive KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="p-5 bg-white rounded-xl border border-stone-200 shadow-sm">
-          <span className="text-[11px] uppercase tracking-wider text-stone-400 font-medium block">
+      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+          <span className="block text-[11px] font-medium uppercase tracking-wider text-stone-400">
             Total Chronicles
           </span>
-          <span className="text-2xl font-serif font-semibold text-[#171717] mt-1 block">
+          <span className="mt-1 block font-serif text-2xl font-semibold text-[#171717]">
             {stats.total}
           </span>
         </div>
 
-        <div className="p-5 bg-white rounded-xl border border-stone-200 shadow-sm">
-          <span className="text-[11px] uppercase tracking-wider text-[#2E7D32] font-medium block">
+        <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+          <span className="block text-[11px] font-medium uppercase tracking-wider text-[#2E7D32]">
             Live Published
           </span>
-          <span className="text-2xl font-serif font-semibold text-[#2E7D32] mt-1 block">
+          <span className="mt-1 block font-serif text-2xl font-semibold text-[#2E7D32]">
             {stats.published}
           </span>
         </div>
 
-        <div className="p-5 bg-white rounded-xl border border-stone-200 shadow-sm">
-          <span className="text-[11px] uppercase tracking-wider text-[#B7791F] font-medium block">
+        <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+          <span className="block text-[11px] font-medium uppercase tracking-wider text-[#B7791F]">
             Editorial Drafts
           </span>
-          <span className="text-2xl font-serif font-semibold text-[#B7791F] mt-1 block">
+          <span className="mt-1 block font-serif text-2xl font-semibold text-[#B7791F]">
             {stats.drafts}
           </span>
         </div>
 
-        <div className="p-5 bg-white rounded-xl border border-stone-200 shadow-sm">
-          <span className="text-[11px] uppercase tracking-wider text-[#C5A059] font-medium block">
+        <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+          <span className="block text-[11px] font-medium uppercase tracking-wider text-[#C5A059]">
             Total Readership Views
           </span>
-          <span className="text-2xl font-serif font-semibold text-[#171717] mt-1 block">
+          <span className="mt-1 block font-serif text-2xl font-semibold text-[#171717]">
             {stats.totalViews.toLocaleString('en-IN')}
           </span>
         </div>
       </div>
 
       {/* 3. Filter & Search Control Strip */}
-      <div className="bg-white rounded-xl border border-stone-200 p-4 mb-6 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+      <div className="mb-6 flex flex-col items-stretch justify-between gap-4 rounded-xl border border-stone-200 bg-white p-4 shadow-sm md:flex-row md:items-center">
         {/* Status filters */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
           {(['ALL', BlogStatus.PUBLISHED, BlogStatus.DRAFT, BlogStatus.ARCHIVED] as const).map(
@@ -261,7 +269,7 @@ export default function BlogsPage() {
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium tracking-wide transition-colors ${
+                className={`rounded-lg px-3.5 py-1.5 text-xs font-medium tracking-wide transition-colors ${
                   statusFilter === status
                     ? 'bg-[#171717] text-white shadow-sm'
                     : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
@@ -269,7 +277,7 @@ export default function BlogsPage() {
               >
                 {status}
               </button>
-            )
+            ),
           )}
         </div>
 
@@ -280,10 +288,10 @@ export default function BlogsPage() {
             placeholder="Search chronicles by title or tag…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 text-xs bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-[#C5A059] transition-colors"
+            className="w-full rounded-lg border border-stone-200 bg-stone-50 py-1.5 pl-9 pr-4 text-xs transition-colors focus:border-[#C5A059] focus:outline-none"
           />
           <svg
-            className="w-4 h-4 text-stone-400 absolute left-3 top-2"
+            className="absolute left-3 top-2 h-4 w-4 text-stone-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -300,18 +308,20 @@ export default function BlogsPage() {
 
       {/* 4. Table of Chronicles */}
       {isLoading ? (
-        <div className="p-12 text-center text-stone-400 bg-white rounded-xl border border-stone-200">
-          <div className="w-6 h-6 border-2 border-[#C5A059] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-          <span className="text-xs uppercase tracking-widest font-light">Loading editorial chronicles…</span>
+        <div className="rounded-xl border border-stone-200 bg-white p-12 text-center text-stone-400">
+          <div className="mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-2 border-[#C5A059] border-t-transparent" />
+          <span className="text-xs font-light uppercase tracking-widest">
+            Loading editorial chronicles…
+          </span>
         </div>
       ) : error ? (
-        <div className="p-6 text-center text-red-600 bg-red-50 rounded-xl border border-red-200 text-sm">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-600">
           {error}
         </div>
       ) : filteredBlogs.length === 0 ? (
-        <div className="p-12 text-center bg-white rounded-xl border border-stone-200 shadow-sm">
-          <span className="text-sm font-medium text-[#171717] block mb-1">No Chronicles Found</span>
-          <p className="text-xs text-stone-500 font-light mb-4">
+        <div className="rounded-xl border border-stone-200 bg-white p-12 text-center shadow-sm">
+          <span className="mb-1 block text-sm font-medium text-[#171717]">No Chronicles Found</span>
+          <p className="mb-4 text-xs font-light text-stone-500">
             Create your first luxury architectural story or adjust your filter selection.
           </p>
           <NfiButton variant="primary" size="sm" onClick={handleOpenCreateModal}>
@@ -319,10 +329,10 @@ export default function BlogsPage() {
           </NfiButton>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
+        <div className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-stone-200">
-              <thead className="bg-stone-50 text-stone-500 text-[11px] uppercase tracking-wider font-medium text-left">
+              <thead className="bg-stone-50 text-left text-[11px] font-medium uppercase tracking-wider text-stone-500">
                 <tr>
                   <th className="px-6 py-3.5">Chronicle</th>
                   <th className="px-6 py-3.5">Status</th>
@@ -334,11 +344,11 @@ export default function BlogsPage() {
               </thead>
               <tbody className="divide-y divide-stone-100 text-xs">
                 {filteredBlogs.map((blog) => (
-                  <tr key={blog.id} className="hover:bg-stone-50/80 transition-colors">
+                  <tr key={blog.id} className="transition-colors hover:bg-stone-50/80">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {blog.coverImage && (
-                          <div className="relative w-12 h-9 rounded-md overflow-hidden bg-stone-100 flex-shrink-0 border border-stone-200">
+                          <div className="relative h-9 w-12 flex-shrink-0 overflow-hidden rounded-md border border-stone-200 bg-stone-100">
                             <Image
                               src={blog.coverImage}
                               alt={blog.title}
@@ -348,26 +358,26 @@ export default function BlogsPage() {
                           </div>
                         )}
                         <div>
-                          <div className="font-serif font-medium text-sm text-[#171717]">
+                          <div className="font-serif text-sm font-medium text-[#171717]">
                             {blog.title}
                           </div>
-                          <div className="text-stone-400 text-[11px] font-mono">
+                          <div className="font-mono text-[11px] text-stone-400">
                             /blogs/{blog.slug}
                           </div>
                         </div>
                       </div>
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="whitespace-nowrap px-6 py-4">
                       <StatusBadge status={blog.status} />
                     </td>
 
                     <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1 max-w-xs">
+                      <div className="flex max-w-xs flex-wrap gap-1">
                         {(blog.categoryTags || []).map((t) => (
                           <span
                             key={t}
-                            className="px-2 py-0.5 rounded text-[10px] bg-stone-100 text-stone-600 font-medium"
+                            className="rounded bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-600"
                           >
                             {t}
                           </span>
@@ -375,11 +385,11 @@ export default function BlogsPage() {
                       </div>
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-stone-600 font-medium">
+                    <td className="whitespace-nowrap px-6 py-4 font-medium text-stone-600">
                       {(blog.viewCount || 0).toLocaleString('en-IN')}
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-stone-500 font-light">
+                    <td className="whitespace-nowrap px-6 py-4 font-light text-stone-500">
                       {new Date(blog.publishedAt || blog.createdAt).toLocaleDateString('en-IN', {
                         month: 'short',
                         day: 'numeric',
@@ -387,10 +397,10 @@ export default function BlogsPage() {
                       })}
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
+                    <td className="space-x-2 whitespace-nowrap px-6 py-4 text-right">
                       <button
                         onClick={() => handleToggleStatus(blog)}
-                        className="text-[11px] text-stone-500 hover:text-stone-800 underline decoration-stone-300"
+                        className="text-[11px] text-stone-500 underline decoration-stone-300 hover:text-stone-800"
                         title="Toggle Draft/Published"
                       >
                         {blog.status === BlogStatus.PUBLISHED ? 'Make Draft' : 'Publish'}
@@ -398,18 +408,19 @@ export default function BlogsPage() {
 
                       <button
                         onClick={() => handleOpenEditModal(blog)}
-                        className="text-[11px] text-[#C5A059] hover:text-[#b08e4a] font-medium"
+                        className="text-[11px] font-medium text-[#C5A059] hover:text-[#b08e4a]"
                       >
                         Edit
                       </button>
 
-                      <Link
-                        href={`http://localhost:3000/blogs/${blog.slug}`}
+                      <a
+                        href={getStorefrontUrl(`/blogs/${blog.slug}`)}
                         target="_blank"
+                        rel="noopener noreferrer"
                         className="text-[11px] text-stone-400 hover:text-stone-600"
                       >
                         View ↗
-                      </Link>
+                      </a>
                     </td>
                   </tr>
                 ))}
@@ -422,90 +433,85 @@ export default function BlogsPage() {
       {/* 5. Create / Edit Story Modal */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
         >
-          <div className="bg-white rounded-2xl border border-stone-200 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="animate-in fade-in zoom-in-95 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-2xl duration-200">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-stone-200 flex items-center justify-between bg-stone-50">
+            <div className="flex items-center justify-between border-b border-stone-200 bg-stone-50 px-6 py-4">
               <div>
-                <h3 className="text-base font-serif font-medium text-[#171717]">
+                <h3 className="font-serif text-base font-medium text-[#171717]">
                   {editingBlogId ? 'Edit Architectural Story' : 'Author New Architectural Story'}
                 </h3>
-                <p className="text-[11px] text-stone-500 font-light">
+                <p className="text-[11px] font-light text-stone-500">
                   Publish bespoke narratives with rich photography and shoppable piece references.
                 </p>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-stone-400 hover:text-stone-700 text-lg leading-none"
+                className="text-lg leading-none text-stone-400 hover:text-stone-700"
               >
                 ✕
               </button>
             </div>
 
             {/* Modal Form Body */}
-            <form onSubmit={handleSaveBlog} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+            <form
+              onSubmit={handleSaveBlog}
+              className="flex-1 space-y-4 overflow-y-auto p-6 text-xs"
+            >
               {modalError && (
-                <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg">
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-600">
                   {modalError}
                 </div>
               )}
 
               {/* Title & Slug */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block font-medium text-stone-700 mb-1">
-                    Story Title *
-                  </label>
+                  <label className="mb-1 block font-medium text-stone-700">Story Title *</label>
                   <input
                     type="text"
                     required
                     value={formData.title}
                     onChange={(e) => handleTitleChange(e.target.value)}
                     placeholder="e.g. Harmonizing Reclaimed Burma Teak…"
-                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-[#C5A059]"
+                    className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 focus:border-[#C5A059] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-medium text-stone-700 mb-1">
-                    URL Slug *
-                  </label>
+                  <label className="mb-1 block font-medium text-stone-700">URL Slug *</label>
                   <input
                     type="text"
                     required
                     value={formData.slug}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, slug: e.target.value }))
-                    }
+                    onChange={(e) => setFormData((prev) => ({ ...prev, slug: e.target.value }))}
                     placeholder="harmonizing-reclaimed-burma-teak"
-                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-[#C5A059]"
+                    className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 focus:border-[#C5A059] focus:outline-none"
                   />
                 </div>
               </div>
 
               {/* Excerpt / Lead */}
               <div>
-                <label className="block font-medium text-stone-700 mb-1">
+                <label className="mb-1 block font-medium text-stone-700">
                   Excerpt / Editorial Subtitle
                 </label>
                 <textarea
                   rows={2}
                   value={formData.excerpt}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, excerpt: e.target.value }))
-                  }
+                  onChange={(e) => setFormData((prev) => ({ ...prev, excerpt: e.target.value }))}
                   placeholder="A concise summary displayed on the journal index and social cards…"
-                  className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-[#C5A059]"
+                  className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 focus:border-[#C5A059] focus:outline-none"
                 />
               </div>
 
               {/* Category Tags & Status */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block font-medium text-stone-700 mb-1">
+                  <label className="mb-1 block font-medium text-stone-700">
                     Category Tags (comma-separated)
                   </label>
                   <input
@@ -515,12 +521,12 @@ export default function BlogsPage() {
                       setFormData((prev) => ({ ...prev, categoryTags: e.target.value }))
                     }
                     placeholder="Architectural Tours, Burma Teak, Penthouses"
-                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-[#C5A059]"
+                    className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 focus:border-[#C5A059] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-medium text-stone-700 mb-1">
+                  <label className="mb-1 block font-medium text-stone-700">
                     Publication Status
                   </label>
                   <select
@@ -528,7 +534,7 @@ export default function BlogsPage() {
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, status: e.target.value as BlogStatus }))
                     }
-                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-[#C5A059]"
+                    className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 focus:border-[#C5A059] focus:outline-none"
                   >
                     <option value={BlogStatus.PUBLISHED}>PUBLISHED (Live on Storefront)</option>
                     <option value={BlogStatus.DRAFT}>DRAFT (Hidden from Storefront)</option>
@@ -539,20 +545,16 @@ export default function BlogsPage() {
 
               {/* Cover Image URL */}
               <div>
-                <label className="block font-medium text-stone-700 mb-1">
-                  Cover Image URL
-                </label>
+                <label className="mb-1 block font-medium text-stone-700">Cover Image URL</label>
                 <input
                   type="url"
                   value={formData.coverImage}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, coverImage: e.target.value }))
-                  }
+                  onChange={(e) => setFormData((prev) => ({ ...prev, coverImage: e.target.value }))}
                   placeholder="https://images.unsplash.com/photo-..."
-                  className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-[#C5A059]"
+                  className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 focus:border-[#C5A059] focus:outline-none"
                 />
                 {formData.coverImage && (
-                  <div className="mt-2 relative w-full h-28 rounded-lg overflow-hidden border border-stone-200 bg-stone-100">
+                  <div className="relative mt-2 h-28 w-full overflow-hidden rounded-lg border border-stone-200 bg-stone-100">
                     <Image
                       src={formData.coverImage}
                       alt="Cover Preview"
@@ -565,30 +567,26 @@ export default function BlogsPage() {
 
               {/* Content Body */}
               <div>
-                <label className="block font-medium text-stone-700 mb-1">
+                <label className="mb-1 block font-medium text-stone-700">
                   Story Content (HTML / Prose)
                 </label>
                 <textarea
                   rows={6}
                   required
                   value={formData.content}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, content: e.target.value }))
-                  }
-                  className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-[#C5A059] font-mono text-[11px]"
+                  onChange={(e) => setFormData((prev) => ({ ...prev, content: e.target.value }))}
+                  className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 font-mono text-[11px] focus:border-[#C5A059] focus:outline-none"
                 />
               </div>
 
               {/* SEO Metadata Details */}
-              <div className="pt-3 border-t border-stone-100 space-y-3">
-                <span className="text-[11px] uppercase tracking-wider text-[#C5A059] font-semibold block">
+              <div className="space-y-3 border-t border-stone-100 pt-3">
+                <span className="block text-[11px] font-semibold uppercase tracking-wider text-[#C5A059]">
                   SEO & Search Optimization
                 </span>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <label className="block font-medium text-stone-600 mb-1">
-                      Meta Title
-                    </label>
+                    <label className="mb-1 block font-medium text-stone-600">Meta Title</label>
                     <input
                       type="text"
                       value={formData.seoTitle}
@@ -596,12 +594,12 @@ export default function BlogsPage() {
                         setFormData((prev) => ({ ...prev, seoTitle: e.target.value }))
                       }
                       placeholder="Defaults to story title"
-                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-[#C5A059]"
+                      className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 focus:border-[#C5A059] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block font-medium text-stone-600 mb-1">
+                    <label className="mb-1 block font-medium text-stone-600">
                       Keywords (comma-separated)
                     </label>
                     <input
@@ -611,14 +609,14 @@ export default function BlogsPage() {
                         setFormData((prev) => ({ ...prev, seoKeywords: e.target.value }))
                       }
                       placeholder="teak furniture, penthouse interior, Bangalore"
-                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg focus:outline-none focus:border-[#C5A059]"
+                      className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 focus:border-[#C5A059] focus:outline-none"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Modal Footer Actions */}
-              <div className="pt-4 border-t border-stone-200 flex items-center justify-end gap-3">
+              <div className="flex items-center justify-end gap-3 border-t border-stone-200 pt-4">
                 <NfiButton
                   type="button"
                   variant="secondary"
@@ -628,13 +626,12 @@ export default function BlogsPage() {
                   Cancel
                 </NfiButton>
 
-                <NfiButton
-                  type="submit"
-                  variant="primary"
-                  size="sm"
-                  disabled={isSaving}
-                >
-                  {isSaving ? 'Saving Chronicle…' : editingBlogId ? 'Update Chronicle' : 'Publish Chronicle'}
+                <NfiButton type="submit" variant="primary" size="sm" disabled={isSaving}>
+                  {isSaving
+                    ? 'Saving Chronicle…'
+                    : editingBlogId
+                      ? 'Update Chronicle'
+                      : 'Publish Chronicle'}
                 </NfiButton>
               </div>
             </form>
