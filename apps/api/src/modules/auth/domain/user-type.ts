@@ -7,5 +7,5 @@ export function requiresMfa(userType: UserType): boolean {
   return userType === 'STAFF' || userType === 'ADMIN';
 }
 
-export const USER_STATUSES = ['ACTIVE', 'SUSPENDED', 'BANNED'] as const;
+export const USER_STATUSES = ['ACTIVE', 'SUSPENDED', 'BANNED', 'INVITED'] as const;
 export type UserStatus = (typeof USER_STATUSES)[number];

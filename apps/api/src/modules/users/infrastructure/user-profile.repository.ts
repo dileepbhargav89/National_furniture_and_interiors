@@ -39,6 +39,8 @@ const SAFE_PROJECTION = {
   companyName: 1,
   gstin: 1,
   onboardingStatus: 1,
+  onboardingToken: 1,
+  onboardingTokenExpiresAt: 1,
   invitedAt: 1,
   lastLoginAt: 1,
   failedLoginAttempts: 1,
@@ -61,6 +63,8 @@ interface ProfileDoc {
   companyName?: string | null;
   gstin?: string | null;
   onboardingStatus?: 'INVITED' | 'PENDING_PASSWORD' | 'COMPLETED';
+  onboardingToken?: string | null;
+  onboardingTokenExpiresAt?: Date | null;
   invitedAt?: Date | null;
   lastLoginAt?: Date | null;
   failedLoginAttempts?: number;
@@ -84,6 +88,10 @@ function toProfile(doc: ProfileDoc): UserProfile {
     companyName: doc.companyName ?? null,
     gstin: doc.gstin ?? null,
     ...(doc.onboardingStatus ? { onboardingStatus: doc.onboardingStatus } : {}),
+    ...(doc.onboardingToken !== undefined ? { onboardingToken: doc.onboardingToken } : {}),
+    ...(doc.onboardingTokenExpiresAt
+      ? { onboardingTokenExpiresAt: doc.onboardingTokenExpiresAt }
+      : {}),
     ...(doc.invitedAt ? { invitedAt: doc.invitedAt } : {}),
     ...(doc.lastLoginAt ? { lastLoginAt: doc.lastLoginAt } : {}),
     ...(doc.failedLoginAttempts !== undefined
@@ -150,6 +158,14 @@ export class MongoUserProfileRepository implements IUserProfileRepository {
   async findByEmail(email: string): Promise<UserProfile | null> {
     const doc = await ProfileModel.findOne(
       { email, isDeleted: false },
+      SAFE_PROJECTION,
+    ).lean<ProfileDoc | null>();
+    return doc ? toProfile(doc) : null;
+  }
+
+  async findByOnboardingToken(token: string): Promise<UserProfile | null> {
+    const doc = await ProfileModel.findOne(
+      { onboardingToken: token, isDeleted: false },
       SAFE_PROJECTION,
     ).lean<ProfileDoc | null>();
     return doc ? toProfile(doc) : null;
@@ -256,17 +272,23 @@ export class MongoUserProfileRepository implements IUserProfileRepository {
     return profile;
   }
 
-  async onboardUser(input: AdminOnboardUserInput, passwordHash: string): Promise<UserProfile> {
+  async onboardUser(
+    input: AdminOnboardUserInput,
+    passwordHash: string | null,
+    onboardingToken?: string,
+    onboardingTokenExpiresAt?: Date,
+  ): Promise<UserProfile> {
     const now = new Date();
+    const fullName = input.fullName?.trim() || input.email.split('@')[0] || 'Patron';
     const created = await ProfileModel.create({
-      fullName: input.fullName,
-      email: input.email,
+      fullName,
+      email: input.email.toLowerCase().trim(),
       phone: input.phone ?? null,
-      passwordHash,
+      passwordHash: passwordHash ?? null,
       authProviders: ['LOCAL'],
       userType: input.userType,
       roleId: new mongoose.Types.ObjectId(input.roleId),
-      status: 'ACTIVE',
+      status: 'INVITED',
       companyName: input.companyName ?? null,
       gstin: input.gstin ?? null,
       isEmailVerified: false,
@@ -276,8 +298,10 @@ export class MongoUserProfileRepository implements IUserProfileRepository {
       mfaSecret: null,
       failedLoginAttempts: 0,
       lockedUntil: null,
-      passwordHistory: [passwordHash],
-      onboardingStatus: input.sendInvite ? 'INVITED' : 'PENDING_PASSWORD',
+      passwordHistory: passwordHash ? [passwordHash] : [],
+      onboardingStatus: 'INVITED',
+      onboardingToken: onboardingToken ?? null,
+      onboardingTokenExpiresAt: onboardingTokenExpiresAt ?? null,
       invitedAt: now,
       mustChangePassword: true,
       createdAt: now,
@@ -344,5 +368,60 @@ export class MongoUserProfileRepository implements IUserProfileRepository {
       },
     );
     return result.modifiedCount > 0;
+  }
+
+  async refreshOnboardingToken(id: string, token: string, expiresAt: Date): Promise<boolean> {
+    const result = await ProfileModel.updateOne(
+      { _id: id, isDeleted: false },
+      {
+        $set: {
+          onboardingToken: token,
+          onboardingTokenExpiresAt: expiresAt,
+          onboardingStatus: 'INVITED',
+          invitedAt: new Date(),
+          updatedAt: new Date(),
+        },
+        $inc: { version: 1 },
+      },
+    );
+    return result.modifiedCount > 0;
+  }
+
+  async completeOnboarding(
+    id: string,
+    data: import('../application/ports').CompleteOnboardingData,
+  ): Promise<UserProfile | null> {
+    const update: Record<string, unknown> = {
+      fullName: data.fullName,
+      phone: data.phone ?? null,
+      passwordHash: data.passwordHash,
+      status: 'ACTIVE',
+      onboardingStatus: 'COMPLETED',
+      onboardingToken: null,
+      onboardingTokenExpiresAt: null,
+      isEmailVerified: true,
+      mustChangePassword: false,
+      updatedAt: new Date(),
+    };
+    if (data.companyName !== undefined) update['companyName'] = data.companyName;
+    if (data.gstin !== undefined) update['gstin'] = data.gstin;
+    if (data.address) {
+      update['addresses'] = [data.address];
+    }
+
+    await ProfileModel.updateOne(
+      { _id: id, isDeleted: false },
+      {
+        $set: update,
+        $push: {
+          passwordHistory: {
+            $each: [data.passwordHash],
+            $slice: -5,
+          },
+        },
+        $inc: { version: 1 },
+      },
+    );
+    return this.findById(id);
   }
 }

@@ -79,9 +79,9 @@ export const AdminService = {
 
   onboardUser: async (data: {
     email: string;
-    fullName: string;
+    fullName?: string | undefined;
     phone?: string | null | undefined;
-    userType: 'CUSTOMER' | 'STAFF' | 'ADMIN';
+    userType?: 'CUSTOMER' | 'STAFF' | 'ADMIN' | undefined;
     roleName?: string | undefined;
     companyName?: string | null | undefined;
     gstin?: string | null | undefined;
@@ -92,17 +92,20 @@ export const AdminService = {
   },
 
   resendOnboarding: async (id: string) => {
-    return apiClient.post<{ success: boolean; message: string }>(
-      `/api/v1/admin/users/${id}/resend-onboarding`,
-    );
+    return apiClient.post<{
+      success: boolean;
+      message: string;
+      onboardingToken?: string;
+      onboardingUrl?: string;
+    }>(`/api/v1/admin/users/${id}/resend-onboarding`);
   },
 
   bulkOnboardUsers: async (
     users: Array<{
       email: string;
-      fullName: string;
+      fullName?: string | undefined;
       phone?: string | null | undefined;
-      userType: 'CUSTOMER' | 'STAFF' | 'ADMIN';
+      userType?: 'CUSTOMER' | 'STAFF' | 'ADMIN' | undefined;
       companyName?: string | null | undefined;
       gstin?: string | null | undefined;
     }>,
@@ -133,7 +136,12 @@ export const AdminService = {
 
   updateUserStatus: async (
     id: string,
-    statusOrData: 'ACTIVE' | 'SUSPENDED' | 'BANNED' | { status: 'ACTIVE' | 'SUSPENDED' | 'BANNED' },
+    statusOrData:
+      | 'ACTIVE'
+      | 'SUSPENDED'
+      | 'BANNED'
+      | 'INVITED'
+      | { status: 'ACTIVE' | 'SUSPENDED' | 'BANNED' | 'INVITED' },
   ) => {
     const status = typeof statusOrData === 'string' ? statusOrData : statusOrData.status;
     return apiClient.patch<User>(`/api/v1/admin/users/${id}/status`, { status });

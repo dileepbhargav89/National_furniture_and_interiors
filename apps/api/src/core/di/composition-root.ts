@@ -59,8 +59,10 @@ import {
   AdminResendOnboarding,
   AdminResetUserPassword,
   AdminUpdateUserStatus,
+  CompleteOnboarding,
   GetOwnProfile,
   UpdateOwnProfile,
+  VerifyOnboardingToken,
 } from '../../modules/users/application/user.use-cases';
 import { MongoUserProfileRepository } from '../../modules/users/infrastructure/user-profile.repository';
 
@@ -287,6 +289,8 @@ export interface AppContext {
     adminResendOnboarding: AdminResendOnboarding;
     adminResetUserPassword: AdminResetUserPassword;
     adminUpdateUserStatus: AdminUpdateUserStatus;
+    verifyOnboardingToken: VerifyOnboardingToken;
+    completeOnboarding: CompleteOnboarding;
     userProfileRepository: MongoUserProfileRepository;
   };
   readonly admin: {
@@ -516,6 +520,15 @@ export function buildAppContext(): AppContext {
       passwordHasher.hash(p),
     ),
     adminUpdateUserStatus: new AdminUpdateUserStatus(userProfileRepository),
+    verifyOnboardingToken: new VerifyOnboardingToken(userProfileRepository),
+    completeOnboarding: new CompleteOnboarding(
+      userProfileRepository,
+      (p) => passwordHasher.hash(p),
+      async (userId, roleId, deviceInfo) => {
+        const roleName = (await permissionResolver.resolveRoleName(roleId)) || 'CUSTOMER';
+        return auth.issueSession.execute({ userId, roleName, deviceInfo });
+      },
+    ),
     userProfileRepository,
   };
 

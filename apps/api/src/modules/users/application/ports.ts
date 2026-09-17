@@ -21,6 +21,8 @@ export interface UserProfile {
   readonly companyName?: string | null | undefined;
   readonly gstin?: string | null | undefined;
   readonly onboardingStatus?: 'INVITED' | 'PENDING_PASSWORD' | 'COMPLETED' | undefined;
+  readonly onboardingToken?: string | null | undefined;
+  readonly onboardingTokenExpiresAt?: Date | null | undefined;
   readonly invitedAt?: Date | null | undefined;
   readonly lastLoginAt?: Date | null | undefined;
   readonly failedLoginAttempts?: number | undefined;
@@ -52,7 +54,7 @@ export interface UnregisteredUserLead {
 
 export interface AdminOnboardUserInput {
   readonly email: string;
-  readonly fullName: string;
+  readonly fullName?: string | undefined;
   readonly phone?: string | null | undefined;
   readonly userType: 'CUSTOMER' | 'STAFF' | 'ADMIN';
   readonly roleId: string;
@@ -60,6 +62,15 @@ export interface AdminOnboardUserInput {
   readonly gstin?: string | null | undefined;
   readonly temporaryPassword?: string | undefined;
   readonly sendInvite?: boolean | undefined;
+}
+
+export interface CompleteOnboardingData {
+  readonly fullName: string;
+  readonly phone?: string | null | undefined;
+  readonly passwordHash: string;
+  readonly companyName?: string | null | undefined;
+  readonly gstin?: string | null | undefined;
+  readonly address?: Address | undefined;
 }
 
 export interface UserListFilter {
@@ -94,11 +105,17 @@ export interface IUserProfileRepository {
   findById(id: string): Promise<UserProfile | null>;
   findByIdDetailed(id: string): Promise<UserDetailDossier | null>;
   findByEmail(email: string): Promise<UserProfile | null>;
+  findByOnboardingToken(token: string): Promise<UserProfile | null>;
   list(limit: number): Promise<UserProfile[]>;
   listWithFilters(filter: UserListFilter): Promise<{ items: UserProfile[]; total: number }>;
   updateOwn(id: string, input: UpdateOwnProfileInput): Promise<UserProfile | null>;
   createPrivileged(input: AdminCreateUserInput): Promise<UserProfile>;
-  onboardUser(input: AdminOnboardUserInput, passwordHash: string): Promise<UserProfile>;
+  onboardUser(
+    input: AdminOnboardUserInput,
+    passwordHash: string | null,
+    onboardingToken?: string,
+    onboardingTokenExpiresAt?: Date,
+  ): Promise<UserProfile>;
   updateStatus(id: string, status: string): Promise<UserProfile | null>;
   resetPassword(
     id: string,
@@ -106,4 +123,6 @@ export interface IUserProfileRepository {
     mustChangePassword?: boolean,
   ): Promise<boolean>;
   recordOnboardingInvite(id: string): Promise<boolean>;
+  refreshOnboardingToken(id: string, token: string, expiresAt: Date): Promise<boolean>;
+  completeOnboarding(id: string, data: CompleteOnboardingData): Promise<UserProfile | null>;
 }

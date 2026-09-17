@@ -18,7 +18,7 @@ export interface User {
   email: string;
   phone?: string | null;
   userType: 'CUSTOMER' | 'STAFF' | 'ADMIN' | 'SUPER_ADMIN';
-  status: 'ACTIVE' | 'INACTIVE' | 'LOCKED' | 'SUSPENDED' | 'BANNED';
+  status: 'ACTIVE' | 'INACTIVE' | 'LOCKED' | 'SUSPENDED' | 'BANNED' | 'INVITED';
   roleId?: string;
   avatarUrl?: string | null;
   addresses?: UserAddress[];
@@ -27,6 +27,8 @@ export interface User {
   companyName?: string | null;
   gstin?: string | null;
   onboardingStatus?: 'INVITED' | 'PENDING_PASSWORD' | 'COMPLETED';
+  onboardingToken?: string | null;
+  onboardingTokenExpiresAt?: string | null;
   invitedAt?: string | null;
   lastLoginAt?: string | null;
   failedLoginAttempts?: number;
