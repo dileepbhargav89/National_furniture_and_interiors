@@ -395,7 +395,7 @@ function DashboardContent() {
               rel="noopener noreferrer"
               className="shadow-2xs inline-flex items-center gap-1 rounded-lg border bg-white px-2.5 py-1.5 text-xs font-medium text-[#7A5C45] transition-colors hover:bg-[#FDF8F2] hover:text-[#1C0D04]"
               style={{ borderColor: 'var(--nfi-border, #DDD0BE)' }}
-              title="Open Live Luxury Storefront (https://nationalinteriors.in)"
+              title="Open Live Luxury Storefront (https://national-furniture-and-interiors-st.vercel.app)"
             >
               <ExternalLink className="h-3.5 w-3.5 text-[#7A5C45]" />
               <span className="hidden sm:inline">Storefront</span>

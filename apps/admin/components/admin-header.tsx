@@ -170,7 +170,7 @@ export function AdminHeader() {
             (e.currentTarget as HTMLElement).style.color = 'var(--nfi-brown-mid)';
             (e.currentTarget as HTMLElement).style.borderColor = 'transparent';
           }}
-          title="Open Live Luxury Storefront (https://nationalinteriors.in)"
+          title="Open Live Luxury Storefront (https://national-furniture-and-interiors-st.vercel.app)"
           aria-label="View Live Storefront"
         >
           <svg
