@@ -105,6 +105,7 @@ export class AdminOnboardUser {
   constructor(
     private readonly users: IUserProfileRepository,
     private readonly hashPassword: (plaintext: string) => Promise<string>,
+    private readonly generatePassword?: () => string,
   ) {}
 
   async execute(input: import('./ports').AdminOnboardUserInput): Promise<UserProfile> {
@@ -113,7 +114,10 @@ export class AdminOnboardUser {
       throw new ConflictError('An account with this email already exists');
     }
     const tempPassword =
-      input.temporaryPassword || `Nfi#${Math.random().toString(36).slice(2, 8)}!`;
+      input.temporaryPassword ||
+      (this.generatePassword
+        ? this.generatePassword()
+        : `Nfi#${Math.random().toString(36).slice(2, 8)}!`);
     const passwordHash = await this.hashPassword(tempPassword);
     return this.users.onboardUser(input, passwordHash);
   }
@@ -136,20 +140,30 @@ export class AdminResetUserPassword {
   constructor(
     private readonly users: IUserProfileRepository,
     private readonly hashPassword: (plaintext: string) => Promise<string>,
+    private readonly generatePassword?: () => string,
   ) {}
 
   async execute(
     id: string,
-    newPassword: string,
+    newPassword?: string,
     mustChangePassword = true,
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<{ success: boolean; message: string; temporaryPassword: string }> {
     const user = await this.users.findById(id);
     if (!user) {
       throw new NotFoundError('User not found');
     }
-    const hash = await this.hashPassword(newPassword);
+    const passwordToSet =
+      newPassword ||
+      (this.generatePassword
+        ? this.generatePassword()
+        : `Nfi#${Math.random().toString(36).slice(2, 8)}!`);
+    const hash = await this.hashPassword(passwordToSet);
     await this.users.resetPassword(id, hash, mustChangePassword);
-    return { success: true, message: `Password reset successfully for ${user.email}` };
+    return {
+      success: true,
+      message: `Password reset successfully for ${user.email}`,
+      temporaryPassword: passwordToSet,
+    };
   }
 }
 
