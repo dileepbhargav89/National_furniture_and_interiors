@@ -21,6 +21,13 @@ export const mergeCartSchema = z
   })
   .strict();
 
+export const applyCouponSchema = z
+  .object({
+    code: z.string().trim().min(2).max(30),
+  })
+  .strict();
+
 export type AddItemBody = z.infer<typeof addItemSchema>;
 export type UpdateItemBody = z.infer<typeof updateItemSchema>;
 export type MergeCartBody = z.infer<typeof mergeCartSchema>;
+export type ApplyCouponBody = z.infer<typeof applyCouponSchema>;

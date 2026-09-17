@@ -114,7 +114,14 @@ export function createApp(mountBusinessRoutes = true): Express {
           getOwnProfile: ctx.users.getOwnProfile,
           updateOwnProfile: ctx.users.updateOwnProfile,
           adminListUsers: ctx.users.adminListUsers,
+          adminListUsersWithFilters: ctx.users.adminListUsersWithFilters,
+          adminGetUserDetail: ctx.users.adminGetUserDetail,
           adminCreateUser: ctx.users.adminCreateUser,
+          adminOnboardUser: ctx.users.adminOnboardUser,
+          adminResendOnboarding: ctx.users.adminResendOnboarding,
+          adminResetUserPassword: ctx.users.adminResetUserPassword,
+          adminUpdateUserStatus: ctx.users.adminUpdateUserStatus,
+          listLeads: ctx.leads.listLeads,
           hashPassword: (plaintext) => ctx.auth.passwordHasher.hash(plaintext),
           resolveRoleIdByName: async (name) =>
             (await ctx.admin.roleRepository.findByName(name))?.id ?? null,
@@ -177,6 +184,9 @@ export function createApp(mountBusinessRoutes = true): Express {
       removeItemFromCart: ctx.cart.removeItemFromCart,
       updateItemQuantity: ctx.cart.updateItemQuantity,
       mergeGuestCart: ctx.cart.mergeGuestCart,
+      applyCouponToCart: ctx.cart.applyCouponToCart,
+      removeCouponFromCart: ctx.cart.removeCouponFromCart,
+      getActiveCoupons: ctx.cart.getActiveCoupons,
     });
     app.use('/api/v1', createCartRoutes(cartController, authMiddleware));
 

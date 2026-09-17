@@ -59,5 +59,57 @@ export const adminCreateUserSchema = z
 export const listUsersQuerySchema = z
   .object({
     limit: z.coerce.number().int().min(1).max(100).optional(),
+    page: z.coerce.number().int().min(1).optional(),
+    search: z.string().max(100).optional(),
+    userType: z.string().max(50).optional(),
+    status: z.string().max(50).optional(),
+  })
+  .strict();
+
+export const adminOnboardUserSchema = z
+  .object({
+    email: z.string().email().max(320),
+    fullName: z.string().min(1).max(200),
+    phone: z.string().min(6).max(20).nullable().optional(),
+    userType: z.enum(['CUSTOMER', 'STAFF', 'ADMIN']).default('CUSTOMER'),
+    roleName: z.string().min(1).max(50).default('CUSTOMER'),
+    companyName: z.string().max(200).nullable().optional(),
+    gstin: z.string().max(25).nullable().optional(),
+    temporaryPassword: z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH).optional(),
+    sendInvite: z.boolean().default(true),
+  })
+  .strict();
+
+export const adminBulkOnboardSchema = z
+  .object({
+    users: z
+      .array(
+        z
+          .object({
+            email: z.string().email().max(320),
+            fullName: z.string().min(1).max(200),
+            phone: z.string().max(20).nullable().optional(),
+            userType: z.enum(['CUSTOMER', 'STAFF', 'ADMIN']).default('CUSTOMER'),
+            companyName: z.string().max(200).nullable().optional(),
+            gstin: z.string().max(25).nullable().optional(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(100),
+  })
+  .strict();
+
+export const adminResetPasswordSchema = z
+  .object({
+    newPassword: z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH).optional(),
+    mustChangePassword: z.boolean().default(true),
+    sendEmailLink: z.boolean().default(false),
+  })
+  .strict();
+
+export const adminUpdateStatusSchema = z
+  .object({
+    status: z.enum(['ACTIVE', 'SUSPENDED', 'BANNED']),
   })
   .strict();

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { CatalogService, Product } from '@nfi/api-client';
 import { HeroBanner } from '../components/HeroBanner';
 import { TrustBadgeStrip } from '../components/home/trust-badge-strip';
@@ -19,37 +20,43 @@ const COMPACT_ROOM_CATEGORIES: CompactCategoryItem[] = [
     name: 'Sofas & Seating',
     slug: 'sofas',
     count: 17,
-    image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?q=80&w=800&auto=format&fit=crop',
+    image:
+      'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?q=80&w=800&auto=format&fit=crop',
   },
   {
     name: 'Living & Storage',
     slug: 'living-room',
     count: 17,
-    image: 'https://images.unsplash.com/photo-1595514535133-c28308d5f303?q=80&w=800&auto=format&fit=crop',
+    image:
+      'https://images.unsplash.com/photo-1595514535133-c28308d5f303?q=80&w=800&auto=format&fit=crop',
   },
   {
     name: 'Dining & Tables',
     slug: 'dining',
     count: 19,
-    image: 'https://images.unsplash.com/photo-1577140917170-285929fb55b7?q=80&w=800&auto=format&fit=crop',
+    image:
+      'https://images.unsplash.com/photo-1577140917170-285929fb55b7?q=80&w=800&auto=format&fit=crop',
   },
   {
     name: 'Beds & Bedroom',
     slug: 'bedroom',
     count: 19,
-    image: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?q=80&w=800&auto=format&fit=crop',
+    image:
+      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?q=80&w=800&auto=format&fit=crop',
   },
   {
     name: 'Study & Office',
     slug: 'office',
     count: 17,
-    image: 'https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?q=80&w=800&auto=format&fit=crop',
+    image:
+      'https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?q=80&w=800&auto=format&fit=crop',
   },
   {
     name: 'Outdoor Living',
     slug: 'outdoor',
     count: 8,
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800&auto=format&fit=crop',
+    image:
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800&auto=format&fit=crop',
   },
 ];
 
@@ -81,7 +88,10 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--nfi-cream)', color: 'var(--nfi-text)' }}>
+    <div
+      className="min-h-screen"
+      style={{ backgroundColor: 'var(--nfi-cream)', color: 'var(--nfi-text)' }}
+    >
       {/* 1. Hero Showcase */}
       <HeroBanner />
 
@@ -89,28 +99,34 @@ export default function HomePage() {
       <TrustBadgeStrip />
 
       {/* 3. Compact Room & Category Grid (Reduced Card Size) */}
-      <section className="py-12 sm:py-16 bg-white">
+      <section className="bg-white py-12 sm:py-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-3">
+          <div className="mb-8 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.25em] font-semibold mb-1" style={{ color: 'var(--nfi-orange)' }}>
+              <p
+                className="mb-1 text-[11px] font-semibold uppercase tracking-[0.25em]"
+                style={{ color: 'var(--nfi-orange)' }}
+              >
                 Curated Spaces
               </p>
-              <h2 className="text-2xl sm:text-3xl font-serif font-normal tracking-tight" style={{ color: 'var(--nfi-brown-dark)' }}>
+              <h2
+                className="font-serif text-2xl font-normal tracking-tight sm:text-3xl"
+                style={{ color: 'var(--nfi-brown-dark)' }}
+              >
                 Explore by Room
               </h2>
             </div>
-            <a
+            <Link
               href="/products"
               className="text-xs font-semibold uppercase tracking-wider underline underline-offset-4 transition-colors hover:opacity-80"
               style={{ color: 'var(--nfi-orange)' }}
             >
               View All Categories &rarr;
-            </a>
+            </Link>
           </div>
 
           {/* 6-Column Compact Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
             {COMPACT_ROOM_CATEGORIES.map((room, idx) => (
               <CompactCategoryCard key={room.slug} item={room} priority={idx < 3} />
             ))}
@@ -119,42 +135,48 @@ export default function HomePage() {
       </section>
 
       {/* 4. Curator's Bestsellers (Compact Product Cards with Live Data) */}
-      <section className="py-12 sm:py-16 bg-[#FAF9F6] border-y border-[#EBE8E3]">
+      <section className="border-y border-[#EBE8E3] bg-[#FAF9F6] py-12 sm:py-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-3">
+          <div className="mb-8 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.25em] font-semibold mb-1" style={{ color: 'var(--nfi-orange)' }}>
+              <p
+                className="mb-1 text-[11px] font-semibold uppercase tracking-[0.25em]"
+                style={{ color: 'var(--nfi-orange)' }}
+              >
                 Handpicked Heirloom Craft
               </p>
-              <h2 className="text-2xl sm:text-3xl font-serif font-normal tracking-tight" style={{ color: 'var(--nfi-brown-dark)' }}>
+              <h2
+                className="font-serif text-2xl font-normal tracking-tight sm:text-3xl"
+                style={{ color: 'var(--nfi-brown-dark)' }}
+              >
                 Curator&apos;s Signature Pieces
               </h2>
-              <p className="text-xs mt-1" style={{ color: 'var(--nfi-text-secondary)' }}>
+              <p className="mt-1 text-xs" style={{ color: 'var(--nfi-text-secondary)' }}>
                 Mastercrafted from seasoned teak, white oak, and top-grain Italian leather.
               </p>
             </div>
-            <a
+            <Link
               href="/products?sort=featured"
               className="text-xs font-semibold uppercase tracking-wider underline underline-offset-4 transition-colors hover:opacity-80"
               style={{ color: 'var(--nfi-orange)' }}
             >
               Shop Full Collection (90+ Pieces) &rarr;
-            </a>
+            </Link>
           </div>
 
           {/* 4-Column Compact Product Grid */}
           {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <ProductSkeleton key={i} />
               ))}
             </div>
           ) : featuredProducts.length === 0 ? (
-            <div className="py-12 text-center text-xs text-gray-400 border border-dashed rounded-lg bg-white">
+            <div className="rounded-lg border border-dashed bg-white py-12 text-center text-xs text-gray-400">
               Catalog synchronization in progress. Please explore our full product collection.
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
               {featuredProducts.slice(0, 8).map((product, idx) => (
                 <ProductCard
                   key={product.id || product._id}
@@ -164,7 +186,9 @@ export default function HomePage() {
                   price={product.basePrice?.amount}
                   mrp={product.mrp?.amount}
                   currency={product.basePrice?.currency || 'INR'}
-                  images={product.images?.map((img) => (typeof img === 'string' ? img : img.url)) || []}
+                  images={
+                    product.images?.map((img) => (typeof img === 'string' ? img : img.url)) || []
+                  }
                   category="Furniture"
                   material={product.material}
                   ratingsAvg={product.ratingsAvg}
@@ -195,18 +219,26 @@ export default function HomePage() {
 
       {/* 8. VIP Design Circle & Newsletter */}
       <section className="py-14 text-white" style={{ backgroundColor: 'var(--nfi-brown-dark)' }}>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl text-center">
-          <p className="text-[11px] uppercase tracking-[0.25em] font-semibold mb-2" style={{ color: 'var(--nfi-orange)' }}>
+        <div className="container mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+          <p
+            className="mb-2 text-[11px] font-semibold uppercase tracking-[0.25em]"
+            style={{ color: 'var(--nfi-orange)' }}
+          >
             The National Interior Circle
           </p>
-          <h2 className="text-2xl sm:text-3xl font-serif font-normal text-white tracking-tight mb-2">
+          <h2 className="mb-2 font-serif text-2xl font-normal tracking-tight text-white sm:text-3xl">
             Unlock 10% Off Your First Bespoke Piece
           </h2>
-          <p className="text-xs sm:text-sm text-white/60 max-w-lg mx-auto mb-6">
-            Join our private patron circle for preview access to limited timber harvests, architectural masterclasses, and VIP seasonal exhibitions. Use code <span className="font-mono font-semibold" style={{ color: 'var(--nfi-orange-light)' }}>NFI10</span> at checkout.
+          <p className="mx-auto mb-6 max-w-lg text-xs text-white/60 sm:text-sm">
+            Join our private patron circle for preview access to limited timber harvests,
+            architectural masterclasses, and VIP seasonal exhibitions. Use code{' '}
+            <span className="font-mono font-semibold" style={{ color: 'var(--nfi-orange-light)' }}>
+              NFI10
+            </span>{' '}
+            at checkout.
           </p>
 
-          <div className="max-w-md mx-auto">
+          <div className="mx-auto max-w-md">
             <NewsletterForm />
           </div>
         </div>

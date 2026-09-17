@@ -2,9 +2,15 @@
 
 import React, { useEffect, useState, useId, useMemo, useCallback } from 'react';
 import Image from 'next/image';
-import { PortfolioService, PortfolioProject, PortfolioSector, PortfolioCategory } from '@nfi/api-client';
+import {
+  PortfolioService,
+  PortfolioProject,
+  PortfolioSector,
+  PortfolioCategory,
+} from '@nfi/api-client';
 import { PageHeader } from '@/components/ui/page-header';
 import { NfiButton } from '@/components/ui/nfi-button';
+import { getStorefrontUrl } from '@/lib/storefront';
 
 interface ProjectFormData {
   id?: string | undefined;
@@ -48,8 +54,10 @@ const INITIAL_FORM: ProjectFormData = {
   budgetInLakhs: 15.0,
   turnaroundDays: 42,
   style: 'Warm Contemporary',
-  coverImage: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?q=80&w=1200&auto=format&fit=crop',
-  galleryImagesStr: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?q=80&w=1200&auto=format&fit=crop\nhttps://images.unsplash.com/photo-1618219908412-a29a1bb7b86e?q=80&w=1200&auto=format&fit=crop',
+  coverImage:
+    'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?q=80&w=1200&auto=format&fit=crop',
+  galleryImagesStr:
+    'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?q=80&w=1200&auto=format&fit=crop\nhttps://images.unsplash.com/photo-1618219908412-a29a1bb7b86e?q=80&w=1200&auto=format&fit=crop',
   scopeStr: 'Full Home Turnkey Interiors\nModular Kitchen with Island\nMaster Walk-in Wardrobe',
   designerNotes: '',
   clientName: '',
@@ -111,7 +119,10 @@ export default function DesignPortfolioAdminPage() {
     try {
       setLoading(true);
       const res = await PortfolioService.adminList({ limit: 100 });
-      const resObj = res as unknown as { data?: { items: PortfolioProject[] }; items?: PortfolioProject[] };
+      const resObj = res as unknown as {
+        data?: { items: PortfolioProject[] };
+        items?: PortfolioProject[];
+      };
       const items = resObj.data?.items || resObj.items || [];
       setProjects(items);
     } catch (err: unknown) {
@@ -132,7 +143,8 @@ export default function DesignPortfolioAdminPage() {
   }
 
   async function handleSeedDefaults() {
-    if (!confirm('Seed or refresh the default 12 Bangalore residential & commercial projects?')) return;
+    if (!confirm('Seed or refresh the default 12 Bangalore residential & commercial projects?'))
+      return;
     try {
       setLoading(true);
       const res = await PortfolioService.adminSeed();
@@ -226,20 +238,20 @@ export default function DesignPortfolioAdminPage() {
           (formData.category === '3bhk-4bhk'
             ? '3 & 4 BHK'
             : formData.category === '2bhk'
-            ? '2 BHK'
-            : formData.category === 'villa'
-            ? 'Luxury Villa'
-            : formData.category === 'kitchen'
-            ? 'Modular Kitchen'
-            : formData.category === 'penthouse'
-            ? 'Penthouse & Luxury'
-            : formData.category === 'office'
-            ? 'Office & Workspace'
-            : formData.category === 'restaurant'
-            ? 'Restaurant & Café'
-            : formData.category === 'hotel'
-            ? 'Hotel & Hospitality'
-            : 'Shop & Retail Showroom'),
+              ? '2 BHK'
+              : formData.category === 'villa'
+                ? 'Luxury Villa'
+                : formData.category === 'kitchen'
+                  ? 'Modular Kitchen'
+                  : formData.category === 'penthouse'
+                    ? 'Penthouse & Luxury'
+                    : formData.category === 'office'
+                      ? 'Office & Workspace'
+                      : formData.category === 'restaurant'
+                        ? 'Restaurant & Café'
+                        : formData.category === 'hotel'
+                          ? 'Hotel & Hospitality'
+                          : 'Shop & Retail Showroom'),
         areaSqFt: Number(formData.areaSqFt),
         budgetInLakhs: Number(formData.budgetInLakhs),
         budgetString: `₹${Number(formData.budgetInLakhs).toFixed(1)} Lakhs`,
@@ -307,8 +319,8 @@ export default function DesignPortfolioAdminPage() {
     <div className="space-y-6">
       {/* Toast */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#171717] text-white px-5 py-3 rounded-xl shadow-2xl border border-amber-500/40 text-xs font-medium flex items-center gap-3 animate-fade-in">
-          <span className="w-2 h-2 rounded-full bg-amber-400" />
+        <div className="animate-fade-in fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border border-amber-500/40 bg-[#171717] px-5 py-3 text-xs font-medium text-white shadow-2xl">
+          <span className="h-2 w-2 rounded-full bg-amber-400" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -331,33 +343,43 @@ export default function DesignPortfolioAdminPage() {
       />
 
       {/* Metric Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
-          <span className="text-xs text-stone-500 uppercase tracking-wider font-semibold">Total Projects</span>
-          <p className="text-2xl font-bold text-stone-900 mt-1">{totalCount}</p>
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="shadow-2xs rounded-xl border border-stone-200 bg-white p-4">
+          <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+            Total Projects
+          </span>
+          <p className="mt-1 text-2xl font-bold text-stone-900">{totalCount}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
-          <span className="text-xs text-stone-500 uppercase tracking-wider font-semibold">Residential Homes</span>
-          <p className="text-2xl font-bold text-emerald-700 mt-1">{resCount}</p>
+        <div className="shadow-2xs rounded-xl border border-stone-200 bg-white p-4">
+          <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+            Residential Homes
+          </span>
+          <p className="mt-1 text-2xl font-bold text-emerald-700">{resCount}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
-          <span className="text-xs text-stone-500 uppercase tracking-wider font-semibold">Commercial &amp; F&amp;B</span>
-          <p className="text-2xl font-bold text-amber-700 mt-1">{commCount}</p>
+        <div className="shadow-2xs rounded-xl border border-stone-200 bg-white p-4">
+          <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+            Commercial &amp; F&amp;B
+          </span>
+          <p className="mt-1 text-2xl font-bold text-amber-700">{commCount}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
-          <span className="text-xs text-stone-500 uppercase tracking-wider font-semibold">Live on Storefront</span>
-          <p className="text-2xl font-bold text-[#8C7355] mt-1">{pubCount}</p>
+        <div className="shadow-2xs rounded-xl border border-stone-200 bg-white p-4">
+          <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+            Live on Storefront
+          </span>
+          <p className="mt-1 text-2xl font-bold text-[#8C7355]">{pubCount}</p>
         </div>
       </div>
 
       {/* Search & Sector Filters */}
-      <div className="bg-white p-4 rounded-xl border border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+      <div className="flex flex-col items-center justify-between gap-4 rounded-xl border border-stone-200 bg-white p-4 sm:flex-row">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <button
             type="button"
             onClick={() => setSelectedSector('all')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              selectedSector === 'all' ? 'bg-[#171717] text-white' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+            className={`rounded-lg px-3.5 py-1.5 text-xs font-medium transition-colors ${
+              selectedSector === 'all'
+                ? 'bg-[#171717] text-white'
+                : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
             }`}
           >
             All Projects ({totalCount})
@@ -365,8 +387,10 @@ export default function DesignPortfolioAdminPage() {
           <button
             type="button"
             onClick={() => setSelectedSector('residential')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              selectedSector === 'residential' ? 'bg-[#171717] text-white' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+            className={`rounded-lg px-3.5 py-1.5 text-xs font-medium transition-colors ${
+              selectedSector === 'residential'
+                ? 'bg-[#171717] text-white'
+                : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
             }`}
           >
             Residential ({resCount})
@@ -374,8 +398,10 @@ export default function DesignPortfolioAdminPage() {
           <button
             type="button"
             onClick={() => setSelectedSector('commercial')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              selectedSector === 'commercial' ? 'bg-[#171717] text-white' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+            className={`rounded-lg px-3.5 py-1.5 text-xs font-medium transition-colors ${
+              selectedSector === 'commercial'
+                ? 'bg-[#171717] text-white'
+                : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
             }`}
           >
             Commercial ({commCount})
@@ -388,21 +414,25 @@ export default function DesignPortfolioAdminPage() {
             placeholder="Search by title, society, locality..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full text-xs px-3.5 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8C7355] bg-stone-50"
+            className="w-full rounded-lg border border-stone-300 bg-stone-50 px-3.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#8C7355]"
           />
         </div>
       </div>
 
       {/* Projects Table */}
       {loading ? (
-        <div className="bg-white rounded-xl border border-stone-200 p-16 text-center">
-          <div className="w-8 h-8 rounded-full border-2 border-amber-600 border-t-transparent animate-spin mx-auto mb-3" />
-          <p className="text-xs text-stone-500 font-medium">Loading portfolio projects from API...</p>
+        <div className="rounded-xl border border-stone-200 bg-white p-16 text-center">
+          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-amber-600 border-t-transparent" />
+          <p className="text-xs font-medium text-stone-500">
+            Loading portfolio projects from API...
+          </p>
         </div>
       ) : filteredProjects.length === 0 ? (
-        <div className="bg-white rounded-xl border border-stone-200 p-16 text-center">
+        <div className="rounded-xl border border-stone-200 bg-white p-16 text-center">
           <p className="text-sm font-semibold text-stone-800">No portfolio projects found</p>
-          <p className="text-xs text-stone-500 mt-1 mb-4">Click below to seed the 12 default Bangalore projects or add a new project.</p>
+          <p className="mb-4 mt-1 text-xs text-stone-500">
+            Click below to seed the 12 default Bangalore projects or add a new project.
+          </p>
           <div className="inline-flex gap-2">
             <NfiButton variant="secondary" size="sm" onClick={handleSeedDefaults}>
               Seed 12 Bangalore Projects
@@ -413,10 +443,10 @@ export default function DesignPortfolioAdminPage() {
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-2xs">
+        <div className="shadow-2xs overflow-hidden rounded-xl border border-stone-200 bg-white">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-stone-200 text-left">
-              <thead className="bg-stone-50 text-[11px] font-semibold text-stone-500 uppercase tracking-wider">
+              <thead className="bg-stone-50 text-[11px] font-semibold uppercase tracking-wider text-stone-500">
                 <tr>
                   <th className="px-5 py-3">Project</th>
                   <th className="px-5 py-3">Sector &amp; Category</th>
@@ -431,10 +461,10 @@ export default function DesignPortfolioAdminPage() {
                   const id = p.id || p._id || '';
                   const isComm = p.sector === 'commercial';
                   return (
-                    <tr key={id} className="hover:bg-stone-50/70 transition-colors">
+                    <tr key={id} className="transition-colors hover:bg-stone-50/70">
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-9 rounded-lg overflow-hidden bg-stone-100 relative shrink-0 border border-stone-200">
+                          <div className="relative h-9 w-12 shrink-0 overflow-hidden rounded-lg border border-stone-200 bg-stone-100">
                             {p.coverImage && (
                               <Image
                                 src={p.coverImage}
@@ -446,8 +476,12 @@ export default function DesignPortfolioAdminPage() {
                             )}
                           </div>
                           <div>
-                            <span className="font-semibold text-stone-900 block line-clamp-1">{p.title}</span>
-                            <span className="text-[11px] text-stone-500 block truncate max-w-xs">{p.community}</span>
+                            <span className="line-clamp-1 block font-semibold text-stone-900">
+                              {p.title}
+                            </span>
+                            <span className="block max-w-xs truncate text-[11px] text-stone-500">
+                              {p.community}
+                            </span>
                           </div>
                         </div>
                       </td>
@@ -455,59 +489,67 @@ export default function DesignPortfolioAdminPage() {
                       <td className="px-5 py-3.5">
                         <div className="space-y-1">
                           <span
-                            className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase ${
-                              isComm ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                            className={`inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                              isComm
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-emerald-100 text-emerald-800'
                             }`}
                           >
                             {p.sector}
                           </span>
-                          <span className="block text-[11px] text-stone-600 font-medium">{p.categoryLabel}</span>
+                          <span className="block text-[11px] font-medium text-stone-600">
+                            {p.categoryLabel}
+                          </span>
                         </div>
                       </td>
 
                       <td className="px-5 py-3.5">
-                        <span className="text-stone-800 font-medium block">{p.locality}</span>
-                        <span className="text-[11px] text-stone-400 block">{p.city}</span>
+                        <span className="block font-medium text-stone-800">{p.locality}</span>
+                        <span className="block text-[11px] text-stone-400">{p.city}</span>
                       </td>
 
                       <td className="px-5 py-3.5">
-                        <span className="font-semibold text-stone-900 block">{p.budgetString}</span>
-                        <span className="text-[11px] text-stone-500 block">{p.areaSqFt} sq.ft · {p.turnaroundDays}d</span>
+                        <span className="block font-semibold text-stone-900">{p.budgetString}</span>
+                        <span className="block text-[11px] text-stone-500">
+                          {p.areaSqFt} sq.ft · {p.turnaroundDays}d
+                        </span>
                       </td>
 
                       <td className="px-5 py-3.5">
                         <span
-                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${
                             p.isPublished !== false
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-stone-100 text-stone-500 border border-stone-200'
+                              ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+                              : 'border border-stone-200 bg-stone-100 text-stone-500'
                           }`}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full ${p.isPublished !== false ? 'bg-emerald-500' : 'bg-stone-400'}`} />
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${p.isPublished !== false ? 'bg-emerald-500' : 'bg-stone-400'}`}
+                          />
                           {p.isPublished !== false ? 'Published' : 'Draft'}
                         </span>
                       </td>
 
-                      <td className="px-5 py-3.5 text-right space-x-2">
+                      <td className="space-x-2 px-5 py-3.5 text-right">
                         <a
-                          href={`http://localhost:3000/design-services#portfolio`}
+                          href={getStorefrontUrl('/design-services#portfolio')}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-stone-500 hover:text-stone-800 text-[11px] font-medium"
+                          className="text-[11px] font-medium text-stone-500 hover:text-stone-800"
                         >
                           Preview
                         </a>
                         <button
                           type="button"
                           onClick={() => handleOpenEditModal(p)}
-                          className="text-[#8C7355] hover:text-[#6a563d] font-semibold text-xs ml-2"
+                          className="ml-2 text-xs font-semibold text-[#8C7355] hover:text-[#6a563d]"
                         >
                           Edit
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(p)}
-                          className="text-red-500 hover:text-red-700 font-semibold text-xs ml-2"
+                          className="ml-2 text-xs font-semibold text-red-500 hover:text-red-700"
                         >
                           Delete
                         </button>
@@ -527,33 +569,41 @@ export default function DesignPortfolioAdminPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="admin-portfolio-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto"
+          className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4"
         >
-          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-stone-200 overflow-hidden my-8 animate-scale-up">
-            <div className="px-6 py-4 bg-stone-50 border-b border-stone-200 flex items-center justify-between">
+          <div className="animate-scale-up my-8 w-full max-w-2xl overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-stone-200 bg-stone-50 px-6 py-4">
               <div>
-                <h3 id="admin-portfolio-modal-title" className="font-semibold text-stone-900 text-base">
+                <h3
+                  id="admin-portfolio-modal-title"
+                  className="text-base font-semibold text-stone-900"
+                >
                   {editingId ? 'Edit Portfolio Project' : 'Add New Portfolio Project'}
                 </h3>
-                <p className="text-xs text-stone-500 mt-0.5">
+                <p className="mt-0.5 text-xs text-stone-500">
                   Changes sync immediately to the storefront design service portal.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="text-stone-400 hover:text-stone-700 text-lg leading-none p-2 rounded-lg hover:bg-stone-200/50 transition-colors"
+                className="rounded-lg p-2 text-lg leading-none text-stone-400 transition-colors hover:bg-stone-200/50 hover:text-stone-700"
                 aria-label="Close modal dialog"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleFormSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto text-xs">
+            <form
+              onSubmit={handleFormSubmit}
+              className="max-h-[75vh] space-y-4 overflow-y-auto p-6 text-xs"
+            >
               {/* Title & Slug */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label htmlFor={titleInputId} className="font-semibold text-stone-800 block mb-1">Project Title *</label>
+                  <label htmlFor={titleInputId} className="mb-1 block font-semibold text-stone-800">
+                    Project Title *
+                  </label>
                   <input
                     id={titleInputId}
                     type="text"
@@ -561,25 +611,32 @@ export default function DesignPortfolioAdminPage() {
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     placeholder="e.g. The Botanist Bistro"
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-[#8C7355] focus:outline-none"
+                    className="w-full rounded-lg border border-stone-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8C7355]"
                   />
                 </div>
                 <div>
-                  <label htmlFor={slugInputId} className="font-semibold text-stone-800 block mb-1">URL Slug (optional)</label>
+                  <label htmlFor={slugInputId} className="mb-1 block font-semibold text-stone-800">
+                    URL Slug (optional)
+                  </label>
                   <input
                     id={slugInputId}
                     type="text"
                     value={formData.slug}
                     onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
                     placeholder="auto-generated-if-blank"
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-[#8C7355] focus:outline-none font-mono"
+                    className="w-full rounded-lg border border-stone-300 px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-[#8C7355]"
                   />
                 </div>
               </div>
 
               {/* Subtitle */}
               <div>
-                <label htmlFor={subtitleInputId} className="font-semibold text-stone-800 block mb-1">Subtitle / One-Line Summary *</label>
+                <label
+                  htmlFor={subtitleInputId}
+                  className="mb-1 block font-semibold text-stone-800"
+                >
+                  Subtitle / One-Line Summary *
+                </label>
                 <input
                   id={subtitleInputId}
                   type="text"
@@ -587,31 +644,45 @@ export default function DesignPortfolioAdminPage() {
                   value={formData.subtitle}
                   onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
                   placeholder="e.g. Fine dining architecture with curved teakwood bar..."
-                  className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-[#8C7355] focus:outline-none"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8C7355]"
                 />
               </div>
 
               {/* Sector & Category */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label htmlFor={sectorInputId} className="font-semibold text-stone-800 block mb-1">Sector *</label>
+                  <label
+                    htmlFor={sectorInputId}
+                    className="mb-1 block font-semibold text-stone-800"
+                  >
+                    Sector *
+                  </label>
                   <select
                     id={sectorInputId}
                     value={formData.sector}
-                    onChange={(e) => setFormData({ ...formData, sector: e.target.value as PortfolioSector })}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-[#8C7355] focus:outline-none bg-white"
+                    onChange={(e) =>
+                      setFormData({ ...formData, sector: e.target.value as PortfolioSector })
+                    }
+                    className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8C7355]"
                   >
                     <option value="residential">Residential Interiors</option>
                     <option value="commercial">Commercial &amp; Hospitality</option>
                   </select>
                 </div>
                 <div>
-                  <label htmlFor={categoryInputId} className="font-semibold text-stone-800 block mb-1">Category *</label>
+                  <label
+                    htmlFor={categoryInputId}
+                    className="mb-1 block font-semibold text-stone-800"
+                  >
+                    Category *
+                  </label>
                   <select
                     id={categoryInputId}
                     value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value as PortfolioCategory })}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-[#8C7355] focus:outline-none bg-white"
+                    onChange={(e) =>
+                      setFormData({ ...formData, category: e.target.value as PortfolioCategory })
+                    }
+                    className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8C7355]"
                   >
                     <optgroup label="Residential">
                       <option value="3bhk-4bhk">3 &amp; 4 BHK</option>
@@ -631,9 +702,14 @@ export default function DesignPortfolioAdminPage() {
               </div>
 
               {/* Community & Locality */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label htmlFor={communityInputId} className="font-semibold text-stone-800 block mb-1">Society / Commercial Complex *</label>
+                  <label
+                    htmlFor={communityInputId}
+                    className="mb-1 block font-semibold text-stone-800"
+                  >
+                    Society / Commercial Complex *
+                  </label>
                   <input
                     id={communityInputId}
                     type="text"
@@ -641,11 +717,16 @@ export default function DesignPortfolioAdminPage() {
                     value={formData.community}
                     onChange={(e) => setFormData({ ...formData, community: e.target.value })}
                     placeholder="e.g. Prestige Lakeside / 100 Feet Rd"
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-[#8C7355] focus:outline-none"
+                    className="w-full rounded-lg border border-stone-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8C7355]"
                   />
                 </div>
                 <div>
-                  <label htmlFor={localityInputId} className="font-semibold text-stone-800 block mb-1">Bangalore Locality *</label>
+                  <label
+                    htmlFor={localityInputId}
+                    className="mb-1 block font-semibold text-stone-800"
+                  >
+                    Bangalore Locality *
+                  </label>
                   <input
                     id={localityInputId}
                     type="text"
@@ -653,7 +734,7 @@ export default function DesignPortfolioAdminPage() {
                     value={formData.locality}
                     onChange={(e) => setFormData({ ...formData, locality: e.target.value })}
                     placeholder="e.g. Indiranagar / Whitefield / Lavelle Road"
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-[#8C7355] focus:outline-none"
+                    className="w-full rounded-lg border border-stone-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8C7355]"
                   />
                 </div>
               </div>
@@ -661,45 +742,60 @@ export default function DesignPortfolioAdminPage() {
               {/* Area, Budget, Turnaround */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label htmlFor={areaInputId} className="font-semibold text-stone-800 block mb-1">Area (sq.ft) *</label>
+                  <label htmlFor={areaInputId} className="mb-1 block font-semibold text-stone-800">
+                    Area (sq.ft) *
+                  </label>
                   <input
                     id={areaInputId}
                     type="number"
                     required
                     value={formData.areaSqFt}
                     onChange={(e) => setFormData({ ...formData, areaSqFt: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-[#8C7355] focus:outline-none"
+                    className="w-full rounded-lg border border-stone-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8C7355]"
                   />
                 </div>
                 <div>
-                  <label htmlFor={budgetInputId} className="font-semibold text-stone-800 block mb-1">Budget (₹ Lakhs) *</label>
+                  <label
+                    htmlFor={budgetInputId}
+                    className="mb-1 block font-semibold text-stone-800"
+                  >
+                    Budget (₹ Lakhs) *
+                  </label>
                   <input
                     id={budgetInputId}
                     type="number"
                     step="0.1"
                     required
                     value={formData.budgetInLakhs}
-                    onChange={(e) => setFormData({ ...formData, budgetInLakhs: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-[#8C7355] focus:outline-none"
+                    onChange={(e) =>
+                      setFormData({ ...formData, budgetInLakhs: Number(e.target.value) })
+                    }
+                    className="w-full rounded-lg border border-stone-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8C7355]"
                   />
                 </div>
                 <div>
-                  <label htmlFor={daysInputId} className="font-semibold text-stone-800 block mb-1">Days Handover *</label>
+                  <label htmlFor={daysInputId} className="mb-1 block font-semibold text-stone-800">
+                    Days Handover *
+                  </label>
                   <input
                     id={daysInputId}
                     type="number"
                     required
                     value={formData.turnaroundDays}
-                    onChange={(e) => setFormData({ ...formData, turnaroundDays: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-[#8C7355] focus:outline-none"
+                    onChange={(e) =>
+                      setFormData({ ...formData, turnaroundDays: Number(e.target.value) })
+                    }
+                    className="w-full rounded-lg border border-stone-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8C7355]"
                   />
                 </div>
               </div>
 
               {/* Style & Cover Image */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label htmlFor={styleInputId} className="font-semibold text-stone-800 block mb-1">Design Style *</label>
+                  <label htmlFor={styleInputId} className="mb-1 block font-semibold text-stone-800">
+                    Design Style *
+                  </label>
                   <input
                     id={styleInputId}
                     type="text"
@@ -707,11 +803,16 @@ export default function DesignPortfolioAdminPage() {
                     value={formData.style}
                     onChange={(e) => setFormData({ ...formData, style: e.target.value })}
                     placeholder="e.g. Neo-Classical Luxury / Japandi"
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-[#8C7355] focus:outline-none"
+                    className="w-full rounded-lg border border-stone-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8C7355]"
                   />
                 </div>
                 <div>
-                  <label htmlFor={coverImageInputId} className="font-semibold text-stone-800 block mb-1">Cover Image URL *</label>
+                  <label
+                    htmlFor={coverImageInputId}
+                    className="mb-1 block font-semibold text-stone-800"
+                  >
+                    Cover Image URL *
+                  </label>
                   <input
                     id={coverImageInputId}
                     type="url"
@@ -719,127 +820,147 @@ export default function DesignPortfolioAdminPage() {
                     value={formData.coverImage}
                     onChange={(e) => setFormData({ ...formData, coverImage: e.target.value })}
                     placeholder="https://images.unsplash.com/..."
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-[#8C7355] focus:outline-none font-mono"
+                    className="w-full rounded-lg border border-stone-300 px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-[#8C7355]"
                   />
                 </div>
               </div>
 
               {/* Gallery Images (one per line) */}
               <div>
-                <label htmlFor={galleryInputId} className="font-semibold text-stone-800 block mb-1">Gallery Image URLs (one per line)</label>
+                <label htmlFor={galleryInputId} className="mb-1 block font-semibold text-stone-800">
+                  Gallery Image URLs (one per line)
+                </label>
                 <textarea
                   id={galleryInputId}
                   rows={2}
                   value={formData.galleryImagesStr}
                   onChange={(e) => setFormData({ ...formData, galleryImagesStr: e.target.value })}
                   placeholder="https://...\nhttps://..."
-                  className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-[#8C7355] focus:outline-none font-mono"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-[#8C7355]"
                 />
               </div>
 
               {/* Scope (one per line) */}
               <div>
-                <label htmlFor={scopeInputId} className="font-semibold text-stone-800 block mb-1">Scope Highlights (one per line)</label>
+                <label htmlFor={scopeInputId} className="mb-1 block font-semibold text-stone-800">
+                  Scope Highlights (one per line)
+                </label>
                 <textarea
                   id={scopeInputId}
                   rows={2}
                   value={formData.scopeStr}
                   onChange={(e) => setFormData({ ...formData, scopeStr: e.target.value })}
                   placeholder="Modular Kitchen with Quartz Island\nMaster Walk-in Closet"
-                  className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-[#8C7355] focus:outline-none"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8C7355]"
                 />
               </div>
 
               {/* Designer Notes */}
               <div>
-                <label htmlFor={notesInputId} className="font-semibold text-stone-800 block mb-1">Principal Architect Notes</label>
+                <label htmlFor={notesInputId} className="mb-1 block font-semibold text-stone-800">
+                  Principal Architect Notes
+                </label>
                 <textarea
                   id={notesInputId}
                   rows={2}
                   value={formData.designerNotes}
                   onChange={(e) => setFormData({ ...formData, designerNotes: e.target.value })}
                   placeholder="Architectural intent, acoustic treatment, or lighting layout..."
-                  className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:ring-2 focus:ring-[#8C7355] focus:outline-none"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8C7355]"
                 />
               </div>
 
               {/* Client Testimonial */}
-              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 space-y-2">
-                <span className="font-semibold text-stone-800 block">Client Testimonial (Optional)</span>
+              <div className="space-y-2 rounded-xl border border-stone-200 bg-stone-50 p-3">
+                <span className="block font-semibold text-stone-800">
+                  Client Testimonial (Optional)
+                </span>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label htmlFor={clientNameInputId} className="sr-only">Client Name</label>
+                    <label htmlFor={clientNameInputId} className="sr-only">
+                      Client Name
+                    </label>
                     <input
                       id={clientNameInputId}
                       type="text"
                       placeholder="Client / Founder Name"
                       value={formData.clientName}
                       onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                      className="w-full px-3 py-1.5 rounded-lg border border-stone-300 text-xs bg-white"
+                      className="w-full rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs"
                     />
                   </div>
                   <div>
-                    <label htmlFor={clientSocietyInputId} className="sr-only">Client Society</label>
+                    <label htmlFor={clientSocietyInputId} className="sr-only">
+                      Client Society
+                    </label>
                     <input
                       id={clientSocietyInputId}
                       type="text"
                       placeholder="Society or Business Name"
                       value={formData.clientSociety}
                       onChange={(e) => setFormData({ ...formData, clientSociety: e.target.value })}
-                      className="w-full px-3 py-1.5 rounded-lg border border-stone-300 text-xs bg-white"
+                      className="w-full rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs"
                     />
                   </div>
                 </div>
                 <div>
-                  <label htmlFor={clientQuoteInputId} className="sr-only">Client Quote</label>
+                  <label htmlFor={clientQuoteInputId} className="sr-only">
+                    Client Quote
+                  </label>
                   <input
                     id={clientQuoteInputId}
                     type="text"
                     placeholder="Quote snippet..."
                     value={formData.clientQuote}
                     onChange={(e) => setFormData({ ...formData, clientQuote: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-stone-300 text-xs bg-white"
+                    className="w-full rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs"
                   />
                 </div>
               </div>
 
               {/* Toggles */}
               <div className="flex items-center gap-6 pt-2">
-                <label htmlFor={publishedCheckboxId} className="flex items-center gap-2 cursor-pointer">
+                <label
+                  htmlFor={publishedCheckboxId}
+                  className="flex cursor-pointer items-center gap-2"
+                >
                   <input
                     id={publishedCheckboxId}
                     type="checkbox"
                     checked={formData.isPublished}
                     onChange={(e) => setFormData({ ...formData, isPublished: e.target.checked })}
-                    className="w-4 h-4 rounded text-[#8C7355] focus:ring-[#8C7355]"
+                    className="h-4 w-4 rounded text-[#8C7355] focus:ring-[#8C7355]"
                   />
                   <span className="font-medium text-stone-800">Publish Immediately</span>
                 </label>
-                <label htmlFor={featuredCheckboxId} className="flex items-center gap-2 cursor-pointer">
+                <label
+                  htmlFor={featuredCheckboxId}
+                  className="flex cursor-pointer items-center gap-2"
+                >
                   <input
                     id={featuredCheckboxId}
                     type="checkbox"
                     checked={formData.isFeatured}
                     onChange={(e) => setFormData({ ...formData, isFeatured: e.target.checked })}
-                    className="w-4 h-4 rounded text-[#8C7355] focus:ring-[#8C7355]"
+                    className="h-4 w-4 rounded text-[#8C7355] focus:ring-[#8C7355]"
                   />
                   <span className="font-medium text-stone-800">Feature on Hero</span>
                 </label>
               </div>
 
               {/* Actions */}
-              <div className="pt-4 border-t border-stone-200 flex items-center justify-end gap-3">
+              <div className="flex items-center justify-end gap-3 border-t border-stone-200 pt-4">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-100 font-medium"
+                  className="rounded-lg border border-stone-300 px-4 py-2 font-medium text-stone-700 hover:bg-stone-100"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2 rounded-lg bg-[#171717] text-white hover:bg-black font-semibold shadow-xs disabled:opacity-50"
+                  className="shadow-xs rounded-lg bg-[#171717] px-5 py-2 font-semibold text-white hover:bg-black disabled:opacity-50"
                 >
                   {saving ? 'Saving...' : editingId ? 'Update Project' : 'Create Project'}
                 </button>

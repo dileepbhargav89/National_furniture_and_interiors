@@ -18,7 +18,7 @@ export interface User {
   email: string;
   phone?: string | null;
   userType: 'CUSTOMER' | 'STAFF' | 'ADMIN' | 'SUPER_ADMIN';
-  status: 'ACTIVE' | 'INACTIVE' | 'LOCKED';
+  status: 'ACTIVE' | 'INACTIVE' | 'LOCKED' | 'SUSPENDED' | 'BANNED';
   roleId?: string;
   avatarUrl?: string | null;
   addresses?: UserAddress[];
@@ -26,6 +26,16 @@ export interface User {
   createdAt: string;
   companyName?: string | null;
   gstin?: string | null;
+  onboardingStatus?: 'INVITED' | 'PENDING_PASSWORD' | 'COMPLETED';
+  invitedAt?: string | null;
+  lastLoginAt?: string | null;
+  failedLoginAttempts?: number;
+  lockedUntil?: string | null;
+  mustChangePassword?: boolean;
+  ordersCount?: number;
+  totalSpend?: number; // in paise
+  lastOrderAt?: string | null;
+  authProviders?: string[];
   // Backward-compatibility alias
   user?: User;
   profile?: {
@@ -34,6 +44,27 @@ export interface User {
     phone?: string;
     addresses?: UserAddress[];
   };
+}
+
+export interface UnregisteredLead {
+  id: string;
+  name: string;
+  fullName?: string | undefined;
+  email?: string | null | undefined;
+  phone: string;
+  source: string;
+  interestType: string;
+  interestedCategory?: string | undefined;
+  projectType?: string | null | undefined;
+  budgetRange?: { min: number; max: number } | undefined;
+  estimatedBudget?: number | undefined;
+  score: number;
+  priority: 'HOT' | 'WARM' | 'COLD';
+  leadScore?: 'HIGH' | 'MEDIUM' | 'LOW' | undefined;
+  status: string;
+  notes?: string | null | undefined;
+  lastContactedAt?: string | null | undefined;
+  createdAt: string;
 }
 
 export interface UpdateOwnProfilePayload {
@@ -58,7 +89,7 @@ export const UsersService = {
     }
     return res as typeof res & { data: User & { user: User } };
   },
-  
+
   updateOwnProfile: async (data: UpdateOwnProfilePayload) => {
     const res = await apiClient.patch<User>('/api/v1/users/me', data);
     if (res.data) {
@@ -70,5 +101,5 @@ export const UsersService = {
       }
     }
     return res as typeof res & { data: User & { user: User } };
-  }
+  },
 };

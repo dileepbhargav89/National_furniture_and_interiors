@@ -17,6 +17,12 @@ export function createCartRoutes(
     keyPrefix: 'cart-standard',
   });
 
+  const couponLimiter = createRateLimiter({
+    windowMs: 60_000,
+    max: 30,
+    keyPrefix: 'cart-coupon',
+  });
+
   // Cart supports both authenticated and guest sessions — authMiddleware is NOT applied here
   // globally. Instead, identity is resolved per-request in the controller from JWT or session ID.
   // The /cart/merge endpoint does require auth (enforced in the controller).
@@ -24,6 +30,11 @@ export function createCartRoutes(
   router.post('/cart/items', standardLimiter, controller.addItem);
   router.delete('/cart/items/:variantId', standardLimiter, controller.removeItem);
   router.patch('/cart/items/:variantId', standardLimiter, controller.updateItem);
+
+  // Coupon / Privilege discount endpoints
+  router.post('/cart/coupon', couponLimiter, controller.applyCoupon);
+  router.delete('/cart/coupon', standardLimiter, controller.removeCoupon);
+  router.get('/cart/coupons/active', standardLimiter, controller.getActiveCoupons);
 
   // Merge requires an authenticated user — enforced explicitly in the controller.
   router.post('/cart/merge', standardLimiter, authMiddleware, controller.mergeCart);

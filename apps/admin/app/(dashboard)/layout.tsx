@@ -3,11 +3,7 @@ import { AuthGuard } from '../../providers/auth-guard';
 import { AdminSidebar } from '../../components/admin-sidebar';
 import { AdminHeader } from '../../components/admin-header';
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <AuthGuard>
@@ -17,7 +13,7 @@ export default function DashboardLayout({
           <div className="admin-body">
             <AdminSidebar />
             <main className="admin-main">
-              <div className="max-w-[1400px] mx-auto px-3.5 sm:px-6 py-4 sm:py-6 min-h-full">
+              <div className="mx-auto min-h-full w-full max-w-[1600px] px-4 py-5 transition-all duration-300 sm:px-8 sm:py-7">
                 {children}
               </div>
             </main>
