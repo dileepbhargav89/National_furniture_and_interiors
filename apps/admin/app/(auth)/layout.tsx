@@ -2,57 +2,68 @@ import * as React from 'react';
 import Image from 'next/image';
 import { AuthProvider } from '../../providers/auth-provider';
 
-export default function AuthLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <div className="container relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
-
+      <div className="container relative grid min-h-screen flex-col items-center justify-center lg:max-w-none lg:grid-cols-2 lg:px-0">
         {/* Left — Brand Showcase Panel */}
         <div
-          className="relative hidden h-full flex-col p-10 text-white lg:flex overflow-hidden"
+          className="relative hidden h-full flex-col overflow-hidden p-10 text-white lg:flex"
           style={{
-            backgroundColor: 'var(--nfi-brown-dark)',
-            borderRight: '1px solid rgba(224,112,32,0.18)',
+            backgroundColor: '#46220E',
+            borderRight: '1px solid rgba(224,112,32,0.25)',
           }}
         >
-          {/* Rich dark-wood gradient background */}
+          {/* Warm teak & amber heritage gradient — faded luxury tone relating to the NFI logo */}
           <div
             className="absolute inset-0"
-            style={{ background: 'linear-gradient(145deg, #4A1E0A 0%, #2A1005 45%, #140803 100%)' }}
+            style={{
+              background: 'linear-gradient(150deg, #8A4B27 0%, #663519 45%, #46220E 100%)',
+            }}
           />
 
-          {/* Subtle orange ambient glow bottom-right */}
+          {/* Luminous faded amber ambient glow — radiates from center behind logo */}
           <div
-            className="absolute bottom-0 right-0 w-96 h-96 rounded-full pointer-events-none"
+            className="pointer-events-none absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full"
             style={{
-              background: 'radial-gradient(circle, rgba(224,112,32,0.15) 0%, transparent 70%)',
-              transform: 'translate(25%, 25%)',
+              background:
+                'radial-gradient(circle, rgba(245,160,96,0.28) 0%, rgba(224,112,32,0.16) 42%, transparent 72%)',
+            }}
+          />
+
+          {/* Soft atmospheric fade overlay */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(224,112,32,0.04) 45%, rgba(0,0,0,0.12) 100%)',
             }}
           />
 
           {/* Top corner accent line */}
           <div
-            className="absolute top-0 left-0 right-0 h-[3px]"
-            style={{ background: 'linear-gradient(90deg, var(--nfi-orange) 0%, rgba(224,112,32,0.2) 100%)' }}
+            className="absolute left-0 right-0 top-0 h-[3px]"
+            style={{
+              background:
+                'linear-gradient(90deg, var(--nfi-orange) 0%, #F5A060 50%, rgba(224,112,32,0.2) 100%)',
+            }}
           />
 
           {/* Brand header */}
           <div className="relative z-20 mb-8">
-            <div className="flex items-center gap-2">
-              <div
-                className="w-2 h-2 rounded-full"
+            <div
+              className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em]"
+              style={{
+                backgroundColor: 'rgba(224,112,32,0.20)',
+                border: '1px solid rgba(224,112,32,0.40)',
+                color: '#FCE7D2',
+              }}
+            >
+              <span
+                className="h-1.5 w-1.5 rounded-full"
                 style={{ backgroundColor: 'var(--nfi-orange)' }}
               />
-              <span
-                className="text-[11px] uppercase tracking-[0.25em] font-bold"
-                style={{ color: 'rgba(245,220,190,0.6)' }}
-              >
-                Est. 1998 · Bengaluru
-              </span>
+              Est. 1998 · Bengaluru
             </div>
           </div>
 
@@ -60,34 +71,35 @@ export default function AuthLayout({
           <div className="relative z-20 flex flex-1 flex-col items-center justify-center">
             {/* Elegant card for logo */}
             <div
-              className="relative flex items-center justify-center rounded-[2rem] p-8 mb-8 shadow-2xl bg-white"
+              className="relative mb-7 flex items-center justify-center rounded-3xl bg-gradient-to-b from-white via-white to-[#FDF8F2] p-7 shadow-2xl"
               style={{
-                border: '1px solid rgba(224,112,32,0.25)',
-                boxShadow: '0 0 60px rgba(224,112,32,0.15), 0 25px 60px rgba(0,0,0,0.35)',
+                border: '1.5px solid rgba(224,112,32,0.35)',
+                boxShadow: '0 0 50px rgba(224,112,32,0.22), 0 20px 45px rgba(50,22,10,0.25)',
               }}
             >
               <Image
                 src="/nfi-logo.png"
                 alt="National Furniture & Interiors Logo"
-                width={320}
-                height={320}
+                width={300}
+                height={300}
                 priority
-                className="w-56 h-auto object-contain"
+                className="drop-shadow-xs h-auto w-52 object-contain"
               />
             </div>
 
             {/* Portal label */}
             <div className="text-center">
-              <h2
-                className="text-2xl font-bold tracking-tight text-white flex items-center justify-center gap-2 mb-2"
-              >
-                <span style={{ color: 'var(--nfi-orange)' }}>✦</span>
+              <h2 className="mb-2 flex items-center justify-center gap-2 text-2xl font-bold tracking-tight text-white">
+                <span style={{ color: '#F5A060' }}>✦</span>
                 Executive Command Portal
               </h2>
-              <p className="text-sm font-medium" style={{ color: 'rgba(245,220,190,0.7)' }}>
+              <p className="text-sm font-medium" style={{ color: 'rgba(253,248,242,0.88)' }}>
                 National Furniture &amp; Interiors
               </p>
-              <p className="text-[11px] mt-1.5 uppercase tracking-widest font-mono" style={{ color: 'rgba(245,220,190,0.4)' }}>
+              <p
+                className="mt-1.5 font-mono text-[11px] uppercase tracking-widest"
+                style={{ color: 'rgba(245,210,180,0.65)' }}
+              >
                 Secure · Role-Based · ISO/IEC 27001
               </p>
             </div>
@@ -95,7 +107,7 @@ export default function AuthLayout({
 
           {/* Bottom trust badges */}
           <div className="relative z-20 mt-8">
-            <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex flex-wrap items-center gap-3">
               {[
                 { label: '40,000 sq.ft Studio' },
                 { label: 'Bengaluru & Hyderabad' },
@@ -103,11 +115,15 @@ export default function AuthLayout({
               ].map((b) => (
                 <div
                   key={b.label}
-                  className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider"
-                  style={{ color: 'rgba(245,220,190,0.5)' }}
+                  className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider"
+                  style={{
+                    backgroundColor: 'rgba(253,248,242,0.10)',
+                    border: '1px solid rgba(224,112,32,0.30)',
+                    color: 'rgba(253,248,242,0.85)',
+                  }}
                 >
                   <span
-                    className="w-1 h-1 rounded-full"
+                    className="h-1.5 w-1.5 rounded-full"
                     style={{ backgroundColor: 'var(--nfi-orange)' }}
                   />
                   {b.label}
@@ -119,14 +135,13 @@ export default function AuthLayout({
 
         {/* Right — Authentication Form Panel */}
         <div
-          className="lg:p-8 flex items-center justify-center min-h-screen"
+          className="flex min-h-screen items-center justify-center lg:p-8"
           style={{ backgroundColor: 'var(--nfi-cream)' }}
         >
-          <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[480px] max-w-lg p-6">
+          <div className="mx-auto flex w-full max-w-lg flex-col justify-center space-y-6 p-6 sm:w-[480px]">
             {children}
           </div>
         </div>
-
       </div>
     </AuthProvider>
   );

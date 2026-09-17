@@ -21,9 +21,9 @@
     --nfi-primary-hover:   #B85A10;
     --nfi-accent:          #E07020;
 
-    --nfi-brown:           #5C2D10;
-    --nfi-brown-dark:      #3D1A08;
-    --nfi-brown-mid:       #7A4020;
+    --nfi-brown:           #633316;
+    --nfi-brown-dark:      #46220E;
+    --nfi-brown-mid:       #824722;
 
     /* Background & Surface */
     --nfi-cream:           #FDF8F2;
@@ -31,13 +31,13 @@
     --nfi-surface:         #FFFFFF;
     --nfi-surface-muted:   #F5EDE0;
 
-    /* Sidebar (dark mahogany) */
-    --nfi-sidebar-bg:      #3D1A08;
-    --nfi-sidebar-hover:   #5C2D10;
+    /* Sidebar (warm teak & amber heritage) */
+    --nfi-sidebar-bg:      #46220E;
+    --nfi-sidebar-hover:   #5E2F15;
     --nfi-sidebar-active:  #E07020;
-    --nfi-sidebar-text:    #F5EDE0;
-    --nfi-sidebar-muted:   #C9A080;
-    --nfi-sidebar-border:  rgba(253, 248, 242, 0.08);
+    --nfi-sidebar-text:    #FDF8F2;
+    --nfi-sidebar-muted:   #D8B79B;
+    --nfi-sidebar-border:  rgba(224, 112, 32, 0.14);
 
     /* Borders */
     --nfi-border:          #DDD0BE;
