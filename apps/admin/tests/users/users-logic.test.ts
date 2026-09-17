@@ -15,46 +15,83 @@ describe('Admin Users Suite Logic Harness', () => {
     }
 
     function parseCsvText(text: string): { rows: ParsedUserRow[]; error?: string } {
-      const lines = text
+      const rawLines = text
         .split(/\r?\n/)
         .map((l) => l.trim())
         .filter(Boolean);
-      if (lines.length <= 1) {
-        return { rows: [], error: 'The uploaded CSV is empty or only contains a header row.' };
+      if (rawLines.length === 0) {
+        return { rows: [], error: 'The uploaded CSV file is empty.' };
+      }
+
+      const firstLineCols = rawLines[0]!.split(',').map((c) =>
+        c
+          .trim()
+          .replace(/^["']|["']$/g, '')
+          .toLowerCase(),
+      );
+
+      let emailIdx = firstLineCols.findIndex((c) => c.includes('email') || c.includes('mail'));
+      let nameIdx = firstLineCols.findIndex((c) => c.includes('name'));
+      let phoneIdx = firstLineCols.findIndex((c) => c.includes('phone') || c.includes('mobile'));
+      let typeIdx = firstLineCols.findIndex((c) => c.includes('type') || c.includes('role'));
+      let firmIdx = firstLineCols.findIndex((c) => c.includes('firm') || c.includes('company'));
+      let gstinIdx = firstLineCols.findIndex((c) => c.includes('gst'));
+
+      let startLine = 1;
+      if (rawLines[0]!.includes('@') && emailIdx === -1) {
+        startLine = 0;
+        emailIdx = 0;
+        nameIdx = 1;
+        phoneIdx = 2;
+      } else if (emailIdx === -1) {
+        if (firstLineCols.length === 1) {
+          emailIdx = 0;
+        } else {
+          nameIdx = 0;
+          emailIdx = 1;
+          phoneIdx = 2;
+          typeIdx = 3;
+          firmIdx = 4;
+          gstinIdx = 5;
+        }
       }
 
       const rows: ParsedUserRow[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i]!;
+      for (let i = startLine; i < rawLines.length; i++) {
+        const line = rawLines[i]!;
         const cols = line.split(',').map((c) => c.trim().replace(/^["']|["']$/g, ''));
-        const [
-          fullName = '',
-          email = '',
-          phone = '',
-          userTypeRaw = 'CUSTOMER',
-          companyName = '',
-          gstin = '',
-        ] = cols;
 
-        const userTypeUpper = userTypeRaw.toUpperCase();
+        const emailRaw = (emailIdx >= 0 ? cols[emailIdx] : '') || '';
+        const email = emailRaw.toLowerCase().trim();
+
+        const nameRaw = (nameIdx >= 0 ? cols[nameIdx] : '') || '';
+        const phoneRaw = (phoneIdx >= 0 ? cols[phoneIdx] : '') || '';
+        const typeRaw = (typeIdx >= 0 ? cols[typeIdx] : '') || 'CUSTOMER';
+        const firmRaw = (firmIdx >= 0 ? cols[firmIdx] : '') || '';
+        const gstinRaw = (gstinIdx >= 0 ? cols[gstinIdx] : '') || '';
+
+        const userTypeUpper = typeRaw.toUpperCase();
         const validUserType: 'CUSTOMER' | 'STAFF' | 'ADMIN' =
           userTypeUpper === 'STAFF' || userTypeUpper === 'ADMIN' ? userTypeUpper : 'CUSTOMER';
 
         const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-        const hasName = fullName.length >= 2;
-
         let rowError = '';
-        if (!hasName) rowError = 'Missing valid full name';
-        else if (!emailValid) rowError = 'Invalid email syntax';
+        if (!email) {
+          rowError = 'Missing email address';
+        } else if (!emailValid) {
+          rowError = 'Invalid email syntax';
+        }
+
+        const derivedName = nameRaw.trim() || email.split('@')[0] || 'Patron';
 
         rows.push({
-          fullName,
+          fullName: derivedName,
           email,
-          phone: phone || null,
+          phone: phoneRaw.trim() ? phoneRaw.trim() : null,
           userType: validUserType,
-          companyName: companyName || null,
-          gstin: gstin || null,
-          valid: hasName && emailValid,
+          companyName: firmRaw.trim() ? firmRaw.trim() : null,
+          gstin: gstinRaw.trim() ? gstinRaw.trim() : null,
+          valid: emailValid,
           error: rowError,
         });
       }
@@ -86,30 +123,29 @@ describe('Admin Users Suite Logic Harness', () => {
       expect(row2.valid).toBe(true);
     });
 
-    it('flags invalid rows with invalid email or missing name', () => {
-      const invalidCsv =
-        'fullName,email,phone,userType,companyName,gstin\n' +
-        'V,bad-email-address,+919876543210,CUSTOMER,,\n' +
-        ',valid@example.com,,,,\n' +
-        'Valid Patron,valid.patron@example.com,,,,\n';
+    it('parses email-only rosters and derives names automatically', () => {
+      const emailOnlyCsv =
+        'email\n' + 'riya.rathore@example.com\n' + 'mohit.sharma@example.com\n' + 'bad-email\n';
 
-      const result = parseCsvText(invalidCsv);
+      const result = parseCsvText(emailOnlyCsv);
       expect(result.rows).toHaveLength(3);
 
-      expect(result.rows[0]!.valid).toBe(false);
-      expect(result.rows[0]!.error).toBe('Missing valid full name');
+      expect(result.rows[0]!.valid).toBe(true);
+      expect(result.rows[0]!.fullName).toBe('riya.rathore');
+      expect(result.rows[0]!.email).toBe('riya.rathore@example.com');
 
-      expect(result.rows[1]!.valid).toBe(false);
-      expect(result.rows[1]!.error).toBe('Missing valid full name');
+      expect(result.rows[1]!.valid).toBe(true);
+      expect(result.rows[1]!.fullName).toBe('mohit.sharma');
 
-      expect(result.rows[2]!.valid).toBe(true);
+      expect(result.rows[2]!.valid).toBe(false);
+      expect(result.rows[2]!.error).toBe('Invalid email syntax');
     });
 
-    it('returns error if CSV only contains headers or is empty', () => {
-      const emptyCsv = 'fullName,email,phone,userType,companyName,gstin\n';
+    it('returns empty rows if CSV is empty', () => {
+      const emptyCsv = '';
       const result = parseCsvText(emptyCsv);
       expect(result.rows).toHaveLength(0);
-      expect(result.error).toContain('empty or only contains a header row');
+      expect(result.error).toContain('empty');
     });
   });
 

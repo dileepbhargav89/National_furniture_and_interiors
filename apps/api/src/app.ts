@@ -17,6 +17,7 @@ import { createAuthMiddleware } from './modules/auth/presentation/auth.middlewar
 import { createAuthRoutes } from './modules/auth/presentation/auth.routes';
 import { createAdminRoutes } from './modules/admin/presentation/admin.routes';
 import { createUsersRoutes } from './modules/users/presentation/users.routes';
+import { createOnboardingRoutes } from './modules/users/presentation/onboarding.routes';
 import { createCatalogController } from './modules/catalog/presentation/catalog.controller';
 import { createCatalogRoutes } from './modules/catalog/presentation/catalog.routes';
 import { createMediaController } from './modules/media/presentation/media.controller';
@@ -106,6 +107,15 @@ export function createApp(mountBusinessRoutes = true): Express {
 
     // docs/08 §3.17 — URI-based versioning from day one.
     app.use('/api/v1/auth', createAuthRoutes(authController, authMiddleware));
+
+    app.use(
+      '/api/v1/onboarding',
+      createOnboardingRoutes({
+        verifyOnboardingToken: ctx.users.verifyOnboardingToken,
+        completeOnboarding: ctx.users.completeOnboarding,
+        recordAudit: (input) => ctx.admin.auditLogger.record(input),
+      }),
+    );
 
     app.use(
       '/api/v1',

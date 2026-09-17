@@ -119,6 +119,6 @@ describe('userType / MFA requirement (docs/09 §2.8)', () => {
 
   it('declares exactly the docs/03 §9.1.1 enums', () => {
     expect([...USER_TYPES]).toEqual(['CUSTOMER', 'STAFF', 'ADMIN']);
-    expect([...USER_STATUSES]).toEqual(['ACTIVE', 'SUSPENDED', 'BANNED']);
+    expect([...USER_STATUSES]).toEqual(['ACTIVE', 'SUSPENDED', 'BANNED', 'INVITED']);
   });
 });

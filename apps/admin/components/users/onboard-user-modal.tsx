@@ -18,14 +18,13 @@ interface OnboardUserModalProps {
 }
 
 export function OnboardUserModal({ open, onClose, onSuccess, initialData }: OnboardUserModalProps) {
-  const [fullName, setFullName] = useState(initialData?.fullName || '');
   const [email, setEmail] = useState(initialData?.email || '');
+  const [fullName, setFullName] = useState(initialData?.fullName || '');
   const [phone, setPhone] = useState(initialData?.phone || '');
   const [userType, setUserType] = useState<'CUSTOMER' | 'STAFF' | 'ADMIN'>('CUSTOMER');
   const [companyName, setCompanyName] = useState(initialData?.companyName || '');
   const [gstin, setGstin] = useState('');
-  const [temporaryPassword, setTemporaryPassword] = useState('');
-  const [sendInvite, setSendInvite] = useState(true);
+  const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -33,10 +32,13 @@ export function OnboardUserModal({ open, onClose, onSuccess, initialData }: Onbo
   React.useEffect(() => {
     if (open) {
       if (initialData) {
-        setFullName(initialData.fullName || '');
         setEmail(initialData.email || '');
+        setFullName(initialData.fullName || '');
         setPhone(initialData.phone || '');
         setCompanyName(initialData.companyName || '');
+        if (initialData.fullName || initialData.phone || initialData.companyName) {
+          setShowOptionalFields(true);
+        }
       }
       setError('');
     }
@@ -51,14 +53,13 @@ export function OnboardUserModal({ open, onClose, onSuccess, initialData }: Onbo
 
     try {
       const res = await AdminService.onboardUser({
-        fullName,
-        email,
-        phone: phone || null,
+        email: email.trim().toLowerCase(),
+        ...(fullName.trim() ? { fullName: fullName.trim() } : {}),
+        phone: phone.trim() ? phone.trim() : null,
         userType,
-        companyName: companyName || null,
-        gstin: gstin || null,
-        ...(temporaryPassword ? { temporaryPassword } : {}),
-        sendInvite,
+        companyName: companyName.trim() ? companyName.trim() : null,
+        gstin: gstin.trim() ? gstin.trim() : null,
+        sendInvite: true,
       });
 
       if (res.data) {
@@ -66,7 +67,7 @@ export function OnboardUserModal({ open, onClose, onSuccess, initialData }: Onbo
         onClose();
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to onboard user');
+      setError(err instanceof Error ? err.message : 'Failed to dispatch onboarding invitation');
     } finally {
       setSubmitting(false);
     }
@@ -92,9 +93,14 @@ export function OnboardUserModal({ open, onClose, onSuccess, initialData }: Onbo
           }}
         >
           <div>
-            <h2 className="text-base font-bold text-stone-900">Onboard New Account</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-stone-900">Onboard Patron & Partner</h2>
+              <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900">
+                Email-Only Ingestion
+              </span>
+            </div>
             <p className="mt-0.5 text-xs text-stone-500">
-              Provision patron credentials or invite trade partners and team members.
+              Enter the client email to dispatch a private self-activation invitation.
             </p>
           </div>
           <button
@@ -121,123 +127,143 @@ export function OnboardUserModal({ open, onClose, onSuccess, initialData }: Onbo
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <FormField label="Full Name" htmlFor="fullName" required>
-                <input
-                  id="fullName"
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Vikramaditya Singhania"
-                  className={inputClassName}
-                  style={inputStyle}
-                />
-              </FormField>
-            </div>
-
-            <div>
-              <FormField label="Email Address" htmlFor="email" required>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="patron@domain.com"
-                  className={inputClassName}
-                  style={inputStyle}
-                />
-              </FormField>
-            </div>
-
-            <div>
-              <FormField label="Phone Number" htmlFor="phone">
-                <input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+91 98765 43210"
-                  className={inputClassName}
-                  style={inputStyle}
-                />
-              </FormField>
-            </div>
-
-            <div>
-              <FormField label="Account Type" htmlFor="userType" required>
-                <select
-                  id="userType"
-                  value={userType}
-                  onChange={(e) => setUserType(e.target.value as 'CUSTOMER' | 'STAFF' | 'ADMIN')}
-                  className={inputClassName}
-                  style={inputStyle}
-                >
-                  <option value="CUSTOMER">Customer / Trade VIP</option>
-                  <option value="STAFF">Studio Staff / Designer</option>
-                  <option value="ADMIN">System Administrator</option>
-                </select>
-              </FormField>
-            </div>
-
-            <div>
-              <FormField label="Organization / Firm" htmlFor="companyName">
-                <input
-                  id="companyName"
-                  type="text"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  placeholder="Architectural Studio / Firm"
-                  className={inputClassName}
-                  style={inputStyle}
-                />
-              </FormField>
-            </div>
-
-            <div className="col-span-2">
-              <FormField label="GSTIN (Optional for Commercial Accounts)" htmlFor="gstin">
-                <input
-                  id="gstin"
-                  type="text"
-                  value={gstin}
-                  onChange={(e) => setGstin(e.target.value)}
-                  placeholder="29AAAAA0000A1Z5"
-                  className={inputClassName}
-                  style={inputStyle}
-                />
-              </FormField>
-            </div>
-
-            <div className="col-span-2">
-              <FormField label="Custom Temporary Password (Optional)" htmlFor="temporaryPassword">
-                <input
-                  id="temporaryPassword"
-                  type="text"
-                  value={temporaryPassword}
-                  onChange={(e) => setTemporaryPassword(e.target.value)}
-                  placeholder="Leave blank to auto-generate a secure temporary password"
-                  className={inputClassName}
-                  style={inputStyle}
-                />
-              </FormField>
-            </div>
+          {/* Email: Primary & Only Mandatory Input */}
+          <div className="rounded-lg border border-amber-200/70 bg-amber-50/40 p-4">
+            <FormField label="Patron Email Address" htmlFor="email" required>
+              <input
+                id="email"
+                type="email"
+                required
+                autoFocus
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="patron@domain.com or architect@studio.in"
+                className={inputClassName}
+                style={inputStyle}
+              />
+            </FormField>
+            <p className="mt-1.5 text-[11px] text-amber-900/80">
+              The invitation token will be dispatched directly to this email address.
+            </p>
           </div>
 
-          <div className="flex items-center justify-between rounded-lg border border-stone-200 bg-stone-50 p-3.5">
-            <div>
-              <p className="text-xs font-semibold text-stone-900">Dispatch Welcome Invitation</p>
-              <p className="text-[11px] text-stone-500">
-                Sends onboarding link and instructions via verified email & SMS.
-              </p>
+          {/* Collapsible/Optional Fields */}
+          <div className="border-t border-stone-200 pt-3">
+            <button
+              type="button"
+              onClick={() => setShowOptionalFields(!showOptionalFields)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-amber-700"
+            >
+              <svg
+                className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                  showOptionalFields ? 'rotate-90' : ''
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+              <span>Pre-fill Client Dossier (Optional)</span>
+            </button>
+
+            {showOptionalFields && (
+              <div className="mt-3 grid grid-cols-2 gap-3.5 rounded-lg border border-stone-100 bg-stone-50/70 p-3.5">
+                <div className="col-span-2">
+                  <FormField label="Full Name (Optional)" htmlFor="fullName">
+                    <input
+                      id="fullName"
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="e.g. Vikramaditya Singhania"
+                      className={inputClassName}
+                      style={inputStyle}
+                    />
+                  </FormField>
+                </div>
+
+                <div>
+                  <FormField label="Phone Number (Optional)" htmlFor="phone">
+                    <input
+                      id="phone"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+91 98765 43210"
+                      className={inputClassName}
+                      style={inputStyle}
+                    />
+                  </FormField>
+                </div>
+
+                <div>
+                  <FormField label="Account Type" htmlFor="userType">
+                    <select
+                      id="userType"
+                      value={userType}
+                      onChange={(e) =>
+                        setUserType(e.target.value as 'CUSTOMER' | 'STAFF' | 'ADMIN')
+                      }
+                      className={inputClassName}
+                      style={inputStyle}
+                    >
+                      <option value="CUSTOMER">Customer / Trade VIP</option>
+                      <option value="STAFF">Studio Staff / Designer</option>
+                      <option value="ADMIN">System Administrator</option>
+                    </select>
+                  </FormField>
+                </div>
+
+                <div>
+                  <FormField label="Organization / Firm (Optional)" htmlFor="companyName">
+                    <input
+                      id="companyName"
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      placeholder="Architectural Studio"
+                      className={inputClassName}
+                      style={inputStyle}
+                    />
+                  </FormField>
+                </div>
+
+                <div>
+                  <FormField label="GSTIN (Optional)" htmlFor="gstin">
+                    <input
+                      id="gstin"
+                      type="text"
+                      value={gstin}
+                      onChange={(e) => setGstin(e.target.value)}
+                      placeholder="29AAAAA0000A1Z5"
+                      className={inputClassName}
+                      style={inputStyle}
+                    />
+                  </FormField>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* White-Glove Self-Activation Flow Info */}
+          <div className="rounded-lg border border-stone-200 bg-stone-50 p-3.5 text-xs text-stone-600">
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 text-base">✨</span>
+              <div>
+                <p className="font-semibold text-stone-900">White-Glove Patron Self-Activation</p>
+                <p className="mt-0.5 text-[11px] text-stone-500">
+                  Patron receives an invitation link to verify their email, enrich their profile
+                  (phone, address, firm/GSTIN), and create their own secure password. Passwords are
+                  never handled by administrative staff.
+                </p>
+              </div>
             </div>
-            <input
-              type="checkbox"
-              checked={sendInvite}
-              onChange={(e) => setSendInvite(e.target.checked)}
-              className="h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-500"
-            />
           </div>
 
           <div
@@ -254,7 +280,7 @@ export function OnboardUserModal({ open, onClose, onSuccess, initialData }: Onbo
               Cancel
             </NfiButton>
             <NfiButton type="submit" variant="primary" size="sm" loading={submitting}>
-              Complete Onboarding
+              Send Onboarding Invitation
             </NfiButton>
           </div>
         </form>

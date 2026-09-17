@@ -8,8 +8,10 @@ import {
   AdminResendOnboarding,
   AdminResetUserPassword,
   AdminUpdateUserStatus,
+  CompleteOnboarding,
   GetOwnProfile,
   UpdateOwnProfile,
+  VerifyOnboardingToken,
 } from '../../../src/modules/users/application/user.use-cases';
 import { ConflictError, NotFoundError, ValidationError } from '../../../src/core/exceptions';
 import type {
@@ -57,6 +59,15 @@ function build() {
     ),
     resetPassword: vi.fn(async () => true),
     recordOnboardingInvite: vi.fn(async () => true),
+    refreshOnboardingToken: vi.fn(async () => true),
+    findByOnboardingToken: vi.fn(async (token: string) =>
+      token === 'valid-token' ? mockProfile : null,
+    ),
+    completeOnboarding: vi.fn(async () => ({
+      ...mockProfile,
+      status: 'ACTIVE',
+      onboardingStatus: 'COMPLETED',
+    })),
   } as unknown as IUserProfileRepository;
 
   const hashPassword = vi.fn(async (pw: string) => `hashed_${pw}`);
@@ -241,23 +252,32 @@ describe('Users Use Cases', () => {
       expect(result).toBeDefined();
       expect(repository.findByEmail).toHaveBeenCalledWith('singhania@luxuryresidences.in');
       expect(hashPassword).toHaveBeenCalledWith('CustomSecret123!');
-      expect(repository.onboardUser).toHaveBeenCalledWith(input, 'hashed_CustomSecret123!');
+      expect(repository.onboardUser).toHaveBeenCalledWith(
+        input,
+        'hashed_CustomSecret123!',
+        expect.any(String),
+        expect.any(Date),
+      );
     });
 
-    it('auto-generates temporary password when none provided', async () => {
-      const { repository, hashPassword, generateTemporaryPassword } = build();
-      const useCase = new AdminOnboardUser(repository, hashPassword, generateTemporaryPassword);
+    it('onboards email-only patron without password and generates onboarding token', async () => {
+      const { repository, hashPassword } = build();
+      const useCase = new AdminOnboardUser(repository, hashPassword);
 
       const input = {
         email: 'deshmukh@atelierdesign.in',
-        fullName: 'Ananya Deshmukh',
         userType: 'CUSTOMER' as const,
         roleId: 'role-customer',
       };
 
       await useCase.execute(input);
-      expect(generateTemporaryPassword).toHaveBeenCalled();
-      expect(hashPassword).toHaveBeenCalledWith('SecureTemp123!');
+      expect(hashPassword).not.toHaveBeenCalled();
+      expect(repository.onboardUser).toHaveBeenCalledWith(
+        input,
+        null,
+        expect.any(String),
+        expect.any(Date),
+      );
     });
 
     it('throws ConflictError if email is already registered', async () => {
@@ -277,14 +297,20 @@ describe('Users Use Cases', () => {
   });
 
   describe('AdminResendOnboarding', () => {
-    it('records invite timestamp and dispatches invitation for existing user', async () => {
+    it('records invite timestamp, refreshes token, and dispatches invitation for existing user', async () => {
       const { repository } = build();
       const useCase = new AdminResendOnboarding(repository);
 
       const result = await useCase.execute('u1');
       expect(result.success).toBe(true);
       expect(result.message).toContain('test@example.com');
-      expect(repository.recordOnboardingInvite).toHaveBeenCalledWith('u1');
+      expect(result.onboardingToken).toBeDefined();
+      expect(result.onboardingUrl).toContain('/onboarding?token=');
+      expect(repository.refreshOnboardingToken).toHaveBeenCalledWith(
+        'u1',
+        expect.any(String),
+        expect.any(Date),
+      );
     });
 
     it('throws NotFoundError if target user does not exist', async () => {
@@ -292,6 +318,51 @@ describe('Users Use Cases', () => {
       const useCase = new AdminResendOnboarding(repository);
 
       await expect(useCase.execute('non-existent')).rejects.toThrowError(NotFoundError);
+    });
+  });
+
+  describe('VerifyOnboardingToken', () => {
+    it('returns verified patron details for a valid token', async () => {
+      const { repository } = build();
+      const useCase = new VerifyOnboardingToken(repository);
+
+      const result = await useCase.execute('valid-token');
+      expect(result.valid).toBe(true);
+      expect(result.email).toBe('test@example.com');
+      expect(repository.findByOnboardingToken).toHaveBeenCalledWith('valid-token');
+    });
+
+    it('throws ValidationError when token does not exist', async () => {
+      const { repository } = build();
+      const useCase = new VerifyOnboardingToken(repository);
+
+      await expect(useCase.execute('invalid-token')).rejects.toThrowError(ValidationError);
+    });
+  });
+
+  describe('CompleteOnboarding', () => {
+    it('completes onboarding, hashes password, and activates user with session', async () => {
+      const { repository, hashPassword } = build();
+      const mockSession = {
+        accessToken: 'mock_jwt_access',
+        refreshToken: 'mock_jwt_refresh',
+        refreshTokenExpiresAt: new Date(),
+      };
+      const issueSessionMock = vi.fn(async () => mockSession);
+      const useCase = new CompleteOnboarding(repository, hashPassword, issueSessionMock);
+
+      const result = await useCase.execute({
+        token: 'valid-token',
+        fullName: 'Activated Patron',
+        password: 'SecurePatronPass123!',
+        companyName: 'Atelier Designs',
+        deviceInfo: { userAgent: 'test-agent', ip: '127.0.0.1' },
+      });
+
+      expect(result.user).toBeDefined();
+      expect(result.session).toEqual(mockSession);
+      expect(hashPassword).toHaveBeenCalledWith('SecurePatronPass123!');
+      expect(repository.completeOnboarding).toHaveBeenCalled();
     });
   });
 

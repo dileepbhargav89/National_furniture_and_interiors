@@ -14,6 +14,7 @@ import { CrmService } from './crm';
 import { AnalyticsService } from './analytics';
 import { ReviewsService } from './reviews';
 import { PortfolioService } from './portfolio';
+import { OnboardingService } from './onboarding';
 import { ApiClient, apiClient, ApiError } from './client';
 export type { ApiResponse } from '@nfi/shared';
 
@@ -33,6 +34,7 @@ export * from './media';
 export * from './crm';
 export * from './analytics';
 export * from './reviews';
+export * from './onboarding';
 export * from './client';
 export { ApiClient, apiClient, ApiError };
 
@@ -53,9 +55,9 @@ export class NFIApiClient {
   public analytics: typeof AnalyticsService;
   public reviews: typeof ReviewsService;
   public portfolio: typeof PortfolioService;
+  public onboarding: typeof OnboardingService;
 
   constructor() {
-    
     this.auth = AuthService;
     this.catalog = CatalogService;
     this.cart = CartService;
@@ -72,5 +74,6 @@ export class NFIApiClient {
     this.crm = CrmService;
     this.analytics = AnalyticsService;
     this.reviews = ReviewsService;
+    this.onboarding = OnboardingService;
   }
 }

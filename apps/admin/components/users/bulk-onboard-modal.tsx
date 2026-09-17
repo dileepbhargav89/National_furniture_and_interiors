@@ -37,10 +37,11 @@ export function BulkOnboardModal({ open, onClose, onSuccess }: BulkOnboardModalP
 
   const handleDownloadTemplate = () => {
     const csvContent =
-      'fullName,email,phone,userType,companyName,gstin\n' +
-      'Vikramaditya Singhania,singhania@luxuryresidences.in,+919876543210,CUSTOMER,Singhania Estates,29AAAAA0000A1Z5\n' +
-      'Ananya Deshmukh,ananya@atelierdesign.in,+919876543211,CUSTOMER,Atelier Interiors,27BBBBB1111B2Z6\n' +
-      'Rajesh Verma,rajesh.verma@nationalinteriors.in,+919876543212,STAFF,National Studio Bengaluru,';
+      'email,fullName,phone,companyName,gstin\n' +
+      'singhania@luxuryresidences.in,Vikramaditya Singhania,+919876543210,Singhania Estates,29AAAAA0000A1Z5\n' +
+      'ananya@atelierdesign.in\n' +
+      'rohit.mehta@studioarch.com,Rohit Mehta,,Mehta Architecture,\n' +
+      'patron.client@domain.com\n';
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -53,48 +54,91 @@ export function BulkOnboardModal({ open, onClose, onSuccess }: BulkOnboardModalP
   };
 
   const parseCsvText = (text: string) => {
-    const lines = text
+    const rawLines = text
       .split(/\r?\n/)
       .map((l) => l.trim())
       .filter(Boolean);
-    if (lines.length <= 1) {
-      setError('The uploaded CSV is empty or only contains a header row.');
+
+    if (rawLines.length === 0) {
+      setError('The uploaded CSV file is empty.');
       return;
     }
 
-    const rows: ParsedUserRow[] = [];
-    // Skip header line
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i]!;
-      const cols = line.split(',').map((c) => c.trim().replace(/^["']|["']$/g, ''));
-      const [
-        fullName = '',
-        email = '',
-        phone = '',
-        userTypeRaw = 'CUSTOMER',
-        companyName = '',
-        gstin = '',
-      ] = cols;
+    // Determine header positions
+    const firstLineCols = rawLines[0]!.split(',').map((c) =>
+      c
+        .trim()
+        .replace(/^["']|["']$/g, '')
+        .toLowerCase(),
+    );
 
-      const userTypeUpper = userTypeRaw.toUpperCase();
+    let emailIdx = firstLineCols.findIndex((c) => c.includes('email') || c.includes('mail'));
+    let nameIdx = firstLineCols.findIndex((c) => c.includes('name'));
+    let phoneIdx = firstLineCols.findIndex((c) => c.includes('phone') || c.includes('mobile'));
+    let typeIdx = firstLineCols.findIndex((c) => c.includes('type') || c.includes('role'));
+    let firmIdx = firstLineCols.findIndex((c) => c.includes('firm') || c.includes('company'));
+    let gstinIdx = firstLineCols.findIndex((c) => c.includes('gst'));
+
+    let startLine = 1;
+
+    // If first line contains an @ and no email header was matched, treat row 0 as data without headers
+    if (rawLines[0]!.includes('@') && emailIdx === -1) {
+      startLine = 0;
+      emailIdx = 0;
+      nameIdx = 1;
+      phoneIdx = 2;
+    } else if (emailIdx === -1) {
+      // If only 1 column, it is email
+      if (firstLineCols.length === 1) {
+        emailIdx = 0;
+      } else {
+        // Fallback default: legacy order [fullName, email, phone, userType, companyName, gstin]
+        nameIdx = 0;
+        emailIdx = 1;
+        phoneIdx = 2;
+        typeIdx = 3;
+        firmIdx = 4;
+        gstinIdx = 5;
+      }
+    }
+
+    const rows: ParsedUserRow[] = [];
+    for (let i = startLine; i < rawLines.length; i++) {
+      const line = rawLines[i]!;
+      const cols = line.split(',').map((c) => c.trim().replace(/^["']|["']$/g, ''));
+
+      const emailRaw = (emailIdx >= 0 ? cols[emailIdx] : '') || '';
+      const email = emailRaw.toLowerCase().trim();
+
+      const nameRaw = (nameIdx >= 0 ? cols[nameIdx] : '') || '';
+      const phoneRaw = (phoneIdx >= 0 ? cols[phoneIdx] : '') || '';
+      const typeRaw = (typeIdx >= 0 ? cols[typeIdx] : '') || 'CUSTOMER';
+      const firmRaw = (firmIdx >= 0 ? cols[firmIdx] : '') || '';
+      const gstinRaw = (gstinIdx >= 0 ? cols[gstinIdx] : '') || '';
+
+      const userTypeUpper = typeRaw.toUpperCase();
       const validUserType: 'CUSTOMER' | 'STAFF' | 'ADMIN' =
         userTypeUpper === 'STAFF' || userTypeUpper === 'ADMIN' ? userTypeUpper : 'CUSTOMER';
 
       const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-      const hasName = fullName.length >= 2;
-
       let rowError = '';
-      if (!hasName) rowError = 'Missing valid full name';
-      else if (!emailValid) rowError = 'Invalid email syntax';
+      if (!email) {
+        rowError = 'Missing email address';
+      } else if (!emailValid) {
+        rowError = 'Invalid email syntax';
+      }
+
+      // If full name is empty, fall back gracefully to email prefix
+      const derivedName = nameRaw.trim() || email.split('@')[0] || 'Patron';
 
       rows.push({
-        fullName,
+        fullName: derivedName,
         email,
-        phone: phone || null,
+        phone: phoneRaw.trim() ? phoneRaw.trim() : null,
         userType: validUserType,
-        companyName: companyName || null,
-        gstin: gstin || null,
-        valid: hasName && emailValid,
+        companyName: firmRaw.trim() ? firmRaw.trim() : null,
+        gstin: gstinRaw.trim() ? gstinRaw.trim() : null,
+        valid: emailValid,
         error: rowError,
       });
     }
@@ -129,30 +173,51 @@ export function BulkOnboardModal({ open, onClose, onSuccess }: BulkOnboardModalP
     setResultSummary(null);
 
     try {
-      const res = await AdminService.bulkOnboardUsers(
-        validOnes.map((r) => ({
-          fullName: r.fullName,
-          email: r.email,
-          phone: r.phone ?? null,
-          userType: r.userType,
-          companyName: r.companyName ?? null,
-          gstin: r.gstin ?? null,
-        })),
-      );
+      // Support batch chunks of up to 500 items to guarantee high-velocity processing
+      const CHUNK_SIZE = 500;
+      let totalCreated: User[] = [];
+      let totalErrors: Array<{ email: string; error: string }> = [];
+      let totalSuccess = 0;
 
-      if (res.data) {
-        setResultSummary({
-          successCount: res.data.successCount,
-          errorCount: res.data.errorCount,
-          errors: res.data.errors,
-        });
+      for (let i = 0; i < validOnes.length; i += CHUNK_SIZE) {
+        const chunk = validOnes.slice(i, i + CHUNK_SIZE);
+        const res = await AdminService.bulkOnboardUsers(
+          chunk.map((r) => ({
+            email: r.email,
+            fullName: r.fullName,
+            phone: r.phone ?? null,
+            userType: r.userType,
+            companyName: r.companyName ?? null,
+            gstin: r.gstin ?? null,
+          })),
+        );
 
-        if (res.data.created && res.data.created.length > 0) {
-          onSuccess(res.data.created);
+        if (res.data) {
+          totalSuccess += res.data.successCount;
+          if (res.data.created) {
+            totalCreated = totalCreated.concat(res.data.created);
+          }
+          if (res.data.errors) {
+            totalErrors = totalErrors.concat(res.data.errors);
+          }
         }
       }
+
+      setResultSummary({
+        successCount: totalSuccess,
+        errorCount: totalErrors.length,
+        errors: totalErrors,
+      });
+
+      if (totalCreated.length > 0) {
+        onSuccess(totalCreated);
+      }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Bulk onboarding failed');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Bulk onboarding failed. Please ensure all email addresses are valid.',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -180,10 +245,14 @@ export function BulkOnboardModal({ open, onClose, onSuccess }: BulkOnboardModalP
           }}
         >
           <div>
-            <h2 className="text-base font-bold text-stone-900">Bulk Patron & Trade Onboarding</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-stone-900">Bulk Patron & Trade Onboarding</h2>
+              <span className="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-900">
+                Email-Only Ingestion Supported
+              </span>
+            </div>
             <p className="mt-0.5 text-xs text-stone-500">
-              Upload CSV roster to provision corporate clients, architectural firms, and interior
-              design partners.
+              Upload CSV roster of up to 1,000 corporate clients, architects, and designers.
             </p>
           </div>
           <button
@@ -214,7 +283,7 @@ export function BulkOnboardModal({ open, onClose, onSuccess }: BulkOnboardModalP
             <div>
               <p className="text-xs font-semibold text-stone-900">Need the official format?</p>
               <p className="text-[11px] text-stone-500">
-                Includes columns for Name, Email, Phone, Type, Firm, and GSTIN.
+                Only <strong>Email</strong> is required. Name, Phone, Firm, and GSTIN are optional.
               </p>
             </div>
             <NfiButton variant="secondary" size="sm" onClick={handleDownloadTemplate}>
@@ -251,7 +320,7 @@ export function BulkOnboardModal({ open, onClose, onSuccess }: BulkOnboardModalP
               </svg>
               <span className="text-xs font-semibold text-stone-800">Click to select CSV file</span>
               <span className="mt-0.5 text-[11px] text-stone-500">
-                Supports comma-delimited UTF-8 files
+                Supports comma-delimited UTF-8 files up to 1,000 entries
               </span>
               <input
                 id="csvFileInput"
@@ -292,8 +361,8 @@ export function BulkOnboardModal({ open, onClose, onSuccess }: BulkOnboardModalP
                   <thead className="sticky top-0 bg-[#FAF9F6] text-stone-500">
                     <tr>
                       <th className="px-3 py-2 text-left">Status</th>
-                      <th className="px-3 py-2 text-left">Name</th>
                       <th className="px-3 py-2 text-left">Email</th>
+                      <th className="px-3 py-2 text-left">Name</th>
                       <th className="px-3 py-2 text-left">Type</th>
                       <th className="px-3 py-2 text-left">Firm / GSTIN</th>
                     </tr>
@@ -310,11 +379,11 @@ export function BulkOnboardModal({ open, onClose, onSuccess }: BulkOnboardModalP
                             </span>
                           )}
                         </td>
-                        <td className="max-w-[120px] truncate px-3 py-2 font-medium text-stone-900">
-                          {r.fullName}
-                        </td>
-                        <td className="max-w-[150px] truncate px-3 py-2 text-stone-600">
+                        <td className="max-w-[150px] truncate px-3 py-2 font-medium text-stone-900">
                           {r.email}
+                        </td>
+                        <td className="max-w-[120px] truncate px-3 py-2 text-stone-600">
+                          {r.fullName}
                         </td>
                         <td className="px-3 py-2">
                           <span className="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[10px] text-stone-700">
@@ -344,7 +413,7 @@ export function BulkOnboardModal({ open, onClose, onSuccess }: BulkOnboardModalP
                 patrons.
                 {resultSummary.errorCount > 0 && (
                   <span className="ml-1 text-rose-700">
-                    ({resultSummary.errorCount} skipped due to duplicates or invalid records).
+                    ({resultSummary.errorCount} skipped due to existing accounts).
                   </span>
                 )}
               </p>

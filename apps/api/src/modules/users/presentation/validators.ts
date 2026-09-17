@@ -69,8 +69,8 @@ export const listUsersQuerySchema = z
 export const adminOnboardUserSchema = z
   .object({
     email: z.string().email().max(320),
-    fullName: z.string().min(1).max(200),
-    phone: z.string().min(6).max(20).nullable().optional(),
+    fullName: z.string().max(200).optional(),
+    phone: z.string().max(20).nullable().optional(),
     userType: z.enum(['CUSTOMER', 'STAFF', 'ADMIN']).default('CUSTOMER'),
     roleName: z.string().min(1).max(50).default('CUSTOMER'),
     companyName: z.string().max(200).nullable().optional(),
@@ -87,7 +87,7 @@ export const adminBulkOnboardSchema = z
         z
           .object({
             email: z.string().email().max(320),
-            fullName: z.string().min(1).max(200),
+            fullName: z.string().max(200).optional(),
             phone: z.string().max(20).nullable().optional(),
             userType: z.enum(['CUSTOMER', 'STAFF', 'ADMIN']).default('CUSTOMER'),
             companyName: z.string().max(200).nullable().optional(),
@@ -96,7 +96,7 @@ export const adminBulkOnboardSchema = z
           .strict(),
       )
       .min(1)
-      .max(100),
+      .max(1000),
   })
   .strict();
 
@@ -110,6 +110,24 @@ export const adminResetPasswordSchema = z
 
 export const adminUpdateStatusSchema = z
   .object({
-    status: z.enum(['ACTIVE', 'SUSPENDED', 'BANNED']),
+    status: z.enum(['ACTIVE', 'SUSPENDED', 'BANNED', 'INVITED']),
+  })
+  .strict();
+
+export const verifyOnboardingTokenSchema = z
+  .object({
+    token: z.string().min(16).max(128),
+  })
+  .strict();
+
+export const completeOnboardingSchema = z
+  .object({
+    token: z.string().min(16).max(128),
+    fullName: z.string().min(1).max(200),
+    phone: z.string().min(6).max(20).nullable().optional(),
+    password: z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH),
+    companyName: z.string().max(200).nullable().optional(),
+    gstin: z.string().max(25).nullable().optional(),
+    address: addressSchema.optional(),
   })
   .strict();

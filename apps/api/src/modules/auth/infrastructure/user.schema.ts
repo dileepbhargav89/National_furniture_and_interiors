@@ -50,6 +50,12 @@ const userSchema = new Schema(
     lockedUntil: { type: Date, default: null },
     // docs/09 §2.7 — last 5 password hashes retained to block immediate reuse.
     passwordHistory: { type: [String], default: [] },
+    // Onboarding & trade profile fields
+    onboardingToken: { type: String, default: null },
+    onboardingTokenExpiresAt: { type: Date, default: null },
+    onboardingStatus: { type: String, default: 'NONE' },
+    companyName: { type: String, default: null },
+    gstin: { type: String, default: null },
     // docs/03 §3's standard audit block.
     createdBy: { type: Schema.Types.ObjectId, default: null },
     updatedBy: { type: Schema.Types.ObjectId, default: null },

@@ -257,13 +257,13 @@ export function createUsersRoutes(deps: UsersRoutesDeps, authMiddleware: Request
 
           const created = await deps.adminOnboardUser.execute({
             email: body.email,
-            fullName: body.fullName,
+            ...(body.fullName ? { fullName: body.fullName } : {}),
             phone: body.phone ?? null,
             userType: body.userType,
             roleId,
             companyName: body.companyName ?? null,
             gstin: body.gstin ?? null,
-            temporaryPassword: body.temporaryPassword,
+            ...(body.temporaryPassword ? { temporaryPassword: body.temporaryPassword } : {}),
             sendInvite: body.sendInvite,
           });
 
@@ -310,7 +310,7 @@ export function createUsersRoutes(deps: UsersRoutesDeps, authMiddleware: Request
             try {
               const onboarded = await deps.adminOnboardUser.execute({
                 email: item.email,
-                fullName: item.fullName,
+                ...(item.fullName ? { fullName: item.fullName } : {}),
                 phone: item.phone ?? null,
                 userType: item.userType,
                 roleId: customerRoleId,
