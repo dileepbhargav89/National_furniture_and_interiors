@@ -1,15 +1,40 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore, AdminUser } from '../features/auth/store/auth.store';
 import { useAdminUIStore } from '../features/ui/store/ui.store';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import {
+  LayoutDashboard,
+  TrendingUp,
+  Package,
+  Layers,
+  Sparkles,
+  Boxes,
+  Star,
+  ShoppingCart,
+  CreditCard,
+  DraftingCompass,
+  Images,
+  Contact,
+  Bell,
+  FileText,
+  Image as ImageIcon,
+  Users,
+  ShieldCheck,
+  History,
+  LogOut,
+  Pin,
+  PinOff,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 
 interface NavItem {
   label: string;
   href: string;
+  icon: LucideIcon;
   requiredPermission?: string;
   allowedRoles?: string[];
 }
@@ -22,25 +47,60 @@ interface NavGroup {
 const navGroups: NavGroup[] = [
   {
     items: [
-      { label: 'Dashboard', href: '/dashboard' },
-      { label: 'Analytics', href: '/analytics', requiredPermission: 'analytics.read' },
+      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      {
+        label: 'Analytics',
+        href: '/analytics',
+        icon: TrendingUp,
+        requiredPermission: 'analytics.read',
+      },
     ],
   },
   {
     section: 'Catalog',
     items: [
-      { label: 'Products', href: '/catalog/products', requiredPermission: 'catalog.read' },
-      { label: 'Categories', href: '/catalog/categories', requiredPermission: 'catalog.read' },
-      { label: 'Collections', href: '/catalog/collections', requiredPermission: 'catalog.read' },
-      { label: 'Inventory', href: '/catalog/inventory', requiredPermission: 'catalog.read' },
-      { label: 'Reviews', href: '/reviews', requiredPermission: 'reviews.read' },
+      {
+        label: 'Products',
+        href: '/catalog/products',
+        icon: Package,
+        requiredPermission: 'catalog.read',
+      },
+      {
+        label: 'Categories',
+        href: '/catalog/categories',
+        icon: Layers,
+        requiredPermission: 'catalog.read',
+      },
+      {
+        label: 'Collections',
+        href: '/catalog/collections',
+        icon: Sparkles,
+        requiredPermission: 'catalog.read',
+      },
+      {
+        label: 'Inventory',
+        href: '/catalog/inventory',
+        icon: Boxes,
+        requiredPermission: 'catalog.read',
+      },
+      { label: 'Reviews', href: '/reviews', icon: Star, requiredPermission: 'reviews.read' },
     ],
   },
   {
     section: 'Orders',
     items: [
-      { label: 'All Orders', href: '/orders', requiredPermission: 'orders.read' },
-      { label: 'Payments', href: '/payments', requiredPermission: 'payments.read' },
+      {
+        label: 'All Orders',
+        href: '/orders',
+        icon: ShoppingCart,
+        requiredPermission: 'orders.read',
+      },
+      {
+        label: 'Payments',
+        href: '/payments',
+        icon: CreditCard,
+        requiredPermission: 'payments.read',
+      },
     ],
   },
   {
@@ -49,30 +109,47 @@ const navGroups: NavGroup[] = [
       {
         label: 'Design Projects',
         href: '/design-projects',
+        icon: DraftingCompass,
         requiredPermission: 'design-projects.read',
       },
       {
         label: 'Design Portfolio',
         href: '/design-projects/portfolio',
+        icon: Images,
         requiredPermission: 'design-projects.read',
       },
-      { label: 'Customers (CRM)', href: '/crm', requiredPermission: 'leads.read' },
-      { label: 'Notifications', href: '/notifications', requiredPermission: 'notifications.read' },
+      { label: 'Customers (CRM)', href: '/crm', icon: Contact, requiredPermission: 'leads.read' },
+      {
+        label: 'Notifications',
+        href: '/notifications',
+        icon: Bell,
+        requiredPermission: 'notifications.read',
+      },
     ],
   },
   {
     section: 'CMS',
     items: [
-      { label: 'Blogs', href: '/cms/blogs', requiredPermission: 'cms.read' },
-      { label: 'Banners', href: '/cms/banners', requiredPermission: 'cms.read' },
+      { label: 'Blogs', href: '/cms/blogs', icon: FileText, requiredPermission: 'cms.read' },
+      { label: 'Banners', href: '/cms/banners', icon: ImageIcon, requiredPermission: 'cms.read' },
     ],
   },
   {
     section: 'Access Control',
     items: [
-      { label: 'Users', href: '/users', allowedRoles: ['SUPER_ADMIN', 'ADMIN'] },
-      { label: 'Roles & Permissions', href: '/roles', allowedRoles: ['SUPER_ADMIN', 'ADMIN'] },
-      { label: 'Audit Logs', href: '/audit-logs', allowedRoles: ['SUPER_ADMIN', 'ADMIN'] },
+      { label: 'Users', href: '/users', icon: Users, allowedRoles: ['SUPER_ADMIN', 'ADMIN'] },
+      {
+        label: 'Roles & Permissions',
+        href: '/roles',
+        icon: ShieldCheck,
+        allowedRoles: ['SUPER_ADMIN', 'ADMIN'],
+      },
+      {
+        label: 'Audit Logs',
+        href: '/audit-logs',
+        icon: History,
+        allowedRoles: ['SUPER_ADMIN', 'ADMIN'],
+      },
     ],
   },
 ];
@@ -84,6 +161,51 @@ export function AdminSidebar() {
   const setUser = useAuthStore((s) => s.setUser);
   const logout = useAuthStore((s) => s.logout);
   const router = useRouter();
+
+  // Dynamic hover & pin states
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+  const leaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Initialize pin state from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('nfi_admin_sidebar_pinned');
+      if (saved === 'true') {
+        setIsPinned(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const togglePin = () => {
+    setIsPinned((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('nfi_admin_sidebar_pinned', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  const handleMouseEnter = () => {
+    if (leaveTimerRef.current) {
+      clearTimeout(leaveTimerRef.current);
+      leaveTimerRef.current = null;
+    }
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    leaveTimerRef.current = setTimeout(() => {
+      setIsHovered(false);
+    }, 120);
+  };
+
+  const isExpandedDesktop = isPinned || isHovered;
 
   // Hydrate user details if token exists but user profile is unpopulated
   useEffect(() => {
@@ -184,239 +306,306 @@ export function AdminSidebar() {
     closeMobileNav();
   }, [pathname, closeMobileNav]);
 
-  const renderContent = (isMobile = false) => (
-    <>
-      {/* Brand Header */}
-      <div
-        className="flex h-16 flex-shrink-0 items-center justify-between px-5"
-        style={{ borderBottom: '1px solid rgba(253, 248, 242, 0.08)' }}
-      >
-        <Link
-          href="/dashboard"
-          className="flex items-center gap-2.5"
-          onClick={() => {
-            if (isMobile) closeMobileNav();
-          }}
+  const renderContent = (isMobile: boolean, isExpanded: boolean) => (
+    <div className="flex h-full flex-col justify-between overflow-hidden">
+      {/* Top Brand Header */}
+      <div>
+        <div
+          className="flex h-16 flex-shrink-0 items-center justify-between px-3.5 transition-all"
+          style={{ borderBottom: '1px solid rgba(253, 248, 242, 0.08)' }}
         >
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-black tracking-wider text-white shadow"
-            style={{ backgroundColor: 'var(--nfi-orange)' }}
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2.5 overflow-hidden"
+            onClick={() => {
+              if (isMobile) closeMobileNav();
+            }}
           >
-            NFI
-          </div>
-          <div>
-            <span
-              className="block text-xs font-bold leading-none tracking-tight"
-              style={{ color: 'var(--nfi-cream)' }}
+            <div
+              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-xs font-black tracking-wider text-white shadow-md transition-transform hover:scale-105"
+              style={{
+                backgroundColor: 'var(--nfi-orange)',
+                boxShadow: '0 2px 10px rgba(224,112,32,0.3)',
+              }}
             >
-              National Furniture
-            </span>
-            <span
-              className="text-[10px] font-medium tracking-wide"
-              style={{ color: 'var(--nfi-sidebar-muted)' }}
-            >
-              Executive Portal
-            </span>
-          </div>
-        </Link>
-
-        {isMobile && (
-          <button
-            type="button"
-            onClick={closeMobileNav}
-            className="rounded-lg p-1.5 text-stone-400 transition-colors hover:bg-white/10 hover:text-white"
-            aria-label="Close navigation"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        )}
-      </div>
-
-      {/* Navigation */}
-      <nav className="no-scrollbar flex-1 overflow-y-auto px-3 py-3">
-        {navGroups.map((group, gi) => {
-          const visibleItems = group.items.filter(canViewItem);
-          if (visibleItems.length === 0) return null;
-
-          return (
-            <div key={gi} className={gi > 0 ? 'mt-4' : ''}>
-              {group.section && (
-                <p
-                  className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-wider"
+              NFI
+            </div>
+            {isExpanded && (
+              <div className="animate-in fade-in min-w-0 transition-opacity duration-200">
+                <span
+                  className="block truncate text-xs font-bold leading-none tracking-tight"
+                  style={{ color: 'var(--nfi-cream)' }}
+                >
+                  National Furniture
+                </span>
+                <span
+                  className="mt-1 block truncate text-[10px] font-medium tracking-wide"
                   style={{ color: 'var(--nfi-sidebar-muted)' }}
                 >
-                  {group.section}
-                </p>
+                  Executive Portal
+                </span>
+              </div>
+            )}
+          </Link>
+
+          {/* Desktop Pin/Unpin Toggle */}
+          {!isMobile && isExpanded && (
+            <button
+              type="button"
+              onClick={togglePin}
+              title={isPinned ? 'Unpin sidebar (auto-collapse on hover out)' : 'Pin sidebar open'}
+              aria-label={isPinned ? 'Unpin sidebar' : 'Pin sidebar'}
+              className="rounded-lg p-1.5 text-stone-400 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              {isPinned ? (
+                <PinOff className="h-4 w-4 text-[#F5A060]" />
+              ) : (
+                <Pin className="h-4 w-4 opacity-70 hover:opacity-100" />
               )}
-              <ul className="space-y-0.5">
-                {visibleItems.map((item) => {
-                  const active = isActive(item.href);
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        onClick={() => {
-                          if (isMobile) closeMobileNav();
-                        }}
-                        className={`nav-item flex items-center rounded-lg px-3 py-2.5 text-xs font-medium transition-all ${
-                          active ? 'font-semibold' : ''
-                        }`}
-                        style={
-                          active
-                            ? {
-                                backgroundColor: 'rgba(224, 112, 32, 0.18)',
-                                color: '#F5A060',
-                                borderLeft: '3px solid var(--nfi-orange)',
-                              }
-                            : {
-                                color: 'rgba(245, 237, 224, 0.75)',
-                                borderLeft: '3px solid transparent',
-                              }
-                        }
-                        onMouseEnter={(e) => {
-                          if (!active) {
-                            (e.currentTarget as HTMLElement).style.backgroundColor =
-                              'rgba(253, 248, 242, 0.06)';
-                            (e.currentTarget as HTMLElement).style.color = 'var(--nfi-cream)';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!active) {
-                            (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
-                            (e.currentTarget as HTMLElement).style.color =
-                              'rgba(245, 237, 224, 0.75)';
-                          }
-                        }}
+            </button>
+          )}
+
+          {/* Mobile Close Button */}
+          {isMobile && (
+            <button
+              type="button"
+              onClick={closeMobileNav}
+              className="rounded-lg p-1.5 text-stone-400 transition-colors hover:bg-white/10 hover:text-white"
+              aria-label="Close navigation"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+
+        {/* Navigation List */}
+        <nav
+          className="no-scrollbar flex-1 overflow-y-auto px-2 py-3"
+          style={{ maxHeight: 'calc(100vh - 145px)' }}
+        >
+          {navGroups.map((group, gi) => {
+            const visibleItems = group.items.filter(canViewItem);
+            if (visibleItems.length === 0) return null;
+
+            return (
+              <div key={gi} className={gi > 0 ? (isExpanded ? 'mt-3.5' : 'mt-2') : ''}>
+                {group.section && (
+                  <>
+                    {isExpanded ? (
+                      <p
+                        className="animate-in fade-in mb-1.5 px-3 text-[10px] font-bold uppercase tracking-wider transition-opacity duration-200"
+                        style={{ color: 'var(--nfi-sidebar-muted)' }}
                       >
-                        {item.label}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          );
-        })}
-      </nav>
+                        {group.section}
+                      </p>
+                    ) : (
+                      <div className="mx-2 my-1.5 border-t border-white/5" />
+                    )}
+                  </>
+                )}
+                <ul className="space-y-1">
+                  {visibleItems.map((item) => {
+                    const active = isActive(item.href);
+                    const IconComponent = item.icon;
+
+                    return (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          title={!isExpanded ? item.label : undefined}
+                          onClick={() => {
+                            if (isMobile) closeMobileNav();
+                          }}
+                          className={`nav-item relative flex items-center rounded-xl text-xs transition-all ${
+                            isExpanded ? 'gap-3 px-3 py-2.5' : 'mx-auto h-10 w-10 justify-center'
+                          } ${active ? 'font-semibold' : 'font-medium'}`}
+                          style={
+                            active
+                              ? {
+                                  backgroundColor: 'rgba(224, 112, 32, 0.22)',
+                                  color: '#F5A060',
+                                  ...(isExpanded
+                                    ? { borderLeft: '3px solid var(--nfi-orange)' }
+                                    : {}),
+                                }
+                              : {
+                                  color: 'rgba(245, 237, 224, 0.75)',
+                                  ...(isExpanded ? { borderLeft: '3px solid transparent' } : {}),
+                                }
+                          }
+                          onMouseEnter={(e) => {
+                            if (!active) {
+                              (e.currentTarget as HTMLElement).style.backgroundColor =
+                                'rgba(253, 248, 242, 0.08)';
+                              (e.currentTarget as HTMLElement).style.color = 'var(--nfi-cream)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!active) {
+                              (e.currentTarget as HTMLElement).style.backgroundColor =
+                                'transparent';
+                              (e.currentTarget as HTMLElement).style.color =
+                                'rgba(245, 237, 224, 0.75)';
+                            }
+                          }}
+                        >
+                          <IconComponent
+                            className={`flex-shrink-0 transition-colors ${
+                              isExpanded ? 'h-4 w-4' : 'h-5 w-5'
+                            } ${active ? 'text-[#E07020]' : 'text-stone-400 group-hover:text-stone-200'}`}
+                          />
+
+                          {isExpanded && (
+                            <span className="animate-in fade-in flex-1 truncate text-left transition-opacity duration-200">
+                              {item.label}
+                            </span>
+                          )}
+
+                          {/* Active badge dot when collapsed */}
+                          {!isExpanded && active && (
+                            <span
+                              className="absolute right-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full ring-2 ring-[#3D1A08]"
+                              style={{ backgroundColor: 'var(--nfi-orange)' }}
+                            />
+                          )}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
+        </nav>
+      </div>
 
       {/* User Footer with Role Badge */}
       <div
-        className="flex-shrink-0 p-3"
+        className="flex-shrink-0 p-2.5"
         style={{
           borderTop: '1px solid rgba(253, 248, 242, 0.08)',
-          backgroundColor: 'rgba(0,0,0,0.15)',
+          backgroundColor: 'rgba(0,0,0,0.22)',
         }}
       >
-        <div className="flex items-center gap-2.5 rounded-md px-1 py-1">
+        <div
+          className={`flex items-center rounded-lg ${isExpanded ? 'gap-2.5 px-1 py-1' : 'justify-center'}`}
+        >
           <div
+            title={!isExpanded ? user?.fullName || 'Administrator' : undefined}
             className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${getAvatarBadgeClass()}`}
           >
             {getInitials(user?.fullName)}
           </div>
-          <div className="min-w-0 flex-1">
-            <p
-              className="truncate text-xs font-semibold leading-tight"
-              style={{ color: 'var(--nfi-cream)' }}
-            >
-              {user?.fullName || 'Administrator'}
-            </p>
-            <p
-              className="mt-0.5 truncate text-[10px] leading-tight"
-              style={{ color: 'var(--nfi-sidebar-muted)' }}
-            >
-              {user?.email || 'admin@nationalinteriors.com'}
-            </p>
-            <div className="mt-1">
-              {user?.roleName === 'SUPER_ADMIN' ? (
-                <span
-                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold"
-                  style={{
-                    backgroundColor: 'rgba(224,112,32,0.2)',
-                    color: '#F5A060',
-                    border: '1px solid rgba(224,112,32,0.35)',
-                  }}
-                >
+
+          {isExpanded && (
+            <div className="animate-in fade-in min-w-0 flex-1 transition-opacity duration-200">
+              <p
+                className="truncate text-xs font-semibold leading-tight"
+                style={{ color: 'var(--nfi-cream)' }}
+              >
+                {user?.fullName || 'Administrator'}
+              </p>
+              <p
+                className="mt-0.5 truncate text-[10px] leading-tight"
+                style={{ color: 'var(--nfi-sidebar-muted)' }}
+              >
+                {user?.email || 'admin@nationalinteriors.com'}
+              </p>
+              <div className="mt-1">
+                {user?.roleName === 'SUPER_ADMIN' ? (
                   <span
-                    className="h-1 w-1 rounded-full"
-                    style={{ backgroundColor: 'var(--nfi-orange)' }}
-                  ></span>
-                  SUPER ADMIN
-                </span>
-              ) : user?.roleName === 'ADMIN' ? (
-                <span
-                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold"
-                  style={{
-                    backgroundColor: 'rgba(253,248,242,0.1)',
-                    color: 'rgba(245,237,224,0.85)',
-                    border: '1px solid rgba(253,248,242,0.15)',
-                  }}
-                >
-                  <span className="h-1 w-1 rounded-full bg-amber-400"></span>
-                  ADMINISTRATOR
-                </span>
-              ) : (
-                <span
-                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold"
-                  style={{
-                    backgroundColor: 'rgba(253,248,242,0.08)',
-                    color: 'rgba(245,237,224,0.7)',
-                    border: '1px solid rgba(253,248,242,0.12)',
-                  }}
-                >
-                  <span className="h-1 w-1 rounded-full bg-blue-400"></span>
-                  {user?.roleName ? user.roleName.replace(/_/g, ' ') : 'STAFF'}
-                </span>
-              )}
+                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold"
+                    style={{
+                      backgroundColor: 'rgba(224,112,32,0.25)',
+                      color: '#F5A060',
+                      border: '1px solid rgba(224,112,32,0.4)',
+                    }}
+                  >
+                    <span
+                      className="h-1 w-1 rounded-full"
+                      style={{ backgroundColor: 'var(--nfi-orange)' }}
+                    ></span>
+                    SUPER ADMIN
+                  </span>
+                ) : user?.roleName === 'ADMIN' ? (
+                  <span
+                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold"
+                    style={{
+                      backgroundColor: 'rgba(253,248,242,0.1)',
+                      color: 'rgba(245,237,224,0.85)',
+                      border: '1px solid rgba(253,248,242,0.15)',
+                    }}
+                  >
+                    <span className="h-1 w-1 rounded-full bg-amber-400"></span>
+                    ADMINISTRATOR
+                  </span>
+                ) : (
+                  <span
+                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold"
+                    style={{
+                      backgroundColor: 'rgba(253,248,242,0.08)',
+                      color: 'rgba(245,237,224,0.7)',
+                      border: '1px solid rgba(253,248,242,0.12)',
+                    }}
+                  >
+                    <span className="h-1 w-1 rounded-full bg-blue-400"></span>
+                    {user?.roleName ? user.roleName.replace(/_/g, ' ') : 'STAFF'}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            title="Sign out"
-            aria-label="Sign out"
-            className="flex-shrink-0 rounded-lg p-1.5 transition-colors"
-            style={{ color: 'rgba(245,237,224,0.45)' }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.color = '#FF6B6B';
-              (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(192,40,28,0.15)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.color = 'rgba(245,237,224,0.45)';
-              (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
-            }}
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-            </svg>
-          </button>
+          )}
+
+          {isExpanded && (
+            <button
+              onClick={handleLogout}
+              title="Sign out"
+              aria-label="Sign out"
+              className="flex-shrink-0 rounded-lg p-1.5 transition-colors"
+              style={{ color: 'rgba(245,237,224,0.45)' }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.color = '#FF6B6B';
+                (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(192,40,28,0.2)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.color = 'rgba(245,237,224,0.45)';
+                (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+              }}
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
-    </>
+    </div>
   );
 
   return (
     <>
-      {/* Desktop Persistent Sidebar */}
-      <aside
-        className="flex hidden w-64 flex-shrink-0 select-none flex-col md:flex"
+      {/* Desktop Dynamic Sidebar Container with Hover Expand */}
+      <div
+        className="relative hidden flex-shrink-0 transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] md:block"
         style={{
-          backgroundColor: 'var(--nfi-brown-dark)',
-          borderRight: '1px solid rgba(253, 248, 242, 0.06)',
+          width: isPinned ? 260 : 68,
         }}
       >
-        {renderContent(false)}
-      </aside>
+        <aside
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          className={`absolute bottom-0 left-0 top-0 flex select-none flex-col overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+            isExpandedDesktop
+              ? 'z-40 w-[260px] shadow-2xl shadow-black/60'
+              : 'z-20 w-[68px] shadow-sm'
+          }`}
+          style={{
+            backgroundColor: 'var(--nfi-brown-dark)',
+            borderRight: '1px solid rgba(253, 248, 242, 0.08)',
+          }}
+          aria-label="Enterprise Navigation Portal"
+        >
+          {renderContent(false, isExpandedDesktop)}
+        </aside>
+      </div>
 
       {/* Mobile Slide-Over Navigation Drawer */}
       {mobileNavOpen && (
@@ -439,7 +628,7 @@ export function AdminSidebar() {
             aria-modal="true"
             aria-label="Admin Navigation Menu"
           >
-            {renderContent(true)}
+            {renderContent(true, true)}
           </div>
         </div>
       )}
