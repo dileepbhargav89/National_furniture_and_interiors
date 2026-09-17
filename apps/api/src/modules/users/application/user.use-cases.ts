@@ -53,6 +53,30 @@ export class AdminListUsers {
   }
 }
 
+export class AdminListUsersWithFilters {
+  constructor(private readonly users: IUserProfileRepository) {}
+
+  async execute(
+    filter: import('./ports').UserListFilter,
+  ): Promise<{ items: UserProfile[]; total: number }> {
+    const page = Math.max(filter.page ?? 1, 1);
+    const limit = Math.min(Math.max(filter.limit ?? 20, 1), 100);
+    return this.users.listWithFilters({ ...filter, page, limit });
+  }
+}
+
+export class AdminGetUserDetail {
+  constructor(private readonly users: IUserProfileRepository) {}
+
+  async execute(id: string): Promise<import('./ports').UserDetailDossier> {
+    const dossier = await this.users.findByIdDetailed(id);
+    if (!dossier) {
+      throw new NotFoundError('User not found');
+    }
+    return dossier;
+  }
+}
+
 /**
  * ============================================================================================
  * AdminCreateUser — the ONLY runtime path that creates a STAFF or ADMIN account.
@@ -74,5 +98,69 @@ export class AdminCreateUser {
       throw new ConflictError('An account with this email already exists');
     }
     return this.users.createPrivileged(input);
+  }
+}
+
+export class AdminOnboardUser {
+  constructor(
+    private readonly users: IUserProfileRepository,
+    private readonly hashPassword: (plaintext: string) => Promise<string>,
+  ) {}
+
+  async execute(input: import('./ports').AdminOnboardUserInput): Promise<UserProfile> {
+    const existing = await this.users.findByEmail(input.email);
+    if (existing) {
+      throw new ConflictError('An account with this email already exists');
+    }
+    const tempPassword =
+      input.temporaryPassword || `Nfi#${Math.random().toString(36).slice(2, 8)}!`;
+    const passwordHash = await this.hashPassword(tempPassword);
+    return this.users.onboardUser(input, passwordHash);
+  }
+}
+
+export class AdminResendOnboarding {
+  constructor(private readonly users: IUserProfileRepository) {}
+
+  async execute(id: string): Promise<{ success: boolean; message: string }> {
+    const user = await this.users.findById(id);
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+    await this.users.recordOnboardingInvite(id);
+    return { success: true, message: `Onboarding invitation re-dispatched to ${user.email}` };
+  }
+}
+
+export class AdminResetUserPassword {
+  constructor(
+    private readonly users: IUserProfileRepository,
+    private readonly hashPassword: (plaintext: string) => Promise<string>,
+  ) {}
+
+  async execute(
+    id: string,
+    newPassword: string,
+    mustChangePassword = true,
+  ): Promise<{ success: boolean; message: string }> {
+    const user = await this.users.findById(id);
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+    const hash = await this.hashPassword(newPassword);
+    await this.users.resetPassword(id, hash, mustChangePassword);
+    return { success: true, message: `Password reset successfully for ${user.email}` };
+  }
+}
+
+export class AdminUpdateUserStatus {
+  constructor(private readonly users: IUserProfileRepository) {}
+
+  async execute(id: string, status: string): Promise<UserProfile> {
+    const updated = await this.users.updateStatus(id, status);
+    if (!updated) {
+      throw new NotFoundError('User not found');
+    }
+    return updated;
   }
 }

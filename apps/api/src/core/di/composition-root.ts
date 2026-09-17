@@ -52,7 +52,13 @@ import { SendPhoneOtp, VerifyPhoneOtp } from '../../modules/auth/application/otp
 
 import {
   AdminCreateUser,
+  AdminGetUserDetail,
   AdminListUsers,
+  AdminListUsersWithFilters,
+  AdminOnboardUser,
+  AdminResendOnboarding,
+  AdminResetUserPassword,
+  AdminUpdateUserStatus,
   GetOwnProfile,
   UpdateOwnProfile,
 } from '../../modules/users/application/user.use-cases';
@@ -274,7 +280,14 @@ export interface AppContext {
     getOwnProfile: GetOwnProfile;
     updateOwnProfile: UpdateOwnProfile;
     adminListUsers: AdminListUsers;
+    adminListUsersWithFilters: AdminListUsersWithFilters;
+    adminGetUserDetail: AdminGetUserDetail;
     adminCreateUser: AdminCreateUser;
+    adminOnboardUser: AdminOnboardUser;
+    adminResendOnboarding: AdminResendOnboarding;
+    adminResetUserPassword: AdminResetUserPassword;
+    adminUpdateUserStatus: AdminUpdateUserStatus;
+    userProfileRepository: MongoUserProfileRepository;
   };
   readonly admin: {
     listRoles: ListRoles;
@@ -494,7 +507,16 @@ export function buildAppContext(): AppContext {
     getOwnProfile: new GetOwnProfile(userProfileRepository),
     updateOwnProfile: new UpdateOwnProfile(userProfileRepository),
     adminListUsers: new AdminListUsers(userProfileRepository),
+    adminListUsersWithFilters: new AdminListUsersWithFilters(userProfileRepository),
+    adminGetUserDetail: new AdminGetUserDetail(userProfileRepository),
     adminCreateUser: new AdminCreateUser(userProfileRepository),
+    adminOnboardUser: new AdminOnboardUser(userProfileRepository, (p) => passwordHasher.hash(p)),
+    adminResendOnboarding: new AdminResendOnboarding(userProfileRepository),
+    adminResetUserPassword: new AdminResetUserPassword(userProfileRepository, (p) =>
+      passwordHasher.hash(p),
+    ),
+    adminUpdateUserStatus: new AdminUpdateUserStatus(userProfileRepository),
+    userProfileRepository,
   };
 
   // ---- admin read surface --------------------------------------------------------------------

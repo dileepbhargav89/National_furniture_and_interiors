@@ -18,8 +18,56 @@ export interface UserProfile {
   readonly addresses: readonly Address[];
   readonly mfaEnabled: boolean;
   readonly createdAt: Date;
-  readonly companyName?: string | null;
-  readonly gstin?: string | null;
+  readonly companyName?: string | null | undefined;
+  readonly gstin?: string | null | undefined;
+  readonly onboardingStatus?: 'INVITED' | 'PENDING_PASSWORD' | 'COMPLETED' | undefined;
+  readonly invitedAt?: Date | null | undefined;
+  readonly lastLoginAt?: Date | null | undefined;
+  readonly failedLoginAttempts?: number | undefined;
+  readonly lockedUntil?: Date | null | undefined;
+  readonly mustChangePassword?: boolean | undefined;
+}
+
+export interface UserDetailDossier extends UserProfile {
+  readonly ordersCount: number;
+  readonly totalSpend: number; // in paise
+  readonly lastOrderAt?: Date | null | undefined;
+  readonly authProviders: readonly string[];
+}
+
+export interface UnregisteredUserLead {
+  readonly id: string;
+  readonly name: string;
+  readonly email?: string | null | undefined;
+  readonly phone: string;
+  readonly source: string;
+  readonly interestType: string;
+  readonly projectType?: string | null | undefined;
+  readonly budgetRange?: { min: number; max: number } | undefined;
+  readonly score: number;
+  readonly priority: 'HOT' | 'WARM' | 'COLD';
+  readonly status: string;
+  readonly createdAt: Date;
+}
+
+export interface AdminOnboardUserInput {
+  readonly email: string;
+  readonly fullName: string;
+  readonly phone?: string | null | undefined;
+  readonly userType: 'CUSTOMER' | 'STAFF' | 'ADMIN';
+  readonly roleId: string;
+  readonly companyName?: string | null | undefined;
+  readonly gstin?: string | null | undefined;
+  readonly temporaryPassword?: string | undefined;
+  readonly sendInvite?: boolean | undefined;
+}
+
+export interface UserListFilter {
+  readonly search?: string | undefined;
+  readonly userType?: string | undefined;
+  readonly status?: string | undefined;
+  readonly page?: number | undefined;
+  readonly limit?: number | undefined;
 }
 
 // `| undefined` on every optional member: tsconfig.base.json enables exactOptionalPropertyTypes,
@@ -44,8 +92,18 @@ export interface AdminCreateUserInput {
 
 export interface IUserProfileRepository {
   findById(id: string): Promise<UserProfile | null>;
+  findByIdDetailed(id: string): Promise<UserDetailDossier | null>;
   findByEmail(email: string): Promise<UserProfile | null>;
   list(limit: number): Promise<UserProfile[]>;
+  listWithFilters(filter: UserListFilter): Promise<{ items: UserProfile[]; total: number }>;
   updateOwn(id: string, input: UpdateOwnProfileInput): Promise<UserProfile | null>;
   createPrivileged(input: AdminCreateUserInput): Promise<UserProfile>;
+  onboardUser(input: AdminOnboardUserInput, passwordHash: string): Promise<UserProfile>;
+  updateStatus(id: string, status: string): Promise<UserProfile | null>;
+  resetPassword(
+    id: string,
+    newPasswordHash: string,
+    mustChangePassword?: boolean,
+  ): Promise<boolean>;
+  recordOnboardingInvite(id: string): Promise<boolean>;
 }

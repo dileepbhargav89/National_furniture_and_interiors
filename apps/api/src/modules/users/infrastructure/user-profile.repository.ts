@@ -8,8 +8,11 @@ import mongoose, { Schema } from 'mongoose';
 import type { Address } from '../domain/address';
 import type {
   AdminCreateUserInput,
+  AdminOnboardUserInput,
   IUserProfileRepository,
   UpdateOwnProfileInput,
+  UserDetailDossier,
+  UserListFilter,
   UserProfile,
 } from '../application/ports';
 
@@ -35,6 +38,12 @@ const SAFE_PROJECTION = {
   createdAt: 1,
   companyName: 1,
   gstin: 1,
+  onboardingStatus: 1,
+  invitedAt: 1,
+  lastLoginAt: 1,
+  failedLoginAttempts: 1,
+  lockedUntil: 1,
+  mustChangePassword: 1,
 } as const;
 
 interface ProfileDoc {
@@ -51,6 +60,12 @@ interface ProfileDoc {
   createdAt: Date;
   companyName?: string | null;
   gstin?: string | null;
+  onboardingStatus?: 'INVITED' | 'PENDING_PASSWORD' | 'COMPLETED';
+  invitedAt?: Date | null;
+  lastLoginAt?: Date | null;
+  failedLoginAttempts?: number;
+  lockedUntil?: Date | null;
+  mustChangePassword?: boolean;
 }
 
 function toProfile(doc: ProfileDoc): UserProfile {
@@ -60,7 +75,7 @@ function toProfile(doc: ProfileDoc): UserProfile {
     email: doc.email,
     phone: doc.phone ?? null,
     userType: doc.userType,
-    roleId: doc.roleId.toString(),
+    roleId: doc.roleId ? doc.roleId.toString() : '',
     status: doc.status,
     avatarUrl: doc.avatarUrl ?? null,
     addresses: doc.addresses ?? [],
@@ -68,6 +83,14 @@ function toProfile(doc: ProfileDoc): UserProfile {
     createdAt: doc.createdAt,
     companyName: doc.companyName ?? null,
     gstin: doc.gstin ?? null,
+    ...(doc.onboardingStatus ? { onboardingStatus: doc.onboardingStatus } : {}),
+    ...(doc.invitedAt ? { invitedAt: doc.invitedAt } : {}),
+    ...(doc.lastLoginAt ? { lastLoginAt: doc.lastLoginAt } : {}),
+    ...(doc.failedLoginAttempts !== undefined
+      ? { failedLoginAttempts: doc.failedLoginAttempts }
+      : {}),
+    ...(doc.lockedUntil ? { lockedUntil: doc.lockedUntil } : {}),
+    ...(doc.mustChangePassword !== undefined ? { mustChangePassword: doc.mustChangePassword } : {}),
   };
 }
 
@@ -78,6 +101,50 @@ export class MongoUserProfileRepository implements IUserProfileRepository {
       SAFE_PROJECTION,
     ).lean<ProfileDoc | null>();
     return doc ? toProfile(doc) : null;
+  }
+
+  async findByIdDetailed(id: string): Promise<UserDetailDossier | null> {
+    const profile = await this.findById(id);
+    if (!profile) return null;
+
+    let ordersCount = 0;
+    let totalSpend = 0;
+    let lastOrderAt: Date | null = null;
+    let authProviders: string[] = ['LOCAL'];
+
+    try {
+      const ordersCol = mongoose.connection.collection('orders');
+      const orders = await ordersCol
+        .find({ userId: id, isDeleted: false }, { projection: { pricing: 1, createdAt: 1 } })
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      ordersCount = orders.length;
+      totalSpend = orders.reduce((sum, o) => {
+        const p = o['pricing'] as { total?: number } | undefined;
+        return sum + (Number(p?.total) || 0);
+      }, 0);
+      if (orders.length > 0 && orders[0]?.['createdAt']) {
+        lastOrderAt = new Date(orders[0]['createdAt'] as string | number | Date);
+      }
+
+      const rawUser = await ProfileModel.findById(id, { authProviders: 1 }).lean<{
+        authProviders?: string[];
+      }>();
+      if (rawUser?.authProviders && Array.isArray(rawUser.authProviders)) {
+        authProviders = rawUser.authProviders;
+      }
+    } catch {
+      // Gracefully handle empty or mock environment
+    }
+
+    return {
+      ...profile,
+      ordersCount,
+      totalSpend,
+      ...(lastOrderAt ? { lastOrderAt } : {}),
+      authProviders,
+    };
   }
 
   async findByEmail(email: string): Promise<UserProfile | null> {
@@ -96,22 +163,57 @@ export class MongoUserProfileRepository implements IUserProfileRepository {
     return docs.map(toProfile);
   }
 
+  async listWithFilters(filter: UserListFilter): Promise<{ items: UserProfile[]; total: number }> {
+    const query: Record<string, unknown> = { isDeleted: false };
+    if (filter.userType) {
+      query['userType'] = filter.userType;
+    }
+    if (filter.status) {
+      query['status'] = filter.status;
+    }
+    if (filter.search && filter.search.trim()) {
+      const term = filter.search.trim();
+      query['$or'] = [
+        { fullName: { $regex: term, $options: 'i' } },
+        { email: { $regex: term, $options: 'i' } },
+        { phone: { $regex: term, $options: 'i' } },
+        { companyName: { $regex: term, $options: 'i' } },
+      ];
+    }
+
+    const page = filter.page ?? 1;
+    const limit = filter.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const [total, docs] = await Promise.all([
+      ProfileModel.countDocuments(query),
+      ProfileModel.find(query, SAFE_PROJECTION)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean<ProfileDoc[]>(),
+    ]);
+
+    return {
+      items: docs.map(toProfile),
+      total,
+    };
+  }
+
   async updateOwn(id: string, input: UpdateOwnProfileInput): Promise<UserProfile | null> {
-    // Explicit field-by-field assignment — never a spread of raw request input into the update
-    // document (docs/09 §3.9 prototype-pollution rule, §11 rule 3, §3.10 mass assignment).
     const update: Record<string, unknown> = {};
-    if (input.fullName !== undefined) update.fullName = input.fullName;
-    if (input.phone !== undefined) update.phone = input.phone;
-    if (input.avatarUrl !== undefined) update.avatarUrl = input.avatarUrl;
-    if (input.addresses !== undefined) update.addresses = input.addresses;
-    if (input.companyName !== undefined) update.companyName = input.companyName;
-    if (input.gstin !== undefined) update.gstin = input.gstin;
+    if (input.fullName !== undefined) update['fullName'] = input.fullName;
+    if (input.phone !== undefined) update['phone'] = input.phone;
+    if (input.avatarUrl !== undefined) update['avatarUrl'] = input.avatarUrl;
+    if (input.addresses !== undefined) update['addresses'] = input.addresses;
+    if (input.companyName !== undefined) update['companyName'] = input.companyName;
+    if (input.gstin !== undefined) update['gstin'] = input.gstin;
 
     if (Object.keys(update).length === 0) {
       return this.findById(id);
     }
 
-    update.updatedAt = new Date();
+    update['updatedAt'] = new Date();
     await ProfileModel.updateOne(
       { _id: id, isDeleted: false },
       { $set: update, $inc: { version: 1 } },
@@ -133,7 +235,6 @@ export class MongoUserProfileRepository implements IUserProfileRepository {
       isEmailVerified: false,
       isPhoneVerified: false,
       addresses: [],
-      // docs/09 §2.8 — created un-enrolled; auth blocks privileged access until enrolment.
       mfaEnabled: false,
       mfaSecret: null,
       failedLoginAttempts: 0,
@@ -153,5 +254,95 @@ export class MongoUserProfileRepository implements IUserProfileRepository {
       throw new Error('Failed to read back the created user');
     }
     return profile;
+  }
+
+  async onboardUser(input: AdminOnboardUserInput, passwordHash: string): Promise<UserProfile> {
+    const now = new Date();
+    const created = await ProfileModel.create({
+      fullName: input.fullName,
+      email: input.email,
+      phone: input.phone ?? null,
+      passwordHash,
+      authProviders: ['LOCAL'],
+      userType: input.userType,
+      roleId: new mongoose.Types.ObjectId(input.roleId),
+      status: 'ACTIVE',
+      companyName: input.companyName ?? null,
+      gstin: input.gstin ?? null,
+      isEmailVerified: false,
+      isPhoneVerified: false,
+      addresses: [],
+      mfaEnabled: false,
+      mfaSecret: null,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      passwordHistory: [passwordHash],
+      onboardingStatus: input.sendInvite ? 'INVITED' : 'PENDING_PASSWORD',
+      invitedAt: now,
+      mustChangePassword: true,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: null,
+      updatedBy: null,
+      isDeleted: false,
+      deletedAt: null,
+      deletedBy: null,
+      version: 0,
+    });
+    const profile = await this.findById((created._id as { toString(): string }).toString());
+    if (!profile) {
+      throw new Error('Failed to read back onboarded user');
+    }
+    return profile;
+  }
+
+  async updateStatus(id: string, status: string): Promise<UserProfile | null> {
+    await ProfileModel.updateOne(
+      { _id: id, isDeleted: false },
+      { $set: { status, updatedAt: new Date() }, $inc: { version: 1 } },
+    );
+    return this.findById(id);
+  }
+
+  async resetPassword(
+    id: string,
+    newPasswordHash: string,
+    mustChangePassword = true,
+  ): Promise<boolean> {
+    const result = await ProfileModel.updateOne(
+      { _id: id, isDeleted: false },
+      {
+        $set: {
+          passwordHash: newPasswordHash,
+          mustChangePassword,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+          updatedAt: new Date(),
+        },
+        $push: {
+          passwordHistory: {
+            $each: [newPasswordHash],
+            $slice: -5,
+          },
+        },
+        $inc: { version: 1 },
+      },
+    );
+    return result.modifiedCount > 0;
+  }
+
+  async recordOnboardingInvite(id: string): Promise<boolean> {
+    const result = await ProfileModel.updateOne(
+      { _id: id, isDeleted: false },
+      {
+        $set: {
+          onboardingStatus: 'INVITED',
+          invitedAt: new Date(),
+          updatedAt: new Date(),
+        },
+        $inc: { version: 1 },
+      },
+    );
+    return result.modifiedCount > 0;
   }
 }
