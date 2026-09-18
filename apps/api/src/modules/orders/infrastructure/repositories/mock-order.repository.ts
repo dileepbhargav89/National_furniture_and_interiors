@@ -1,4 +1,10 @@
-import { IOrderRepository, Order, CreateOrderParams, PaymentStatus, FulfillmentStatus } from '../../domain/orders.types';
+import {
+  IOrderRepository,
+  Order,
+  CreateOrderParams,
+  PaymentStatus,
+  FulfillmentStatus,
+} from '../../domain/orders.types';
 
 export class MockOrderRepository implements IOrderRepository {
   private orders: Map<string, Order> = new Map();
@@ -7,7 +13,7 @@ export class MockOrderRepository implements IOrderRepository {
   async create(data: CreateOrderParams): Promise<Order> {
     const id = `mock-order-id-${this.orderCounter++}`;
     const orderNumber = `ORD-${Date.now()}-${id}`;
-    
+
     const newOrder: Order = {
       id,
       orderNumber,
@@ -19,14 +25,19 @@ export class MockOrderRepository implements IOrderRepository {
       couponCode: data.couponCode,
       paymentStatus: PaymentStatus.PENDING,
       fulfillmentStatus: FulfillmentStatus.PENDING,
-      timeline: [{
-        status: 'ORDER_PLACED',
-        changedAt: new Date()
-      }],
+      companyName: data.companyName,
+      customerGstin: data.customerGstin,
+      paymentPlan: data.paymentPlan,
+      timeline: [
+        {
+          status: 'ORDER_PLACED',
+          changedAt: new Date(),
+        },
+      ],
       createdAt: new Date(),
       updatedAt: new Date(),
       isDeleted: false,
-      version: 0
+      version: 0,
     };
 
     this.orders.set(id, newOrder);
@@ -58,11 +69,15 @@ export class MockOrderRepository implements IOrderRepository {
   }
 
   async findAll(limit: number = 50, offset: number = 0): Promise<Order[]> {
-    const allOrders = Array.from(this.orders.values()).filter(o => !o.isDeleted);
+    const allOrders = Array.from(this.orders.values()).filter((o) => !o.isDeleted);
     return allOrders.slice(offset, offset + limit);
   }
 
-  async updateFulfillmentStatus(id: string, status: FulfillmentStatus, note?: string): Promise<Order | null> {
+  async updateFulfillmentStatus(
+    id: string,
+    status: FulfillmentStatus,
+    note?: string,
+  ): Promise<Order | null> {
     const order = this.orders.get(id);
     if (!order || order.isDeleted) return null;
 
@@ -70,7 +85,7 @@ export class MockOrderRepository implements IOrderRepository {
     order.timeline.push({
       status,
       note,
-      changedAt: new Date()
+      changedAt: new Date(),
     });
     order.updatedAt = new Date();
     order.version += 1;
@@ -86,7 +101,7 @@ export class MockOrderRepository implements IOrderRepository {
     order.paymentStatus = status;
     order.timeline.push({
       status: `PAYMENT_${status}`,
-      changedAt: new Date()
+      changedAt: new Date(),
     });
     order.updatedAt = new Date();
     order.version += 1;
@@ -95,7 +110,10 @@ export class MockOrderRepository implements IOrderRepository {
     return { ...order };
   }
 
-  async getSalesMetrics(startDate?: string, endDate?: string): Promise<{ totalRevenue: number; totalOrders: number; averageOrderValue: number }> {
+  async getSalesMetrics(
+    startDate?: string,
+    endDate?: string,
+  ): Promise<{ totalRevenue: number; totalOrders: number; averageOrderValue: number }> {
     let totalRevenue = 0;
     let totalOrders = 0;
 
@@ -114,7 +132,7 @@ export class MockOrderRepository implements IOrderRepository {
     return {
       totalRevenue,
       totalOrders,
-      averageOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0
+      averageOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
     };
   }
 }

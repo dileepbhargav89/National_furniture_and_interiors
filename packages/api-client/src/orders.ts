@@ -30,6 +30,14 @@ export interface AddressSnapshot {
   country: string;
 }
 
+export interface TaxBreakdown {
+  cgst: number;
+  sgst: number;
+  igst: number;
+  rate: number;
+  isInterState: boolean;
+}
+
 export interface OrderPricing {
   subtotal: number;
   discount: number;
@@ -37,6 +45,7 @@ export interface OrderPricing {
   tax: number;
   total: number;
   currency: string;
+  taxBreakdown?: TaxBreakdown;
 }
 
 export interface OrderItem {
@@ -48,6 +57,7 @@ export interface OrderItem {
   unitPrice: number;
   quantity: number;
   lineTotal: number;
+  hsnCode?: string;
 }
 
 export interface StatusEvent {
@@ -59,17 +69,20 @@ export interface StatusEvent {
 
 export interface Order {
   id: string;
-  _id?: string;
+  _id?: string | undefined;
   orderNumber: string;
   userId: string;
   items: OrderItem[];
   shippingAddress: AddressSnapshot;
   billingAddress: AddressSnapshot;
   pricing: OrderPricing;
-  couponCode?: string;
+  couponCode?: string | undefined;
   paymentStatus: PaymentStatus;
   fulfillmentStatus: FulfillmentStatus;
-  warehouseId?: string;
+  companyName?: string | undefined;
+  customerGstin?: string | undefined;
+  paymentPlan?: 'FULL' | 'MILESTONE_50_50' | undefined;
+  warehouseId?: string | undefined;
   timeline: StatusEvent[];
   createdAt: string;
   updatedAt: string;
@@ -80,38 +93,57 @@ export interface CreateOrderRequest {
   shippingAddress: AddressSnapshot;
   billingAddress: AddressSnapshot;
   couponCode?: string;
-  // Note: the backend might calculate pricing, but if frontend needs to send it:
-  pricing?: OrderPricing; 
+  companyName?: string;
+  customerGstin?: string;
+  paymentPlan?: 'FULL' | 'MILESTONE_50_50';
+  pricing?: OrderPricing;
 }
 
 export const OrdersService = {
   // Storefront methods
   createOrder: (data: CreateOrderRequest, idempotencyKey?: string) => {
-    const key = idempotencyKey || `idem_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    return apiClient.post<{ order: Order; paymentIntent: Record<string, unknown> }>('/api/v1/orders', data, {
-      headers: { 'idempotency-key': key }
-    });
+    const key =
+      idempotencyKey || `idem_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    return apiClient.post<{ order: Order; paymentIntent: Record<string, unknown> }>(
+      '/api/v1/orders',
+      data,
+      {
+        headers: { 'idempotency-key': key },
+      },
+    );
   },
-    
-  getMyOrders: () =>
-    apiClient.get<{ orders: Order[] }>('/api/v1/orders/my-orders'),
-    
-  getOrder: (id: string) =>
-    apiClient.get<{ order: Order }>(`/api/v1/orders/${id}`),
-    
+
+  getMyOrders: () => apiClient.get<{ orders: Order[] }>('/api/v1/orders/my-orders'),
+
+  getOrder: (id: string) => apiClient.get<{ order: Order }>(`/api/v1/orders/${id}`),
+
   getOrderInvoice: (id: string) =>
-    apiClient.get<{ id: string; url: string; status: string }>(`/api/v1/orders/${id}/invoice`),
+    apiClient.get<{ data: { id: string; url: string; status: string } }>(
+      `/api/v1/orders/${id}/invoice`,
+    ),
+
+  getOrderInvoicePdfUrl: (id: string): string => `/api/v1/orders/${id}/invoice/pdf`,
+
+  generateOrderInvoice: (id: string) =>
+    apiClient.post<{ data: { id: string; invoiceNumber: string; status: string } }>(
+      `/api/v1/admin/orders/${id}/invoice/generate`,
+    ),
 
   // Admin methods
   getAllOrders: (params?: { status?: FulfillmentStatus; page?: number; limit?: number }) =>
-    apiClient.get<PaginatedResponse<Order>>('/api/v1/admin/orders', params ? { params: params as Record<string, unknown> } : undefined),
-    
-  getAdminOrder: (id: string) =>
-    apiClient.get<{ order: Order }>(`/api/v1/admin/orders/${id}`),
+    apiClient.get<PaginatedResponse<Order>>(
+      '/api/v1/admin/orders',
+      params ? { params: params as Record<string, unknown> } : undefined,
+    ),
+
+  getAdminOrder: (id: string) => apiClient.get<{ order: Order }>(`/api/v1/admin/orders/${id}`),
 
   updateFulfillmentStatus: (id: string, status: FulfillmentStatus, note?: string) =>
-    apiClient.patch<{ order: Order }>(`/api/v1/admin/orders/${id}/fulfillment-status`, { status, note }),
-    
+    apiClient.patch<{ order: Order }>(`/api/v1/admin/orders/${id}/fulfillment-status`, {
+      status,
+      note,
+    }),
+
   updatePaymentStatus: (id: string, status: PaymentStatus) =>
     apiClient.patch<{ order: Order }>(`/api/v1/admin/orders/${id}/payment-status`, { status }),
 };

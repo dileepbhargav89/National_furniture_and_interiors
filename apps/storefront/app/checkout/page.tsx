@@ -35,6 +35,14 @@ export default function CheckoutPage() {
   const [error, setError] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'RAZORPAY' | 'WHITE_GLOVE_NEFT'>('RAZORPAY');
 
+  // B2B Tax Invoicing
+  const [isB2B, setIsB2B] = useState(false);
+  const [companyName, setCompanyName] = useState('');
+  const [customerGstin, setCustomerGstin] = useState('');
+
+  // Milestone Payment (Full vs 50% Bespoke Advance)
+  const [paymentPlan, setPaymentPlan] = useState<'FULL' | 'MILESTONE_50_50'>('FULL');
+
   // Contact details (guest or authenticated)
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -73,6 +81,14 @@ export default function CheckoutPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const userAny = user as any;
       if (userAny?.phone) setPhone(userAny.phone);
+      if (userAny?.companyName) {
+        setCompanyName(userAny.companyName);
+        setIsB2B(true);
+      }
+      if (userAny?.gstin) {
+        setCustomerGstin(userAny.gstin);
+        setIsB2B(true);
+      }
     }
   }, [user]);
 
@@ -102,6 +118,16 @@ export default function CheckoutPage() {
     }
   };
 
+  // Dynamic Indian GST calculation (18% under HSN 9403)
+  const isInterState = (shippingAddress.state || '').trim().toLowerCase() !== 'karnataka';
+  const taxableAmount = cart ? Math.max(0, cart.subtotal - (cart.discount || 0)) : 0;
+  const taxAmt = Math.round(taxableAmount * 0.18);
+  const cgstAmt = isInterState ? 0 : Math.round(taxAmt / 2);
+  const sgstAmt = isInterState ? 0 : taxAmt - cgstAmt;
+  const igstAmt = isInterState ? taxAmt : 0;
+  const grandTotal = taxableAmount + taxAmt;
+  const payableAmount = paymentPlan === 'MILESTONE_50_50' ? Math.round(grandTotal / 2) : grandTotal;
+
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cart || itemCount === 0) return;
@@ -122,8 +148,6 @@ export default function CheckoutPage() {
     const finalBilling = billingSameAsShipping ? shippingAddress : billingAddress;
     const generatedOrderNumber = `NFI-BLR-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
     const orderId = `ord-bengaluru-${Date.now().toString().slice(-6)}`;
-    const taxAmt = Math.round(cart.total * 0.18);
-    const grandTotal = cart.total + taxAmt;
 
     const payload: CreateOrderRequest = {
       items: cart.items.map((item) => ({
@@ -135,8 +159,16 @@ export default function CheckoutPage() {
         unitPrice: item.unitPrice,
         quantity: item.quantity,
       })),
-      shippingAddress,
-      billingAddress: finalBilling,
+      shippingAddress: {
+        ...shippingAddress,
+        ...(isB2B && companyName.trim() ? { companyName: companyName.trim() } : {}),
+        ...(isB2B && customerGstin.trim() ? { gstin: customerGstin.trim().toUpperCase() } : {}),
+      },
+      billingAddress: {
+        ...finalBilling,
+        ...(isB2B && companyName.trim() ? { companyName: companyName.trim() } : {}),
+        ...(isB2B && customerGstin.trim() ? { gstin: customerGstin.trim().toUpperCase() } : {}),
+      },
       pricing: {
         subtotal: cart.subtotal,
         discount: cart.discount,
@@ -146,6 +178,11 @@ export default function CheckoutPage() {
         currency: 'INR',
       },
       ...(cart.couponCode ? { couponCode: cart.couponCode } : {}),
+      ...(isB2B && companyName.trim() ? { companyName: companyName.trim() } : {}),
+      ...(isB2B && customerGstin.trim()
+        ? { customerGstin: customerGstin.trim().toUpperCase() }
+        : {}),
+      paymentPlan,
     };
 
     // Client representation of the confirmed order
@@ -157,8 +194,16 @@ export default function CheckoutPage() {
         ...it,
         lineTotal: it.unitPrice * it.quantity,
       })),
-      shippingAddress,
-      billingAddress: finalBilling,
+      shippingAddress: {
+        ...shippingAddress,
+        ...(isB2B && companyName.trim() ? { companyName: companyName.trim() } : {}),
+        ...(isB2B && customerGstin.trim() ? { gstin: customerGstin.trim().toUpperCase() } : {}),
+      },
+      billingAddress: {
+        ...finalBilling,
+        ...(isB2B && companyName.trim() ? { companyName: companyName.trim() } : {}),
+        ...(isB2B && customerGstin.trim() ? { gstin: customerGstin.trim().toUpperCase() } : {}),
+      },
       pricing: {
         subtotal: cart.subtotal,
         discount: cart.discount,
@@ -166,13 +211,25 @@ export default function CheckoutPage() {
         tax: taxAmt,
         total: grandTotal,
         currency: 'INR',
+        taxBreakdown: {
+          cgst: cgstAmt,
+          sgst: sgstAmt,
+          igst: igstAmt,
+          rate: 18,
+          isInterState,
+        },
       },
       paymentStatus: paymentMethod === 'RAZORPAY' ? PaymentStatus.PAID : PaymentStatus.PENDING,
       fulfillmentStatus: FulfillmentStatus.CONFIRMED,
+      ...(isB2B && companyName.trim() ? { companyName: companyName.trim() } : {}),
+      ...(isB2B && customerGstin.trim()
+        ? { customerGstin: customerGstin.trim().toUpperCase() }
+        : {}),
+      paymentPlan,
       timeline: [
         {
           status: 'CONFIRMED',
-          note: `Order confirmed via ${paymentMethod === 'RAZORPAY' ? 'Online Payment (Razorpay)' : 'White-Glove Handover (NEFT)'}. Timber sourcing initiated.`,
+          note: `Order confirmed via ${paymentMethod === 'RAZORPAY' ? 'Online Payment (Razorpay)' : 'White-Glove Handover (NEFT)'}. Plan: ${paymentPlan === 'MILESTONE_50_50' ? '50% Bespoke Advance' : 'Full Payment'}. Timber sourcing initiated.`,
           changedAt: new Date().toISOString(),
         },
       ],
@@ -199,10 +256,10 @@ export default function CheckoutPage() {
       let gatewayOrderId = '';
       let rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TUT9HlbAnaU377';
 
-      // Request live Razorpay order intent from API backend
+      // Request live Razorpay order intent from API backend for payableAmount
       try {
         const intentRes = await PaymentsService.createPaymentIntent({
-          amount: grandTotal,
+          amount: payableAmount,
           currency: 'INR',
           orderId: orderId,
         });
@@ -220,10 +277,10 @@ export default function CheckoutPage() {
       if ((window as any).Razorpay) {
         const options = {
           key: rzpKey,
-          amount: grandTotal,
+          amount: payableAmount,
           currency: 'INR',
           name: 'National Furniture & Interiors',
-          description: `Bespoke Order #${generatedOrderNumber}`,
+          description: `Order #${generatedOrderNumber} · ${paymentPlan === 'MILESTONE_50_50' ? '50% Advance' : 'Full Payment'}`,
           ...(gatewayOrderId ? { order_id: gatewayOrderId } : {}),
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           handler: async function (rzpRes: any) {
@@ -614,13 +671,139 @@ export default function CheckoutPage() {
                 )}
               </div>
 
+              {/* B2B & GST Invoicing Section */}
+              <div className="shadow-xs space-y-4 rounded-2xl border border-stone-200 bg-white p-6 sm:p-7">
+                <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+                  <div>
+                    <h2 className="text-sm font-semibold uppercase tracking-wider text-[#171717]">
+                      4. Business &amp; GST Invoicing
+                    </h2>
+                    <p className="text-[11px] text-stone-400">
+                      Optional for corporate architects &amp; registered studios
+                    </p>
+                  </div>
+                  <label className="flex cursor-pointer items-center gap-2 rounded-lg bg-[#8C7355]/10 px-3 py-1.5 text-xs font-semibold text-[#8C7355] transition-colors hover:bg-[#8C7355]/15">
+                    <input
+                      type="checkbox"
+                      checked={isB2B}
+                      onChange={(e) => setIsB2B(e.target.checked)}
+                      className="h-4 w-4 rounded text-[#171717] focus:ring-[#8C7355]"
+                    />
+                    <span>Claim 18% Input Tax Credit</span>
+                  </label>
+                </div>
+
+                {isB2B ? (
+                  <div className="space-y-4 pt-2">
+                    <p className="text-[11px] text-stone-600">
+                      Provide your organization’s tax registration details to generate a legally
+                      compliant <strong>Form GST INV-1</strong> Tax Invoice with valid ITC
+                      eligibility.
+                    </p>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-stone-700">
+                          Registered Firm / Company Name *
+                        </label>
+                        <input
+                          type="text"
+                          required={isB2B}
+                          value={companyName}
+                          onChange={(e) => setCompanyName(e.target.value)}
+                          placeholder="e.g. Studio Matrix Architecture LLP"
+                          className="w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3.5 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#8C7355]"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-stone-700">
+                          GSTIN (15-digit alphanumeric) *
+                        </label>
+                        <input
+                          type="text"
+                          required={isB2B}
+                          maxLength={15}
+                          value={customerGstin}
+                          onChange={(e) => setCustomerGstin(e.target.value.toUpperCase())}
+                          placeholder="e.g. 29AABCS1234E1Z8"
+                          className="w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3.5 py-2.5 font-mono text-xs uppercase focus:outline-none focus:ring-1 focus:ring-[#8C7355]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-stone-400">
+                    Purchasing for your personal residence? Consumer retail invoice will be
+                    automatically generated. Select the option above if you require an Input Tax
+                    Credit (ITC) business invoice.
+                  </p>
+                )}
+              </div>
+
               {/* Payment Method Selector */}
               <div className="shadow-xs space-y-4 rounded-2xl border border-stone-200 bg-white p-6 sm:p-7">
                 <h2 className="border-b border-stone-100 pb-3 text-sm font-semibold uppercase tracking-wider text-[#171717]">
-                  4. Payment Preference
+                  5. Payment Preference &amp; Plan
                 </h2>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {/* Milestone Payment Plan Selection */}
+                <div className="rounded-xl border border-[#C5A059]/40 bg-[#FAF9F6] p-4">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#8C7355]">
+                    ✦ Settlement Terms
+                  </span>
+                  <div className="mt-2.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label
+                      className={`flex cursor-pointer flex-col justify-between rounded-xl border p-3.5 transition-all ${
+                        paymentPlan === 'FULL'
+                          ? 'shadow-xs border-[#8C7355] bg-white ring-2 ring-[#8C7355]/20'
+                          : 'border-stone-200 bg-white/70 hover:bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#171717]">
+                          100% Full Commission
+                        </span>
+                        <input
+                          type="radio"
+                          name="paymentPlan"
+                          checked={paymentPlan === 'FULL'}
+                          onChange={() => setPaymentPlan('FULL')}
+                          className="text-[#171717]"
+                        />
+                      </div>
+                      <p className="mt-1 text-[11px] text-stone-500">
+                        Complete upfront payment. Immediate timber allocation &amp; priority
+                        scheduling.
+                      </p>
+                    </label>
+
+                    <label
+                      className={`flex cursor-pointer flex-col justify-between rounded-xl border p-3.5 transition-all ${
+                        paymentPlan === 'MILESTONE_50_50'
+                          ? 'shadow-xs border-[#8C7355] bg-white ring-2 ring-[#8C7355]/20'
+                          : 'border-stone-200 bg-white/70 hover:bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#8C7355]">
+                          50% Bespoke Advance
+                        </span>
+                        <input
+                          type="radio"
+                          name="paymentPlan"
+                          checked={paymentPlan === 'MILESTONE_50_50'}
+                          onChange={() => setPaymentPlan('MILESTONE_50_50')}
+                          className="text-[#171717]"
+                        />
+                      </div>
+                      <p className="mt-1 text-[11px] text-stone-500">
+                        Pay 50% now to initiate kiln seasoning. Balance 50% settled prior to
+                        white-glove dispatch.
+                      </p>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2">
                   <label
                     className={`flex cursor-pointer flex-col justify-between rounded-xl border p-4 transition-all ${
                       paymentMethod === 'RAZORPAY'
@@ -769,22 +952,49 @@ export default function CheckoutPage() {
                   <span className="font-medium text-emerald-800">Complimentary</span>
                 </div>
 
-                <div className="flex justify-between text-stone-500">
-                  <span>GST (CGST 9% + SGST 9%)</span>
-                  <span className="text-stone-800">
-                    {formatPrice(Math.round(cart.total * 0.18))}
-                  </span>
-                </div>
+                {isInterState ? (
+                  <div className="flex justify-between text-stone-500">
+                    <span>GST (IGST 18% — Inter-State)</span>
+                    <span className="text-stone-800">{formatPrice(igstAmt)}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between text-stone-500">
+                      <span>CGST (9% — Karnataka Intra-State)</span>
+                      <span className="text-stone-800">{formatPrice(cgstAmt)}</span>
+                    </div>
+                    <div className="flex justify-between text-stone-500">
+                      <span>SGST (9% — Karnataka Intra-State)</span>
+                      <span className="text-stone-800">{formatPrice(sgstAmt)}</span>
+                    </div>
+                  </>
+                )}
 
                 <div className="flex items-baseline justify-between border-t border-stone-200 pt-3">
                   <div>
                     <span className="block text-sm font-bold text-[#171717]">Grand Total</span>
-                    <span className="text-[10px] text-stone-400">All inclusive</span>
+                    <span className="text-[10px] text-stone-400">All inclusive (HSN 9403)</span>
                   </div>
                   <span className="font-serif text-xl font-bold text-[#171717]">
-                    {formatPrice(cart.total + Math.round(cart.total * 0.18))}
+                    {formatPrice(grandTotal)}
                   </span>
                 </div>
+
+                {paymentPlan === 'MILESTONE_50_50' && (
+                  <div className="mt-2 space-y-2 rounded-xl border border-[#D4AF37]/30 bg-[#FAF9F6] p-3 text-xs">
+                    <div className="flex justify-between font-semibold text-[#171717]">
+                      <span className="flex items-center gap-1.5 text-[#8C7355]">
+                        <Sparkles className="h-3.5 w-3.5 text-[#D4AF37]" />
+                        50% Bespoke Advance (Due Today)
+                      </span>
+                      <span className="font-bold text-[#171717]">{formatPrice(payableAmount)}</span>
+                    </div>
+                    <div className="flex justify-between text-[11px] text-stone-500">
+                      <span>50% Balance on White-Glove Dispatch</span>
+                      <span>{formatPrice(grandTotal - payableAmount)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Submit CTA */}
@@ -799,7 +1009,11 @@ export default function CheckoutPage() {
                 ) : (
                   <>
                     <Lock className="h-3.5 w-3.5" />
-                    <span>Confirm Order &amp; Handover</span>
+                    <span>
+                      {paymentPlan === 'MILESTONE_50_50'
+                        ? `Pay 50% Advance (${formatPrice(payableAmount)}) & Commission`
+                        : `Confirm Order & Handover (${formatPrice(grandTotal)})`}
+                    </span>
                   </>
                 )}
               </button>

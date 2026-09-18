@@ -13,6 +13,7 @@ export interface IOrderDocument extends Document {
     unitPrice: number;
     quantity: number;
     lineTotal: number;
+    hsnCode?: string;
   }[];
   shippingAddress: {
     label?: string;
@@ -22,6 +23,8 @@ export interface IOrderDocument extends Document {
     state: string;
     pincode: string;
     country: string;
+    companyName?: string;
+    gstin?: string;
   };
   billingAddress: {
     label?: string;
@@ -31,6 +34,8 @@ export interface IOrderDocument extends Document {
     state: string;
     pincode: string;
     country: string;
+    companyName?: string;
+    gstin?: string;
   };
   pricing: {
     subtotal: number;
@@ -39,10 +44,20 @@ export interface IOrderDocument extends Document {
     tax: number;
     total: number;
     currency: string;
+    taxBreakdown?: {
+      cgst: number;
+      sgst: number;
+      igst: number;
+      rate: number;
+      isInterState: boolean;
+    };
   };
   couponCode?: string;
   paymentStatus: PaymentStatus;
   fulfillmentStatus: FulfillmentStatus;
+  companyName?: string;
+  customerGstin?: string;
+  paymentPlan?: string;
   warehouseId?: mongoose.Types.ObjectId;
   timeline: {
     status: string;
@@ -56,56 +71,93 @@ export interface IOrderDocument extends Document {
   version: number;
 }
 
-const AddressSchema = new Schema({
-  label: { type: String },
-  line1: { type: String, required: true },
-  line2: { type: String },
-  city: { type: String, required: true },
-  state: { type: String, required: true },
-  pincode: { type: String, required: true },
-  country: { type: String, required: true },
-}, { _id: false });
-
-const OrderItemSchema = new Schema({
-  productId: { type: Schema.Types.ObjectId, required: true },
-  variantId: { type: Schema.Types.ObjectId },
-  sku: { type: String, required: true },
-  name: { type: String, required: true },
-  image: { type: String },
-  unitPrice: { type: Number, required: true },
-  quantity: { type: Number, required: true },
-  lineTotal: { type: Number, required: true },
-}, { _id: false });
-
-const OrderSchema = new Schema<IOrderDocument>({
-  orderNumber: { type: String, required: true, unique: true },
-  userId: { type: Schema.Types.ObjectId, required: true, ref: 'User' },
-  items: { type: [OrderItemSchema], required: true },
-  shippingAddress: { type: AddressSchema, required: true },
-  billingAddress: { type: AddressSchema, required: true },
-  pricing: {
-    subtotal: { type: Number, required: true },
-    discount: { type: Number, default: 0 },
-    shippingFee: { type: Number, default: 0 },
-    tax: { type: Number, default: 0 },
-    total: { type: Number, required: true },
-    currency: { type: String, required: true, default: 'INR' },
+const AddressSchema = new Schema(
+  {
+    label: { type: String },
+    line1: { type: String, required: true },
+    line2: { type: String },
+    city: { type: String, required: true },
+    state: { type: String, required: true },
+    pincode: { type: String, required: true },
+    country: { type: String, required: true },
+    companyName: { type: String },
+    gstin: { type: String },
   },
-  couponCode: { type: String },
-  paymentStatus: { type: String, enum: Object.values(PaymentStatus), default: PaymentStatus.PENDING },
-  fulfillmentStatus: { type: String, enum: Object.values(FulfillmentStatus), default: FulfillmentStatus.PENDING },
-  warehouseId: { type: Schema.Types.ObjectId, ref: 'Warehouse' },
-  timeline: [{
-    status: { type: String, required: true },
-    note: { type: String },
-    changedBy: { type: Schema.Types.ObjectId, ref: 'User' },
-    changedAt: { type: Date, required: true, default: Date.now },
-  }],
-  isDeleted: { type: Boolean, default: false },
-}, {
-  timestamps: true,
-  optimisticConcurrency: true,
-  versionKey: 'version'
-});
+  { _id: false },
+);
+
+const OrderItemSchema = new Schema(
+  {
+    productId: { type: Schema.Types.ObjectId, required: true },
+    variantId: { type: Schema.Types.ObjectId },
+    sku: { type: String, required: true },
+    name: { type: String, required: true },
+    image: { type: String },
+    unitPrice: { type: Number, required: true },
+    quantity: { type: Number, required: true },
+    lineTotal: { type: Number, required: true },
+    hsnCode: { type: String, default: '9403' },
+  },
+  { _id: false },
+);
+
+const TaxBreakdownSchema = new Schema(
+  {
+    cgst: { type: Number, default: 0 },
+    sgst: { type: Number, default: 0 },
+    igst: { type: Number, default: 0 },
+    rate: { type: Number, default: 18 },
+    isInterState: { type: Boolean, default: false },
+  },
+  { _id: false },
+);
+
+const OrderSchema = new Schema<IOrderDocument>(
+  {
+    orderNumber: { type: String, required: true, unique: true },
+    userId: { type: Schema.Types.ObjectId, required: true, ref: 'User' },
+    items: { type: [OrderItemSchema], required: true },
+    shippingAddress: { type: AddressSchema, required: true },
+    billingAddress: { type: AddressSchema, required: true },
+    pricing: {
+      subtotal: { type: Number, required: true },
+      discount: { type: Number, default: 0 },
+      shippingFee: { type: Number, default: 0 },
+      tax: { type: Number, default: 0 },
+      total: { type: Number, required: true },
+      currency: { type: String, required: true, default: 'INR' },
+      taxBreakdown: { type: TaxBreakdownSchema },
+    },
+    couponCode: { type: String },
+    paymentStatus: {
+      type: String,
+      enum: Object.values(PaymentStatus),
+      default: PaymentStatus.PENDING,
+    },
+    fulfillmentStatus: {
+      type: String,
+      enum: Object.values(FulfillmentStatus),
+      default: FulfillmentStatus.PENDING,
+    },
+    companyName: { type: String },
+    customerGstin: { type: String },
+    paymentPlan: { type: String, default: 'FULL' },
+    warehouseId: { type: Schema.Types.ObjectId, ref: 'Warehouse' },
+    timeline: [
+      {
+        status: { type: String, required: true },
+        note: { type: String },
+        changedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+        changedAt: { type: Date, required: true, default: Date.now },
+      },
+    ],
+    isDeleted: { type: Boolean, default: false },
+  },
+  {
+    timestamps: true,
+    optimisticConcurrency: true,
+    versionKey: 'version',
+  },
+);
 
 export const OrderModel = mongoose.model<IOrderDocument>('Order', OrderSchema, 'orders');

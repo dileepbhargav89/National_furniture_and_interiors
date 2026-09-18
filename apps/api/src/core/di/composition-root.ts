@@ -812,6 +812,7 @@ export function buildAppContext(): AppContext {
       invoiceRepository,
       pdfGeneratorAdapter,
       cloudinaryInvoiceUploader,
+      orderRepository,
     ),
     getInvoice: new GetInvoiceUseCase(invoiceRepository),
   };

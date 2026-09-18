@@ -255,7 +255,10 @@ export function createApp(mountBusinessRoutes = true): Express {
       ctx.payments.razorpayAdapter,
     );
     // InvoicesController is now imported at the top of the file
-    const invoicesController = new InvoicesController(ctx.payments.getInvoice);
+    const invoicesController = new InvoicesController(
+      ctx.payments.getInvoice,
+      ctx.payments.generateInvoice,
+    );
 
     // NOTE: the router contains express.raw() scoped only to the webhook route,
     // overriding the global express.json() for that endpoint only.
