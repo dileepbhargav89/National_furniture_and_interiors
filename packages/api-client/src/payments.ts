@@ -1,13 +1,7 @@
 import { apiClient } from './client';
 
 export type PaymentStatusType =
-  | 'CREATED'
-  | 'AUTHORIZED'
-  | 'CAPTURED'
-  | 'COMPLETED'
-  | 'PENDING'
-  | 'FAILED'
-  | 'REFUNDED';
+  'CREATED' | 'AUTHORIZED' | 'CAPTURED' | 'COMPLETED' | 'PENDING' | 'FAILED' | 'REFUNDED';
 
 export interface PaymentReconciliationInfo {
   utrNumber: string;
@@ -88,7 +82,10 @@ export interface CreatePaymentIntentResponse {
 }
 
 export const PaymentsService = {
-  createPaymentIntent: async (payload: CreatePaymentIntentRequest, accessToken?: string): Promise<{ data: CreatePaymentIntentResponse }> => {
+  createPaymentIntent: async (
+    payload: CreatePaymentIntentRequest,
+    accessToken?: string,
+  ): Promise<{ data: CreatePaymentIntentResponse }> => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response = await apiClient.post<any>('/api/v1/payments/create-intent', payload, {
       headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
@@ -98,7 +95,7 @@ export const PaymentsService = {
 
   listPayments: async (
     params?: { limit?: number; offset?: number; status?: string; search?: string },
-    accessToken?: string
+    accessToken?: string,
   ) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response = await apiClient.get<any>('/api/v1/admin/payments', {
@@ -141,7 +138,7 @@ export const PaymentsService = {
   reconcilePayment: async (
     paymentId: string,
     payload: ReconcilePaymentRequest,
-    accessToken?: string
+    accessToken?: string,
   ) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response = await apiClient.post<any>(
@@ -149,23 +146,19 @@ export const PaymentsService = {
       payload,
       {
         headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-      }
+      },
     );
     return response.data;
   },
 
-  recordRefund: async (
-    paymentId: string,
-    payload: RecordRefundRequest,
-    accessToken?: string
-  ) => {
+  recordRefund: async (paymentId: string, payload: RecordRefundRequest, accessToken?: string) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response = await apiClient.post<any>(
       `/api/v1/admin/payments/${paymentId}/refund`,
       payload,
       {
         headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-      }
+      },
     );
     return response.data;
   },
@@ -193,4 +186,6 @@ export const PaymentsService = {
     });
     return response.data;
   },
+
+  getInvoicePdfUrl: (paymentId: string): string => `/api/v1/payments/${paymentId}/invoice/pdf`,
 };

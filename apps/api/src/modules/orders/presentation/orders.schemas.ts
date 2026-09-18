@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaymentStatus, FulfillmentStatus } from '../domain/orders.types';
+import { FulfillmentStatus } from '../domain/orders.types';
 
 const addressSchema = z.object({
   label: z.string().optional(),
@@ -9,6 +9,8 @@ const addressSchema = z.object({
   state: z.string().min(1),
   pincode: z.string().min(1),
   country: z.string().min(1),
+  companyName: z.string().optional(),
+  gstin: z.string().optional(),
 });
 
 export const checkoutSchema = z.object({
@@ -16,10 +18,15 @@ export const checkoutSchema = z.object({
     shippingAddress: addressSchema,
     billingAddress: addressSchema,
     couponCode: z.string().optional(),
+    companyName: z.string().optional(),
+    customerGstin: z.string().optional(),
+    paymentPlan: z.enum(['FULL', 'MILESTONE_50_50']).optional(),
   }),
-  headers: z.object({
-    'idempotency-key': z.string().min(1, 'Idempotency key is required for checkout')
-  }).passthrough()
+  headers: z
+    .object({
+      'idempotency-key': z.string().min(1, 'Idempotency key is required for checkout'),
+    })
+    .passthrough(),
 });
 
 export const updateFulfillmentSchema = z.object({
@@ -29,5 +36,5 @@ export const updateFulfillmentSchema = z.object({
   body: z.object({
     status: z.nativeEnum(FulfillmentStatus),
     note: z.string().optional(),
-  })
+  }),
 });

@@ -1,5 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
-import { CheckoutUseCase, GetOrdersUseCase, UpdateOrderStatusUseCase, GetOrderByIdUseCase } from '../application/orders.use-cases';
+import {
+  CheckoutUseCase,
+  GetOrdersUseCase,
+  UpdateOrderStatusUseCase,
+  GetOrderByIdUseCase,
+} from '../application/orders.use-cases';
 import { sendSuccess } from '../../../core/exceptions';
 import { checkoutSchema, updateFulfillmentSchema } from './orders.schemas';
 
@@ -8,21 +13,24 @@ export class OrdersController {
     private readonly checkoutUseCase: CheckoutUseCase,
     private readonly getOrdersUseCase: GetOrdersUseCase,
     private readonly updateOrderStatusUseCase: UpdateOrderStatusUseCase,
-    private readonly getOrderByIdUseCase: GetOrderByIdUseCase
+    private readonly getOrderByIdUseCase: GetOrderByIdUseCase,
   ) {}
 
   checkout = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const data = checkoutSchema.parse({ body: req.body, headers: req.headers });
       const idempotencyKey = data.headers['idempotency-key'] as string;
-      const userId = (req as any).auth?.sub || 'system';
+      const userId = (req as Request & { auth?: { sub?: string } }).auth?.sub || 'system';
 
       const result = await this.checkoutUseCase.execute({
         userId: userId,
         shippingAddress: data.body.shippingAddress,
         billingAddress: data.body.billingAddress,
         couponCode: data.body.couponCode,
-        idempotencyKey
+        companyName: data.body.companyName,
+        customerGstin: data.body.customerGstin,
+        paymentPlan: data.body.paymentPlan,
+        idempotencyKey,
       });
       sendSuccess(req, res, 201, result);
     } catch (error) {
@@ -32,7 +40,7 @@ export class OrdersController {
 
   getMyOrders = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = (req as any).auth?.sub || 'system';
+      const userId = (req as Request & { auth?: { sub?: string } }).auth?.sub || 'system';
       const orders = await this.getOrdersUseCase.execute(userId);
       sendSuccess(req, res, 200, orders);
     } catch (error) {
@@ -67,7 +75,7 @@ export class OrdersController {
       const order = await this.updateOrderStatusUseCase.executeFulfillment(
         data.params.id,
         data.body.status,
-        data.body.note
+        data.body.note,
       );
       sendSuccess(req, res, 200, order);
     } catch (error) {

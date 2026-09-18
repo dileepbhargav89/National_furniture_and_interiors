@@ -20,7 +20,7 @@ export function createPaymentsRouter(
   controller: PaymentsController,
   invoicesController: InvoicesController,
   authMiddleware: RequestHandler,
-  requirePermission: (permission: string) => RequestHandler
+  requirePermission: (permission: string) => RequestHandler,
 ): Router {
   const router = Router();
 
@@ -33,37 +33,32 @@ export function createPaymentsRouter(
   // ── Webhook endpoint ──────────────────────────────────────────────────────
   // No authMiddleware — Razorpay authenticates via HMAC-SHA256 signature.
   // express.raw() captures the raw Buffer before any JSON parsing.
-  router.post(
-    '/payments/webhook',
-    raw({ type: 'application/json' }),
-    controller.handleWebhook
-  );
+  router.post('/payments/webhook', raw({ type: 'application/json' }), controller.handleWebhook);
 
   // ── Customer endpoints ────────────────────────────────────────────────────
-  router.post(
-    '/payments/create-intent',
-    standardLimiter,
-    controller.createPaymentIntent
-  );
+  router.post('/payments/create-intent', standardLimiter, controller.createPaymentIntent);
 
-  router.post(
-    '/payments/verify',
-    standardLimiter,
-    controller.verifyPayment
-  );
+  router.post('/payments/verify', standardLimiter, controller.verifyPayment);
 
   router.get(
     '/payments/:paymentId/invoice',
     standardLimiter,
     authMiddleware,
-    invoicesController.getInvoice
+    invoicesController.getInvoice,
   );
 
   router.get(
-    '/orders/:orderId/invoice',
+    '/payments/:paymentId/invoice/pdf',
     standardLimiter,
-    authMiddleware,
-    invoicesController.getInvoiceByOrderId
+    invoicesController.downloadInvoicePdfByPaymentId,
+  );
+
+  router.get('/orders/:orderId/invoice', standardLimiter, invoicesController.getInvoiceByOrderId);
+
+  router.get(
+    '/orders/:orderId/invoice/pdf',
+    standardLimiter,
+    invoicesController.downloadInvoicePdfByOrderId,
   );
 
   // ── Admin endpoints ───────────────────────────────────────────────────────
@@ -72,7 +67,7 @@ export function createPaymentsRouter(
     standardLimiter,
     authMiddleware,
     requirePermission('payments.read'),
-    controller.getPaymentKpis
+    controller.getPaymentKpis,
   );
 
   router.get(
@@ -80,7 +75,7 @@ export function createPaymentsRouter(
     standardLimiter,
     authMiddleware,
     requirePermission('payments.read'),
-    controller.listPayments
+    controller.listPayments,
   );
 
   router.get(
@@ -88,7 +83,7 @@ export function createPaymentsRouter(
     standardLimiter,
     authMiddleware,
     requirePermission('payments.read'),
-    controller.getPaymentById
+    controller.getPaymentById,
   );
 
   router.post(
@@ -96,7 +91,7 @@ export function createPaymentsRouter(
     standardLimiter,
     authMiddleware,
     requirePermission('payments.manage'),
-    controller.reconcilePayment
+    controller.reconcilePayment,
   );
 
   router.post(
@@ -104,7 +99,7 @@ export function createPaymentsRouter(
     standardLimiter,
     authMiddleware,
     requirePermission('payments.manage'),
-    controller.recordRefund
+    controller.recordRefund,
   );
 
   router.get(
@@ -112,7 +107,31 @@ export function createPaymentsRouter(
     standardLimiter,
     authMiddleware,
     requirePermission('payments.read'),
-    invoicesController.getInvoice
+    invoicesController.getInvoice,
+  );
+
+  router.get(
+    '/admin/payments/:paymentId/invoice/pdf',
+    standardLimiter,
+    authMiddleware,
+    requirePermission('payments.read'),
+    invoicesController.downloadInvoicePdfByPaymentId,
+  );
+
+  router.get(
+    '/admin/orders/:orderId/invoice/pdf',
+    standardLimiter,
+    authMiddleware,
+    requirePermission('payments.read'),
+    invoicesController.downloadInvoicePdfByOrderId,
+  );
+
+  router.post(
+    '/admin/orders/:orderId/invoice/generate',
+    standardLimiter,
+    authMiddleware,
+    requirePermission('payments.manage'),
+    invoicesController.generateInvoiceForOrder,
   );
 
   return router;

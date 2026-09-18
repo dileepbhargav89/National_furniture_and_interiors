@@ -31,6 +31,7 @@ export interface OrderItem {
   unitPrice: number; // in paise
   quantity: number;
   lineTotal: number; // in paise
+  hsnCode?: string | undefined;
 }
 
 export interface AddressSnapshot {
@@ -41,6 +42,16 @@ export interface AddressSnapshot {
   state: string;
   pincode: string;
   country: string;
+  companyName?: string | undefined;
+  gstin?: string | undefined;
+}
+
+export interface TaxBreakdown {
+  cgst: number; // in paise
+  sgst: number; // in paise
+  igst: number; // in paise
+  rate: number; // e.g. 18 for 18% GST
+  isInterState: boolean;
 }
 
 export interface OrderPricing {
@@ -50,6 +61,7 @@ export interface OrderPricing {
   tax: number;
   total: number;
   currency: string;
+  taxBreakdown?: TaxBreakdown | undefined;
 }
 
 export interface StatusEvent {
@@ -70,9 +82,12 @@ export interface Order {
   couponCode?: string | undefined;
   paymentStatus: PaymentStatus;
   fulfillmentStatus: FulfillmentStatus;
+  companyName?: string | undefined;
+  customerGstin?: string | undefined;
+  paymentPlan?: 'FULL' | 'MILESTONE_50_50' | undefined;
   warehouseId?: string | undefined;
   timeline: StatusEvent[];
-  
+
   // Audit fields
   createdAt: Date;
   updatedAt: Date;
@@ -87,6 +102,9 @@ export interface CreateOrderParams {
   billingAddress: AddressSnapshot;
   pricing: OrderPricing;
   couponCode?: string | undefined;
+  companyName?: string | undefined;
+  customerGstin?: string | undefined;
+  paymentPlan?: 'FULL' | 'MILESTONE_50_50' | undefined;
 }
 
 export interface IOrderRepository {
@@ -95,9 +113,16 @@ export interface IOrderRepository {
   findByOrderNumber(orderNumber: string): Promise<Order | null>;
   findAll(skip?: number, limit?: number): Promise<Order[]>;
   findUserOrders(userId: string): Promise<Order[]>;
-  updateFulfillmentStatus(id: string, status: FulfillmentStatus, note?: string): Promise<Order | null>;
+  updateFulfillmentStatus(
+    id: string,
+    status: FulfillmentStatus,
+    note?: string,
+  ): Promise<Order | null>;
   updatePaymentStatus(id: string, status: PaymentStatus): Promise<Order | null>;
-  getSalesMetrics(startDate?: string, endDate?: string): Promise<{
+  getSalesMetrics(
+    startDate?: string,
+    endDate?: string,
+  ): Promise<{
     totalRevenue: number;
     totalOrders: number;
     averageOrderValue: number;

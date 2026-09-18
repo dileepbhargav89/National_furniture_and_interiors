@@ -84,8 +84,12 @@ export default function PaymentsPage() {
   const [payments, setPayments] = useState<PaymentSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'ALL' | 'CAPTURED' | 'PENDING' | 'FAILED' | 'REFUNDED'>('ALL');
-  const [gatewayFilter, setGatewayFilter] = useState<'ALL' | 'RAZORPAY' | 'MANUAL_BANK_TRANSFER'>('ALL');
+  const [activeTab, setActiveTab] = useState<
+    'ALL' | 'CAPTURED' | 'PENDING' | 'FAILED' | 'REFUNDED'
+  >('ALL');
+  const [gatewayFilter, setGatewayFilter] = useState<'ALL' | 'RAZORPAY' | 'MANUAL_BANK_TRANSFER'>(
+    'ALL',
+  );
   const [searchQuery, setSearchQuery] = useState('');
 
   // Slide-over Dossier State
@@ -148,7 +152,8 @@ export default function PaymentsPage() {
                 method: isPaid ? 'CARD' : 'BANK_TRANSFER',
                 gatewayOrderId: `gate_${o.orderNumber || o.id}`,
                 gatewayPaymentId: isPaid ? `pay_rzp_${Date.now().toString().slice(-6)}` : undefined,
-                customerName: o.shippingAddress?.line1 || (typeof o.userId === 'string' ? o.userId : 'Client'),
+                customerName:
+                  o.shippingAddress?.line1 || (typeof o.userId === 'string' ? o.userId : 'Client'),
                 customerPhone: anyOrder.phone || '+91 96636 28302',
                 customerEmail: anyOrder.email || 'client@nationalinteriors.in',
                 reconciliationDetails: anyOrder.reconciliationDetails,
@@ -169,7 +174,7 @@ export default function PaymentsPage() {
       apiList.forEach((p) => map.set(p.orderId || p.id, p));
 
       const combined = Array.from(map.values()).sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
 
       setPayments(combined);
@@ -219,7 +224,8 @@ export default function PaymentsPage() {
     });
 
     const totalCount = payments.length;
-    const successRate = totalCount > 0 ? Math.round((capturedCount / (capturedCount + failedCount || 1)) * 100) : 100;
+    const successRate =
+      totalCount > 0 ? Math.round((capturedCount / (capturedCount + failedCount || 1)) * 100) : 100;
     const aov = capturedCount > 0 ? Math.round(totalRevenue / capturedCount) : 0;
 
     return {
@@ -238,14 +244,26 @@ export default function PaymentsPage() {
   const filteredPayments = useMemo(() => {
     return payments.filter((p) => {
       // Tab filter
-      if (activeTab === 'CAPTURED' && p.status !== 'CAPTURED' && p.status !== 'COMPLETED') return false;
-      if (activeTab === 'PENDING' && p.status !== 'PENDING' && p.status !== 'CREATED' && p.status !== 'AUTHORIZED') return false;
+      if (activeTab === 'CAPTURED' && p.status !== 'CAPTURED' && p.status !== 'COMPLETED')
+        return false;
+      if (
+        activeTab === 'PENDING' &&
+        p.status !== 'PENDING' &&
+        p.status !== 'CREATED' &&
+        p.status !== 'AUTHORIZED'
+      )
+        return false;
       if (activeTab === 'FAILED' && p.status !== 'FAILED') return false;
       if (activeTab === 'REFUNDED' && p.status !== 'REFUNDED') return false;
 
       // Gateway filter
       if (gatewayFilter === 'RAZORPAY' && p.gateway !== 'RAZORPAY') return false;
-      if (gatewayFilter === 'MANUAL_BANK_TRANSFER' && p.gateway !== 'MANUAL_BANK_TRANSFER' && p.gateway !== 'WHITE_GLOVE_OFFLINE') return false;
+      if (
+        gatewayFilter === 'MANUAL_BANK_TRANSFER' &&
+        p.gateway !== 'MANUAL_BANK_TRANSFER' &&
+        p.gateway !== 'WHITE_GLOVE_OFFLINE'
+      )
+        return false;
 
       // Search Query
       if (searchQuery.trim()) {
@@ -264,12 +282,12 @@ export default function PaymentsPage() {
   // Actions
   const handleDownloadInvoice = async (paymentId: string) => {
     try {
-      const response = await PaymentsService.adminGetInvoiceDownloadUrl(paymentId);
-      if (response.data?.url) {
-        window.open(response.data.url, '_blank');
-      } else {
-        window.print();
-      }
+      const apiBase =
+        process.env.NEXT_PUBLIC_API_URL ||
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
+        'http://localhost:4000';
+      const pdfUrl = `${apiBase}${PaymentsService.getInvoicePdfUrl(paymentId)}`;
+      window.open(pdfUrl, '_blank');
     } catch {
       window.print();
     }
@@ -315,7 +333,7 @@ export default function PaymentsPage() {
           };
         }
         return p;
-      })
+      }),
     );
 
     // Update local user orders
@@ -324,7 +342,9 @@ export default function PaymentsPage() {
         const raw = localStorage.getItem('nfi_user_orders');
         if (raw) {
           const list: Order[] = JSON.parse(raw);
-          const found = list.find((o) => o.id === reconcileTarget.orderId || o.orderNumber === reconcileTarget.orderId);
+          const found = list.find(
+            (o) => o.id === reconcileTarget.orderId || o.orderNumber === reconcileTarget.orderId,
+          );
           if (found) {
             found.paymentStatus = PaymentStatus.PAID;
             found.timeline = [
@@ -345,7 +365,9 @@ export default function PaymentsPage() {
 
     setReconcileModalOpen(false);
     setReconciling(false);
-    setActionSuccess(`Payment for Order #${reconcileTarget.orderId} successfully captured & reconciled.`);
+    setActionSuccess(
+      `Payment for Order #${reconcileTarget.orderId} successfully captured & reconciled.`,
+    );
     setTimeout(() => setActionSuccess(''), 5000);
   };
 
@@ -387,12 +409,14 @@ export default function PaymentsPage() {
           };
         }
         return p;
-      })
+      }),
     );
 
     setRefundModalOpen(false);
     setRefunding(false);
-    setActionSuccess(`Refund of ₹${refundAmount.toLocaleString('en-IN')} recorded for Order #${refundTarget.orderId}.`);
+    setActionSuccess(
+      `Refund of ₹${refundAmount.toLocaleString('en-IN')} recorded for Order #${refundTarget.orderId}.`,
+    );
     setTimeout(() => setActionSuccess(''), 5000);
   };
 
@@ -405,8 +429,18 @@ export default function PaymentsPage() {
         action={
           <div className="flex items-center gap-2">
             <NfiButton variant="secondary" size="sm" onClick={fetchPayments} disabled={loading}>
-              <svg className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              <svg
+                className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
               </svg>
               Refresh
             </NfiButton>
@@ -415,97 +449,115 @@ export default function PaymentsPage() {
       />
 
       {actionSuccess && (
-        <div className="mb-5 p-4 rounded-xl text-xs border bg-emerald-50 text-emerald-800 border-emerald-200 flex items-center justify-between">
+        <div className="mb-5 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-800">
           <div className="flex items-center gap-2 font-medium">
-            <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <svg
+              className="h-4 w-4 text-emerald-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
             <span>{actionSuccess}</span>
           </div>
-          <button onClick={() => setActionSuccess('')} className="text-emerald-700 hover:text-emerald-900 text-xs">
+          <button
+            onClick={() => setActionSuccess('')}
+            className="text-xs text-emerald-700 hover:text-emerald-900"
+          >
             Dismiss
           </button>
         </div>
       )}
 
       {error && (
-        <div className="mb-5 p-4 rounded-xl text-xs border bg-red-50 text-red-700 border-red-200">
+        <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-700">
           {error}
         </div>
       )}
 
       {/* 4 Executive KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Gross Revenue */}
-        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">Gross Revenue</span>
-            <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-emerald-50 text-emerald-700">
+        <div className="shadow-xs rounded-2xl border border-stone-200 bg-white p-5">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+              Gross Revenue
+            </span>
+            <span className="rounded bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-medium text-emerald-700">
               Captured
             </span>
           </div>
-          <p className="text-2xl font-serif font-bold text-[#171717]">
+          <p className="font-serif text-2xl font-bold text-[#171717]">
             {formatCurrency(kpis.totalRevenue)}
           </p>
-          <p className="text-[11px] text-stone-400 mt-1">Across {kpis.capturedCount} completed commissions</p>
+          <p className="mt-1 text-[11px] text-stone-400">
+            Across {kpis.capturedCount} completed commissions
+          </p>
         </div>
 
         {/* Card 2: Pending Reconciliations */}
-        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">Pending Reconcile</span>
+        <div className="shadow-xs rounded-2xl border border-stone-200 bg-white p-5">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+              Pending Reconcile
+            </span>
             {kpis.pendingCount > 0 && (
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 animate-pulse">
+              <span className="animate-pulse rounded bg-amber-100 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-900">
                 Action Required
               </span>
             )}
           </div>
-          <p className="text-2xl font-serif font-bold text-amber-950">
-            {kpis.pendingCount}
-          </p>
-          <p className="text-[11px] text-stone-400 mt-1">White-Glove NEFT / Bank Transfers</p>
+          <p className="font-serif text-2xl font-bold text-amber-950">{kpis.pendingCount}</p>
+          <p className="mt-1 text-[11px] text-stone-400">White-Glove NEFT / Bank Transfers</p>
         </div>
 
         {/* Card 3: Gateway Success Rate */}
-        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">Success Rate</span>
-            <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-emerald-50 text-emerald-700">
+        <div className="shadow-xs rounded-2xl border border-stone-200 bg-white p-5">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+              Success Rate
+            </span>
+            <span className="rounded bg-emerald-50 px-2 py-0.5 font-mono text-[10px] font-medium text-emerald-700">
               Razorpay + Bank
             </span>
           </div>
-          <p className="text-2xl font-serif font-bold text-[#171717]">
-            {kpis.successRate}%
+          <p className="font-serif text-2xl font-bold text-[#171717]">{kpis.successRate}%</p>
+          <p className="mt-1 text-[11px] text-stone-400">
+            {kpis.failedCount} declined authorizations
           </p>
-          <p className="text-[11px] text-stone-400 mt-1">{kpis.failedCount} declined authorizations</p>
         </div>
 
         {/* Card 4: Average Order Value */}
-        <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">Average Order Value</span>
-            <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-[#8C7355]/10 text-[#8C7355]">
+        <div className="shadow-xs rounded-2xl border border-stone-200 bg-white p-5">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+              Average Order Value
+            </span>
+            <span className="rounded bg-[#8C7355]/10 px-2 py-0.5 font-mono text-[10px] font-medium text-[#8C7355]">
               Luxury AOV
             </span>
           </div>
-          <p className="text-2xl font-serif font-bold text-[#171717]">
-            {formatCurrency(kpis.aov)}
-          </p>
-          <p className="text-[11px] text-stone-400 mt-1">Includes 18% GST &amp; delivery</p>
+          <p className="font-serif text-2xl font-bold text-[#171717]">{formatCurrency(kpis.aov)}</p>
+          <p className="mt-1 text-[11px] text-stone-400">Includes 18% GST &amp; delivery</p>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white rounded-2xl border border-stone-200 p-4 mb-6 shadow-xs space-y-3">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-          
+      <div className="shadow-xs mb-6 space-y-3 rounded-2xl border border-stone-200 bg-white p-4">
+        <div className="flex flex-col items-stretch justify-between gap-3 md:flex-row md:items-center">
           {/* Status Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
             {(['ALL', 'CAPTURED', 'PENDING', 'FAILED', 'REFUNDED'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                   activeTab === tab
                     ? 'bg-[#171717] text-white'
                     : 'text-stone-600 hover:bg-stone-100'
@@ -513,7 +565,7 @@ export default function PaymentsPage() {
               >
                 {tab === 'ALL' ? 'All Transactions' : tab.charAt(0) + tab.slice(1).toLowerCase()}
                 {tab === 'PENDING' && kpis.pendingCount > 0 && (
-                  <span className="ml-1.5 px-1.5 py-0.2 text-[9px] rounded-full bg-amber-500 text-white font-bold">
+                  <span className="py-0.2 ml-1.5 rounded-full bg-amber-500 px-1.5 text-[9px] font-bold text-white">
                     {kpis.pendingCount}
                   </span>
                 )}
@@ -528,14 +580,13 @@ export default function PaymentsPage() {
               onChange={(e) =>
                 setGatewayFilter(e.target.value as 'ALL' | 'RAZORPAY' | 'MANUAL_BANK_TRANSFER')
               }
-              className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 bg-stone-50 text-stone-700 focus:outline-none focus:ring-1 focus:ring-[#8C7355]"
+              className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs text-stone-700 focus:outline-none focus:ring-1 focus:ring-[#8C7355]"
             >
               <option value="ALL">All Payment Methods</option>
               <option value="RAZORPAY">Razorpay Online Gateway</option>
               <option value="MANUAL_BANK_TRANSFER">White-Glove Bank (NEFT/RTGS)</option>
             </select>
           </div>
-
         </div>
 
         {/* Search Bar */}
@@ -545,10 +596,20 @@ export default function PaymentsPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by Payment ID, Order Number, Customer Name, or UTR..."
-            className="w-full text-xs pl-9 pr-4 py-2.5 rounded-xl border border-stone-200 bg-stone-50/50 text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-[#8C7355]"
+            className="w-full rounded-xl border border-stone-200 bg-stone-50/50 py-2.5 pl-9 pr-4 text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-[#8C7355]"
           />
-          <svg className="w-4 h-4 text-stone-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          <svg
+            className="absolute left-3 top-3 h-4 w-4 text-stone-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
           </svg>
           {searchQuery && (
             <button
@@ -562,7 +623,7 @@ export default function PaymentsPage() {
       </div>
 
       {/* Main Transactions Data Table */}
-      <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs">
+      <div className="shadow-xs overflow-hidden rounded-2xl border border-stone-200 bg-white">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-stone-200">
             <thead className="bg-stone-50/80">
@@ -598,7 +659,7 @@ export default function PaymentsPage() {
                 <tr>
                   <td colSpan={8} className="px-5 py-14 text-center text-sm text-stone-500">
                     <div className="flex flex-col items-center gap-3">
-                      <div className="w-8 h-8 rounded-full border-2 border-stone-800 border-t-transparent animate-spin" />
+                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-800 border-t-transparent" />
                       <span>Loading payment audit log…</span>
                     </div>
                   </td>
@@ -612,30 +673,28 @@ export default function PaymentsPage() {
               ) : (
                 filteredPayments.map((p) => {
                   const isCaptured = p.status === 'CAPTURED' || p.status === 'COMPLETED';
-                  const isPending = p.status === 'PENDING' || p.status === 'CREATED' || p.status === 'AUTHORIZED';
+                  const isPending =
+                    p.status === 'PENDING' || p.status === 'CREATED' || p.status === 'AUTHORIZED';
                   const isFailed = p.status === 'FAILED';
                   const isRefunded = p.status === 'REFUNDED';
 
                   return (
-                    <tr
-                      key={p.id}
-                      className="group hover:bg-stone-50/60 transition-colors"
-                    >
+                    <tr key={p.id} className="group transition-colors hover:bg-stone-50/60">
                       {/* Payment Reference */}
                       <td className="px-5 py-3.5">
                         <button
                           onClick={() => setSelectedPayment(p)}
-                          className="text-xs font-mono font-medium text-stone-900 hover:text-[#8C7355] text-left block"
+                          className="block text-left font-mono text-xs font-medium text-stone-900 hover:text-[#8C7355]"
                         >
                           {p.id}
                         </button>
                         {p.gatewayPaymentId && (
-                          <span className="text-[10px] font-mono text-stone-400 block mt-0.5">
+                          <span className="mt-0.5 block font-mono text-[10px] text-stone-400">
                             {p.gatewayPaymentId}
                           </span>
                         )}
                         {p.reconciliationDetails?.utrNumber && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded mt-1">
+                          <span className="py-0.2 mt-1 inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 font-mono text-[10px] text-amber-800">
                             UTR: {p.reconciliationDetails.utrNumber}
                           </span>
                         )}
@@ -645,7 +704,7 @@ export default function PaymentsPage() {
                       <td className="px-5 py-3.5">
                         <Link
                           href={`/orders/${p.orderId}`}
-                          className="text-xs font-mono font-semibold text-[#8C7355] hover:underline"
+                          className="font-mono text-xs font-semibold text-[#8C7355] hover:underline"
                         >
                           {p.orderId}
                         </Link>
@@ -653,23 +712,31 @@ export default function PaymentsPage() {
 
                       {/* Customer */}
                       <td className="px-5 py-3.5">
-                        <p className="text-xs font-medium text-stone-900">{p.customerName || 'Bespoke Client'}</p>
-                        <p className="text-[10px] text-stone-400">{p.customerPhone || 'Bengaluru'}</p>
+                        <p className="text-xs font-medium text-stone-900">
+                          {p.customerName || 'Bespoke Client'}
+                        </p>
+                        <p className="text-[10px] text-stone-400">
+                          {p.customerPhone || 'Bengaluru'}
+                        </p>
                       </td>
 
                       {/* Amount */}
                       <td className="px-5 py-3.5">
-                        <p className="text-xs font-semibold text-stone-900">{formatCurrency(p.amount)}</p>
+                        <p className="text-xs font-semibold text-stone-900">
+                          {formatCurrency(p.amount)}
+                        </p>
                         <p className="text-[10px] text-stone-400">Incl. 18% GST</p>
                       </td>
 
                       {/* Method & Gateway */}
                       <td className="px-5 py-3.5">
-                        <span className="text-xs text-stone-800 block font-medium">
+                        <span className="block text-xs font-medium text-stone-800">
                           {p.method ? p.method.replace(/_/g, ' ') : 'Online'}
                         </span>
-                        <span className="text-[10px] font-mono text-stone-400">
-                          {p.gateway === 'MANUAL_BANK_TRANSFER' ? 'NEFT / RTGS' : 'Razorpay Gateway'}
+                        <span className="font-mono text-[10px] text-stone-400">
+                          {p.gateway === 'MANUAL_BANK_TRANSFER'
+                            ? 'NEFT / RTGS'
+                            : 'Razorpay Gateway'}
                         </span>
                       </td>
 
@@ -681,29 +748,29 @@ export default function PaymentsPage() {
                             isCaptured
                               ? 'Captured'
                               : isPending
-                              ? 'Pending Reconcile'
-                              : isFailed
-                              ? 'Auth Failed'
-                              : isRefunded
-                              ? 'Refunded'
-                              : 'Other'
+                                ? 'Pending Reconcile'
+                                : isFailed
+                                  ? 'Auth Failed'
+                                  : isRefunded
+                                    ? 'Refunded'
+                                    : 'Other'
                           }
                         />
                       </td>
 
                       {/* Date */}
-                      <td className="px-5 py-3.5 text-xs text-stone-500 whitespace-nowrap">
+                      <td className="whitespace-nowrap px-5 py-3.5 text-xs text-stone-500">
                         {formatDate(p.createdAt)}
                       </td>
 
                       {/* Action Buttons */}
-                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                      <td className="whitespace-nowrap px-5 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           {/* Reconcile Action for Pending */}
                           {isPending && (
                             <button
                               onClick={() => openReconcileModal(p)}
-                              className="px-2.5 py-1 rounded-lg text-xs font-medium bg-[#171717] hover:bg-[#8C7355] text-white transition-colors"
+                              className="rounded-lg bg-[#171717] px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-[#8C7355]"
                             >
                               Reconcile
                             </button>
@@ -713,7 +780,7 @@ export default function PaymentsPage() {
                           {isCaptured && (
                             <button
                               onClick={() => handleDownloadInvoice(p.id)}
-                              className="px-2.5 py-1 rounded-lg text-xs font-medium border border-stone-200 hover:bg-stone-100 text-stone-700 transition-colors"
+                              className="rounded-lg border border-stone-200 px-2.5 py-1 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-100"
                             >
                               Invoice
                             </button>
@@ -723,7 +790,7 @@ export default function PaymentsPage() {
                           {isCaptured && (
                             <button
                               onClick={() => openRefundModal(p)}
-                              className="px-2 py-1 rounded-lg text-xs font-medium text-stone-400 hover:text-rose-700 transition-colors"
+                              className="rounded-lg px-2 py-1 text-xs font-medium text-stone-400 transition-colors hover:text-rose-700"
                             >
                               Refund
                             </button>
@@ -732,11 +799,21 @@ export default function PaymentsPage() {
                           {/* Dossier details */}
                           <button
                             onClick={() => setSelectedPayment(p)}
-                            className="p-1 text-stone-400 hover:text-stone-800 rounded"
+                            className="rounded p-1 text-stone-400 hover:text-stone-800"
                             title="View Dossier"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            <svg
+                              className="h-4 w-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 5l7 7-7 7"
+                              />
                             </svg>
                           </button>
                         </div>
@@ -751,9 +828,13 @@ export default function PaymentsPage() {
 
         {/* Table Footer */}
         {!loading && filteredPayments.length > 0 && (
-          <div className="px-5 py-3 border-t border-stone-100 bg-stone-50 flex items-center justify-between text-xs text-stone-500">
-            <span>Showing {filteredPayments.length} of {payments.length} transactions</span>
-            <span>Total Shown: {formatCurrency(filteredPayments.reduce((a, b) => a + b.amount, 0))}</span>
+          <div className="flex items-center justify-between border-t border-stone-100 bg-stone-50 px-5 py-3 text-xs text-stone-500">
+            <span>
+              Showing {filteredPayments.length} of {payments.length} transactions
+            </span>
+            <span>
+              Total Shown: {formatCurrency(filteredPayments.reduce((a, b) => a + b.amount, 0))}
+            </span>
           </div>
         )}
       </div>
@@ -761,130 +842,175 @@ export default function PaymentsPage() {
       {/* Slide-Over Payment Dossier */}
       {selectedPayment && (
         <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity" onClick={() => setSelectedPayment(null)} />
-          <div className="fixed inset-y-0 right-0 max-w-lg w-full bg-white shadow-2xl flex flex-col z-10 border-l border-stone-200">
-            
+          <div
+            className="backdrop-blur-xs absolute inset-0 bg-black/40 transition-opacity"
+            onClick={() => setSelectedPayment(null)}
+          />
+          <div className="fixed inset-y-0 right-0 z-10 flex w-full max-w-lg flex-col border-l border-stone-200 bg-white shadow-2xl">
             {/* Header */}
-            <div className="p-6 border-b border-stone-200 bg-stone-50 flex items-center justify-between">
+            <div className="flex items-center justify-between border-b border-stone-200 bg-stone-50 p-6">
               <div>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-[#8C7355] bg-[#8C7355]/10 px-2 py-0.5 rounded">
+                <span className="rounded bg-[#8C7355]/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[#8C7355]">
                   Transaction Dossier
                 </span>
-                <h3 className="text-lg font-serif font-bold text-[#171717] mt-1">
+                <h3 className="mt-1 font-serif text-lg font-bold text-[#171717]">
                   Payment #{selectedPayment.id}
                 </h3>
               </div>
               <button
                 onClick={() => setSelectedPayment(null)}
-                className="p-1.5 rounded-lg text-stone-400 hover:text-stone-800"
+                className="rounded-lg p-1.5 text-stone-400 hover:text-stone-800"
               >
                 ✕
               </button>
             </div>
 
             {/* Dossier Content */}
-            <div className="p-6 space-y-6 overflow-y-auto flex-1 text-xs">
-              
+            <div className="flex-1 space-y-6 overflow-y-auto p-6 text-xs">
               {/* Financial Snapshot */}
-              <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 space-y-2.5">
-                <div className="flex justify-between items-center pb-2 border-b border-stone-200/60">
-                  <span className="text-stone-500 uppercase font-semibold text-[10px]">Total Transaction Amount</span>
-                  <StatusBadge status={selectedPayment.status?.toLowerCase() ?? 'pending'} label={selectedPayment.status} />
+              <div className="space-y-2.5 rounded-xl border border-stone-200 bg-stone-50 p-4">
+                <div className="flex items-center justify-between border-b border-stone-200/60 pb-2">
+                  <span className="text-[10px] font-semibold uppercase text-stone-500">
+                    Total Transaction Amount
+                  </span>
+                  <StatusBadge
+                    status={selectedPayment.status?.toLowerCase() ?? 'pending'}
+                    label={selectedPayment.status}
+                  />
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-stone-600">Grand Total</span>
-                  <span className="font-bold font-serif text-base text-[#171717]">
+                  <span className="font-serif text-base font-bold text-[#171717]">
                     {formatCurrency(selectedPayment.amount)}
                   </span>
                 </div>
-                <div className="flex justify-between text-stone-500 text-[11px]">
+                <div className="flex justify-between text-[11px] text-stone-500">
                   <span>Taxable Base</span>
                   <span>{formatCurrency(Math.round(selectedPayment.amount / 1.18))}</span>
                 </div>
-                <div className="flex justify-between text-stone-500 text-[11px]">
+                <div className="flex justify-between text-[11px] text-stone-500">
                   <span>GST (CGST 9% + SGST 9%)</span>
-                  <span>{formatCurrency(Math.round(selectedPayment.amount - selectedPayment.amount / 1.18))}</span>
+                  <span>
+                    {formatCurrency(
+                      Math.round(selectedPayment.amount - selectedPayment.amount / 1.18),
+                    )}
+                  </span>
                 </div>
               </div>
 
               {/* Order & Customer Information */}
               <div className="space-y-3">
-                <h4 className="font-semibold text-stone-900 uppercase tracking-wider text-[11px] pb-1 border-b border-stone-100">
+                <h4 className="border-b border-stone-100 pb-1 text-[11px] font-semibold uppercase tracking-wider text-stone-900">
                   Commission Information
                 </h4>
                 <div className="grid grid-cols-2 gap-3 text-stone-600">
                   <div>
-                    <span className="block text-stone-400 text-[10px]">Order Number</span>
-                    <Link href={`/orders/${selectedPayment.orderId}`} className="font-mono text-[#8C7355] font-semibold hover:underline">
+                    <span className="block text-[10px] text-stone-400">Order Number</span>
+                    <Link
+                      href={`/orders/${selectedPayment.orderId}`}
+                      className="font-mono font-semibold text-[#8C7355] hover:underline"
+                    >
                       {selectedPayment.orderId}
                     </Link>
                   </div>
                   <div>
-                    <span className="block text-stone-400 text-[10px]">Payment Method</span>
-                    <span className="font-medium text-stone-800">{selectedPayment.method || 'Online'}</span>
+                    <span className="block text-[10px] text-stone-400">Payment Method</span>
+                    <span className="font-medium text-stone-800">
+                      {selectedPayment.method || 'Online'}
+                    </span>
                   </div>
                   <div>
-                    <span className="block text-stone-400 text-[10px]">Customer Name</span>
-                    <span className="font-medium text-stone-800">{selectedPayment.customerName || 'N/A'}</span>
+                    <span className="block text-[10px] text-stone-400">Customer Name</span>
+                    <span className="font-medium text-stone-800">
+                      {selectedPayment.customerName || 'N/A'}
+                    </span>
                   </div>
                   <div>
-                    <span className="block text-stone-400 text-[10px]">Phone Number</span>
-                    <span className="font-mono text-stone-800">{selectedPayment.customerPhone || 'N/A'}</span>
+                    <span className="block text-[10px] text-stone-400">Phone Number</span>
+                    <span className="font-mono text-stone-800">
+                      {selectedPayment.customerPhone || 'N/A'}
+                    </span>
                   </div>
                 </div>
               </div>
 
               {/* Gateway & Banking References */}
               <div className="space-y-3">
-                <h4 className="font-semibold text-stone-900 uppercase tracking-wider text-[11px] pb-1 border-b border-stone-100">
+                <h4 className="border-b border-stone-100 pb-1 text-[11px] font-semibold uppercase tracking-wider text-stone-900">
                   Gateway &amp; Banking Parameters
                 </h4>
                 <div className="space-y-2 text-stone-600">
                   <div>
-                    <span className="block text-stone-400 text-[10px]">Gateway Provider</span>
-                    <span className="font-medium text-stone-800">{selectedPayment.gateway || 'RAZORPAY'}</span>
+                    <span className="block text-[10px] text-stone-400">Gateway Provider</span>
+                    <span className="font-medium text-stone-800">
+                      {selectedPayment.gateway || 'RAZORPAY'}
+                    </span>
                   </div>
                   {selectedPayment.gatewayOrderId && (
                     <div>
-                      <span className="block text-stone-400 text-[10px]">Gateway Order ID</span>
-                      <span className="font-mono text-stone-800">{selectedPayment.gatewayOrderId}</span>
+                      <span className="block text-[10px] text-stone-400">Gateway Order ID</span>
+                      <span className="font-mono text-stone-800">
+                        {selectedPayment.gatewayOrderId}
+                      </span>
                     </div>
                   )}
                   {selectedPayment.gatewayPaymentId && (
                     <div>
-                      <span className="block text-stone-400 text-[10px]">Gateway Payment ID</span>
-                      <span className="font-mono text-stone-800">{selectedPayment.gatewayPaymentId}</span>
+                      <span className="block text-[10px] text-stone-400">Gateway Payment ID</span>
+                      <span className="font-mono text-stone-800">
+                        {selectedPayment.gatewayPaymentId}
+                      </span>
                     </div>
                   )}
                   {selectedPayment.reconciliationDetails && (
-                    <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 space-y-1">
-                      <span className="block font-bold text-[10px] uppercase">Bank Transfer (NEFT/RTGS) Details</span>
-                      <p><strong>UTR:</strong> {selectedPayment.reconciliationDetails.utrNumber}</p>
-                      {selectedPayment.reconciliationDetails.bankName && <p><strong>Bank:</strong> {selectedPayment.reconciliationDetails.bankName}</p>}
-                      {selectedPayment.reconciliationDetails.notes && <p><strong>Notes:</strong> {selectedPayment.reconciliationDetails.notes}</p>}
+                    <div className="space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
+                      <span className="block text-[10px] font-bold uppercase">
+                        Bank Transfer (NEFT/RTGS) Details
+                      </span>
+                      <p>
+                        <strong>UTR:</strong> {selectedPayment.reconciliationDetails.utrNumber}
+                      </p>
+                      {selectedPayment.reconciliationDetails.bankName && (
+                        <p>
+                          <strong>Bank:</strong> {selectedPayment.reconciliationDetails.bankName}
+                        </p>
+                      )}
+                      {selectedPayment.reconciliationDetails.notes && (
+                        <p>
+                          <strong>Notes:</strong> {selectedPayment.reconciliationDetails.notes}
+                        </p>
+                      )}
                     </div>
                   )}
                   {selectedPayment.refundDetails && (
-                    <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 text-purple-900 space-y-1">
-                      <span className="block font-bold text-[10px] uppercase">Refund Parameters</span>
-                      <p><strong>Refund Amount:</strong> {formatCurrency(selectedPayment.refundDetails.amount)}</p>
-                      <p><strong>Reason:</strong> {selectedPayment.refundDetails.reason}</p>
-                      <p><strong>Ref:</strong> {selectedPayment.refundDetails.refundReference}</p>
+                    <div className="space-y-1 rounded-xl border border-purple-200 bg-purple-50 p-3 text-purple-900">
+                      <span className="block text-[10px] font-bold uppercase">
+                        Refund Parameters
+                      </span>
+                      <p>
+                        <strong>Refund Amount:</strong>{' '}
+                        {formatCurrency(selectedPayment.refundDetails.amount)}
+                      </p>
+                      <p>
+                        <strong>Reason:</strong> {selectedPayment.refundDetails.reason}
+                      </p>
+                      <p>
+                        <strong>Ref:</strong> {selectedPayment.refundDetails.refundReference}
+                      </p>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Timestamp Audit */}
-              <div className="space-y-2 text-[11px] text-stone-400 pt-2 border-t border-stone-100">
+              <div className="space-y-2 border-t border-stone-100 pt-2 text-[11px] text-stone-400">
                 <p>Created: {formatDate(selectedPayment.createdAt)}</p>
                 <p>Last Updated: {formatDate(selectedPayment.updatedAt)}</p>
               </div>
-
             </div>
 
             {/* Footer Actions */}
-            <div className="p-4 border-t border-stone-200 bg-stone-50 flex items-center justify-end gap-2">
+            <div className="flex items-center justify-end gap-2 border-t border-stone-200 bg-stone-50 p-4">
               {(selectedPayment.status === 'PENDING' || selectedPayment.status === 'CREATED') && (
                 <button
                   onClick={() => {
@@ -892,16 +1018,17 @@ export default function PaymentsPage() {
                     setSelectedPayment(null);
                     openReconcileModal(t);
                   }}
-                  className="px-4 py-2 bg-[#171717] hover:bg-[#8C7355] text-white text-xs font-semibold rounded-xl transition-colors"
+                  className="rounded-xl bg-[#171717] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#8C7355]"
                 >
                   Reconcile Bank NEFT
                 </button>
               )}
-              {(selectedPayment.status === 'CAPTURED' || selectedPayment.status === 'COMPLETED') && (
+              {(selectedPayment.status === 'CAPTURED' ||
+                selectedPayment.status === 'COMPLETED') && (
                 <>
                   <button
                     onClick={() => handleDownloadInvoice(selectedPayment.id)}
-                    className="px-4 py-2 bg-white border border-stone-200 hover:bg-stone-100 text-stone-800 text-xs font-semibold rounded-xl transition-colors"
+                    className="rounded-xl border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-stone-800 transition-colors hover:bg-stone-100"
                   >
                     Download Invoice
                   </button>
@@ -911,29 +1038,35 @@ export default function PaymentsPage() {
                       setSelectedPayment(null);
                       openRefundModal(t);
                     }}
-                    className="px-3 py-2 text-rose-700 hover:bg-rose-50 text-xs font-semibold rounded-xl transition-colors"
+                    className="rounded-xl px-3 py-2 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-50"
                   >
                     Issue Refund
                   </button>
                 </>
               )}
             </div>
-
           </div>
         </div>
       )}
 
       {/* Reconcile NEFT Modal */}
       {reconcileModalOpen && reconcileTarget && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-stone-200">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-serif font-bold text-[#171717]">Reconcile Bank Transfer (NEFT/RTGS)</h3>
-              <button onClick={() => setReconcileModalOpen(false)} className="text-stone-400 hover:text-stone-700">✕</button>
+        <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-serif text-base font-bold text-[#171717]">
+                Reconcile Bank Transfer (NEFT/RTGS)
+              </h3>
+              <button
+                onClick={() => setReconcileModalOpen(false)}
+                className="text-stone-400 hover:text-stone-700"
+              >
+                ✕
+              </button>
             </div>
 
             <form onSubmit={handleConfirmReconciliation} className="space-y-4 text-xs">
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 space-y-1">
+              <div className="space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
                 <div className="flex justify-between font-semibold">
                   <span>Order Reference:</span>
                   <span>{reconcileTarget.orderId}</span>
@@ -945,7 +1078,7 @@ export default function PaymentsPage() {
               </div>
 
               <div>
-                <label className="block font-semibold text-stone-700 mb-1">
+                <label className="mb-1 block font-semibold text-stone-700">
                   Unique Transaction Reference (UTR) *
                 </label>
                 <input
@@ -954,12 +1087,12 @@ export default function PaymentsPage() {
                   value={reconcileUtr}
                   onChange={(e) => setReconcileUtr(e.target.value)}
                   placeholder="e.g. ICIC260908123456"
-                  className="w-full text-xs font-mono p-3 border border-stone-300 rounded-xl focus:ring-1 focus:ring-[#8C7355] focus:outline-none"
+                  className="w-full rounded-xl border border-stone-300 p-3 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-[#8C7355]"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-stone-700 mb-1">
+                <label className="mb-1 block font-semibold text-stone-700">
                   Receiving / Remitting Bank
                 </label>
                 <input
@@ -967,12 +1100,12 @@ export default function PaymentsPage() {
                   value={reconcileBank}
                   onChange={(e) => setReconcileBank(e.target.value)}
                   placeholder="e.g. ICICI Bank Bengaluru Current A/C"
-                  className="w-full text-xs p-3 border border-stone-300 rounded-xl focus:ring-1 focus:ring-[#8C7355] focus:outline-none"
+                  className="w-full rounded-xl border border-stone-300 p-3 text-xs focus:outline-none focus:ring-1 focus:ring-[#8C7355]"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-stone-700 mb-1">
+                <label className="mb-1 block font-semibold text-stone-700">
                   Finance Audit Notes (Optional)
                 </label>
                 <textarea
@@ -980,7 +1113,7 @@ export default function PaymentsPage() {
                   value={reconcileNotes}
                   onChange={(e) => setReconcileNotes(e.target.value)}
                   placeholder="e.g. Bank statement line matched; cleared with manager approval."
-                  className="w-full text-xs p-3 border border-stone-300 rounded-xl focus:ring-1 focus:ring-[#8C7355] focus:outline-none"
+                  className="w-full rounded-xl border border-stone-300 p-3 text-xs focus:outline-none focus:ring-1 focus:ring-[#8C7355]"
                 />
               </div>
 
@@ -995,7 +1128,7 @@ export default function PaymentsPage() {
                 <button
                   type="submit"
                   disabled={reconciling}
-                  className="px-5 py-2.5 bg-[#171717] hover:bg-[#8C7355] text-white font-semibold rounded-xl uppercase tracking-wider transition-colors disabled:opacity-60"
+                  className="rounded-xl bg-[#171717] px-5 py-2.5 font-semibold uppercase tracking-wider text-white transition-colors hover:bg-[#8C7355] disabled:opacity-60"
                 >
                   {reconciling ? 'Reconciling…' : 'Confirm & Capture Payment'}
                 </button>
@@ -1007,21 +1140,32 @@ export default function PaymentsPage() {
 
       {/* Refund Modal */}
       {refundModalOpen && refundTarget && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-stone-200">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-serif font-bold text-[#171717]">Record Transaction Refund</h3>
-              <button onClick={() => setRefundModalOpen(false)} className="text-stone-400 hover:text-stone-700">✕</button>
+        <div className="backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-serif text-base font-bold text-[#171717]">
+                Record Transaction Refund
+              </h3>
+              <button
+                onClick={() => setRefundModalOpen(false)}
+                className="text-stone-400 hover:text-stone-700"
+              >
+                ✕
+              </button>
             </div>
 
             <form onSubmit={handleConfirmRefund} className="space-y-4 text-xs">
-              <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 text-rose-900 space-y-1">
-                <p>Order: <strong>{refundTarget.orderId}</strong></p>
-                <p>Original Amount: <strong>{formatCurrency(refundTarget.amount)}</strong></p>
+              <div className="space-y-1 rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-900">
+                <p>
+                  Order: <strong>{refundTarget.orderId}</strong>
+                </p>
+                <p>
+                  Original Amount: <strong>{formatCurrency(refundTarget.amount)}</strong>
+                </p>
               </div>
 
               <div>
-                <label className="block font-semibold text-stone-700 mb-1">
+                <label className="mb-1 block font-semibold text-stone-700">
                   Refund Amount (₹) *
                 </label>
                 <input
@@ -1031,28 +1175,32 @@ export default function PaymentsPage() {
                   max={refundTarget.amount / 100}
                   value={refundAmount}
                   onChange={(e) => setRefundAmount(Number(e.target.value))}
-                  className="w-full text-xs p-3 border border-stone-300 rounded-xl focus:ring-1 focus:ring-[#8C7355] focus:outline-none"
+                  className="w-full rounded-xl border border-stone-300 p-3 text-xs focus:outline-none focus:ring-1 focus:ring-[#8C7355]"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-stone-700 mb-1">
-                  Business Reason *
-                </label>
+                <label className="mb-1 block font-semibold text-stone-700">Business Reason *</label>
                 <select
                   value={refundReason}
                   onChange={(e) => setRefundReason(e.target.value)}
-                  className="w-full text-xs p-3 border border-stone-300 rounded-xl focus:ring-1 focus:ring-[#8C7355] focus:outline-none bg-white"
+                  className="w-full rounded-xl border border-stone-300 bg-white p-3 text-xs focus:outline-none focus:ring-1 focus:ring-[#8C7355]"
                 >
-                  <option value="Customer requested cancellation prior to timber cut">Customer requested cancellation prior to timber cut</option>
-                  <option value="Dimensional mismatch during site verification">Dimensional mismatch during site verification</option>
-                  <option value="Double payment / Gateway duplicate credit">Double payment / Gateway duplicate credit</option>
+                  <option value="Customer requested cancellation prior to timber cut">
+                    Customer requested cancellation prior to timber cut
+                  </option>
+                  <option value="Dimensional mismatch during site verification">
+                    Dimensional mismatch during site verification
+                  </option>
+                  <option value="Double payment / Gateway duplicate credit">
+                    Double payment / Gateway duplicate credit
+                  </option>
                   <option value="Fabric / Finish out of stock">Fabric / Finish out of stock</option>
                 </select>
               </div>
 
               <div>
-                <label className="block font-semibold text-stone-700 mb-1">
+                <label className="mb-1 block font-semibold text-stone-700">
                   Bank Refund UTR / Ref Number
                 </label>
                 <input
@@ -1060,7 +1208,7 @@ export default function PaymentsPage() {
                   required
                   value={refundUtr}
                   onChange={(e) => setRefundUtr(e.target.value)}
-                  className="w-full text-xs font-mono p-3 border border-stone-300 rounded-xl focus:ring-1 focus:ring-[#8C7355] focus:outline-none"
+                  className="w-full rounded-xl border border-stone-300 p-3 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-[#8C7355]"
                 />
               </div>
 
@@ -1075,7 +1223,7 @@ export default function PaymentsPage() {
                 <button
                   type="submit"
                   disabled={refunding}
-                  className="px-5 py-2.5 bg-rose-700 hover:bg-rose-800 text-white font-semibold rounded-xl uppercase tracking-wider transition-colors disabled:opacity-60"
+                  className="rounded-xl bg-rose-700 px-5 py-2.5 font-semibold uppercase tracking-wider text-white transition-colors hover:bg-rose-800 disabled:opacity-60"
                 >
                   {refunding ? 'Processing…' : 'Record Refund'}
                 </button>
