@@ -19,7 +19,7 @@ export function createAuthRoutes(
   /** docs/08 §4.4 Strict tier — 5 req/min per IP on login/register/OTP endpoints (higher in dev for testing). */
   const strictLimiter = createRateLimiter({
     windowMs: 60_000,
-    max: process.env.NODE_ENV === 'development' ? 100 : 5,
+    max: process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test' ? 1000 : 5,
     keyPrefix: 'auth-strict',
   });
   /** docs/08 §4.4 Standard authenticated tier — 120 req/min. */

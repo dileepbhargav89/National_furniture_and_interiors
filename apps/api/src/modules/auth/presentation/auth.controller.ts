@@ -27,7 +27,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
 } from './validators';
-import { sendSuccess } from '../../../core/exceptions';
+import { sendSuccess, ValidationError } from '../../../core/exceptions';
 import { REFRESH_COOKIE_NAME, refreshCookieOptions } from './response';
 
 export interface AuthControllerDeps {
@@ -315,7 +315,7 @@ export function createAuthController(deps: AuthControllerDeps) {
         }
         const targetPassword = body.password || body.newPassword;
         if (!targetPassword) {
-          throw new Error('Password is required');
+          throw new ValidationError('Password is required');
         }
         const result = await deps.resetPassword.execute({
           token: body.token,

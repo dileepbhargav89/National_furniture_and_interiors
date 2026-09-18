@@ -46,12 +46,17 @@ export class CatalogProductSnapshotProvider implements IProductSnapshotProvider 
     const variantInventory = inventoryRecords.filter((inv) => inv.variantId === variantId);
     const totalAvailable = variantInventory.reduce((sum, inv) => sum + inv.quantityAvailable, 0);
 
+    // Made-to-order, custom bespoke furniture, or products without physical warehouse tracking are available
+    const isBespokeOrCustom =
+      product.productType === 'MADE_TO_ORDER' || product.productType === 'CUSTOM';
+    const isAvailable = isBespokeOrCustom || inventoryRecords.length === 0 || totalAvailable > 0;
+
     return {
       sku: variant.sku,
       name: product.name,
       image: primaryImage?.url ?? '',
       unitPrice: effectivePrice.amount,
-      isAvailable: totalAvailable > 0,
+      isAvailable,
     };
   }
 }
