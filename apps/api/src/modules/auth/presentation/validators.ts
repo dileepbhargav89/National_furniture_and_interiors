@@ -79,5 +79,25 @@ export const mfaSetupSchema = z
   })
   .strict();
 
+export const forgotPasswordSchema = z
+  .object({
+    email: z.string().email('Must be a valid email address').max(320),
+  })
+  .strict();
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1, 'Reset token is required'),
+    password: z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH).optional(),
+    newPassword: z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH).optional(),
+    confirmPassword: z.string().optional(),
+  })
+  .refine((data) => Boolean(data.password || data.newPassword), {
+    message: 'Password is required',
+    path: ['password'],
+  });
+
 export type RegisterBody = z.infer<typeof registerSchema>;
 export type LoginBody = z.infer<typeof loginSchema>;
+export type ForgotPasswordBody = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordBody = z.infer<typeof resetPasswordSchema>;

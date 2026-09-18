@@ -25,6 +25,8 @@ export interface AuthUser {
   readonly failedLoginAttempts: number;
   readonly lockedUntil: Date | null;
   readonly passwordHistory: readonly string[];
+  readonly passwordResetToken?: string | null;
+  readonly passwordResetExpiresAt?: Date | null;
 }
 
 /** docs/03 §9.1.1 — `lockedUntil` implements brute-force lockout. */
