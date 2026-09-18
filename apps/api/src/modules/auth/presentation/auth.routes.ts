@@ -48,5 +48,9 @@ export function createAuthRoutes(
   router.post('/otp/send', strictLimiter, controller.sendOtp);
   router.post('/otp/verify', strictLimiter, controller.verifyOtp);
 
+  // Self-service Password Recovery
+  router.post('/forgot-password', strictLimiter, controller.forgotPassword);
+  router.post('/reset-password', strictLimiter, controller.resetPassword);
+
   return router;
 }

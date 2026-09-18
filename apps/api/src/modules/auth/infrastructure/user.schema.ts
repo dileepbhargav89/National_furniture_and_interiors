@@ -50,6 +50,9 @@ const userSchema = new Schema(
     lockedUntil: { type: Date, default: null },
     // docs/09 §2.7 — last 5 password hashes retained to block immediate reuse.
     passwordHistory: { type: [String], default: [] },
+    // Password reset fields
+    passwordResetToken: { type: String, default: null },
+    passwordResetExpiresAt: { type: Date, default: null },
     // Onboarding & trade profile fields
     onboardingToken: { type: String, default: null },
     onboardingTokenExpiresAt: { type: Date, default: null },

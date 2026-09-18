@@ -8,9 +8,25 @@ import type { IssueSession } from '../application/issue-session.use-case';
 import type { SetupMfa, VerifyMfa } from '../application/mfa.use-cases';
 import type { RegisterUser } from '../application/register-user.use-case';
 import type { LogoutUser, RefreshTokenUseCase } from '../application/refresh-token.use-case';
-import type { AuthenticateWithGoogle, AuthenticateWithFacebook } from '../application/social-auth.use-cases';
+import type {
+  AuthenticateWithGoogle,
+  AuthenticateWithFacebook,
+} from '../application/social-auth.use-cases';
 import type { SendPhoneOtp, VerifyPhoneOtp } from '../application/otp-auth.use-cases';
-import { loginSchema, mfaSetupSchema, mfaVerifySchema, registerSchema, googleAuthSchema, facebookAuthSchema, sendOtpSchema, verifyOtpSchema } from './validators';
+import type { ForgotPassword } from '../application/forgot-password.use-case';
+import type { ResetPassword } from '../application/reset-password.use-case';
+import {
+  loginSchema,
+  mfaSetupSchema,
+  mfaVerifySchema,
+  registerSchema,
+  googleAuthSchema,
+  facebookAuthSchema,
+  sendOtpSchema,
+  verifyOtpSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from './validators';
 import { sendSuccess } from '../../../core/exceptions';
 import { REFRESH_COOKIE_NAME, refreshCookieOptions } from './response';
 
@@ -28,6 +44,8 @@ export interface AuthControllerDeps {
   authenticateWithFacebook: AuthenticateWithFacebook;
   sendPhoneOtp: SendPhoneOtp;
   verifyPhoneOtp: VerifyPhoneOtp;
+  forgotPassword?: ForgotPassword;
+  resetPassword?: ResetPassword;
 }
 
 function deviceInfo(req: Request): { userAgent: string; ip: string } {
@@ -269,6 +287,41 @@ export function createAuthController(deps: AuthControllerDeps) {
           refreshCookieOptions(tokens.refreshTokenExpiresAt, isProduction),
         );
         sendSuccess(req, res, 200, { status: 'AUTHENTICATED', accessToken: tokens.accessToken });
+      } catch (error) {
+        next(error);
+      }
+    },
+
+    /** POST /auth/forgot-password — Requests password reset token/link */
+    async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+      try {
+        const body = forgotPasswordSchema.parse(req.body);
+        if (!deps.forgotPassword) {
+          throw new Error('ForgotPassword use case is not configured');
+        }
+        const result = await deps.forgotPassword.execute({ email: body.email });
+        sendSuccess(req, res, 200, result);
+      } catch (error) {
+        next(error);
+      }
+    },
+
+    /** POST /auth/reset-password — Validates token and resets password */
+    async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+      try {
+        const body = resetPasswordSchema.parse(req.body);
+        if (!deps.resetPassword) {
+          throw new Error('ResetPassword use case is not configured');
+        }
+        const targetPassword = body.password || body.newPassword;
+        if (!targetPassword) {
+          throw new Error('Password is required');
+        }
+        const result = await deps.resetPassword.execute({
+          token: body.token,
+          newPassword: targetPassword,
+        });
+        sendSuccess(req, res, 200, result);
       } catch (error) {
         next(error);
       }

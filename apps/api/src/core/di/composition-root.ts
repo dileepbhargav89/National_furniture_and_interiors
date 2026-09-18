@@ -49,6 +49,8 @@ import {
   AuthenticateWithFacebook,
 } from '../../modules/auth/application/social-auth.use-cases';
 import { SendPhoneOtp, VerifyPhoneOtp } from '../../modules/auth/application/otp-auth.use-cases';
+import { ForgotPassword } from '../../modules/auth/application/forgot-password.use-case';
+import { ResetPassword } from '../../modules/auth/application/reset-password.use-case';
 
 import {
   AdminCreateUser,
@@ -277,6 +279,8 @@ export interface AppContext {
     authenticateWithFacebook: AuthenticateWithFacebook;
     sendPhoneOtp: SendPhoneOtp;
     verifyPhoneOtp: VerifyPhoneOtp;
+    forgotPassword: ForgotPassword;
+    resetPassword: ResetPassword;
   };
   readonly users: {
     getOwnProfile: GetOwnProfile;
@@ -504,6 +508,8 @@ export function buildAppContext(): AppContext {
     ),
     sendPhoneOtp: new SendPhoneOtp(authUserRepository, authSmsService),
     verifyPhoneOtp: new VerifyPhoneOtp(authUserRepository, resolveCustomerRoleId),
+    forgotPassword: new ForgotPassword(authUserRepository),
+    resetPassword: new ResetPassword(authUserRepository, passwordHasher, refreshTokenRepository),
   };
 
   // ---- users ---------------------------------------------------------------------------------

@@ -103,6 +103,8 @@ export function createApp(mountBusinessRoutes = true): Express {
       authenticateWithFacebook: ctx.auth.authenticateWithFacebook,
       sendPhoneOtp: ctx.auth.sendPhoneOtp,
       verifyPhoneOtp: ctx.auth.verifyPhoneOtp,
+      forgotPassword: ctx.auth.forgotPassword,
+      resetPassword: ctx.auth.resetPassword,
     });
 
     // docs/08 §3.17 — URI-based versioning from day one.

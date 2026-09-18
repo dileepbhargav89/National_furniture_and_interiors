@@ -110,12 +110,13 @@ export class MongoAuthUserRepository implements IAuthUserRepository {
         passwordHistory: input.passwordHash ? [input.passwordHash] : [],
       });
       return toDomain(created.toObject() as unknown as UserDocument);
-    } catch (err: any) {
-      if (err?.code === 11000) {
-        if (err.keyPattern?.phone) {
+    } catch (err: unknown) {
+      const mongoErr = err as { code?: number; keyPattern?: { phone?: unknown; email?: unknown } };
+      if (mongoErr?.code === 11000) {
+        if (mongoErr.keyPattern?.phone) {
           throw new ConflictError('An account with this phone number already exists');
         }
-        if (err.keyPattern?.email) {
+        if (mongoErr.keyPattern?.email) {
           throw new ConflictError('An account with this email already exists');
         }
         throw new ConflictError('An account with these credentials already exists');
@@ -142,5 +143,42 @@ export class MongoAuthUserRepository implements IAuthUserRepository {
 
   async enableMfa(id: string): Promise<void> {
     await UserModel.updateOne({ _id: id }, { $set: { mfaEnabled: true } });
+  }
+
+  async setPasswordResetToken(id: string, token: string, expiresAt: Date): Promise<void> {
+    await UserModel.updateOne(
+      { _id: id },
+      { $set: { passwordResetToken: token, passwordResetExpiresAt: expiresAt } },
+    );
+  }
+
+  async findByPasswordResetToken(token: string): Promise<AuthUser | null> {
+    const doc = await UserModel.findOne({
+      passwordResetToken: token,
+      passwordResetExpiresAt: { $gt: new Date() },
+      isDeleted: false,
+    }).lean<UserDocument | null>();
+    return doc ? toDomain(doc) : null;
+  }
+
+  async resetPassword(
+    id: string,
+    newPasswordHash: string,
+    previousHashes: string[] = [],
+  ): Promise<void> {
+    const updatedHistory = [newPasswordHash, ...previousHashes].slice(0, 5);
+    await UserModel.updateOne(
+      { _id: id },
+      {
+        $set: {
+          passwordHash: newPasswordHash,
+          passwordResetToken: null,
+          passwordResetExpiresAt: null,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+          passwordHistory: updatedHistory,
+        },
+      },
+    );
   }
 }

@@ -28,6 +28,9 @@ export interface IAuthUserRepository {
   recordSuccessfulLogin(id: string): Promise<void>;
   setMfaSecret(id: string, secret: string): Promise<void>;
   enableMfa(id: string): Promise<void>;
+  setPasswordResetToken(id: string, token: string, expiresAt: Date): Promise<void>;
+  findByPasswordResetToken(token: string): Promise<AuthUser | null>;
+  resetPassword(id: string, newPasswordHash: string, previousHashes?: string[]): Promise<void>;
 }
 
 export interface StoredRefreshToken {
