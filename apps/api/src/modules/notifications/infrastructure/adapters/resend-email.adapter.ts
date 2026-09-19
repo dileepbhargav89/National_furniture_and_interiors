@@ -93,6 +93,7 @@ export class ResendEmailAdapter implements IEmailService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!response.ok) {
