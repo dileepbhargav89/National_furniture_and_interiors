@@ -1,6 +1,10 @@
 export enum DomainEventType {
   LEAD_CREATED = 'LeadCreated',
+  ORDER_CREATED = 'OrderCreated',
   ORDER_PAID = 'OrderPaid',
+  ORDER_MILESTONE_ADVANCE_PAID = 'OrderMilestoneAdvancePaid',
+  ORDER_MILESTONE_BALANCE_DUE = 'OrderMilestoneBalanceDue',
+  ORDER_FULFILLMENT_UPDATED = 'OrderFulfillmentUpdated',
   PROJECT_STAGE_CHANGED = 'ProjectStageChanged',
   PAYMENT_CAPTURED = 'PaymentCaptured',
 }

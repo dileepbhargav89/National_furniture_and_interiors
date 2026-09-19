@@ -10,6 +10,7 @@ import {
   PaymentGateway,
   PaymentRecordStatus,
   PaymentMethod,
+  PaymentMetrics,
 } from '../domain/payments.types';
 import { IOrderPaymentPort, IInventoryCommitPort, RazorpayWebhookEvent } from './ports';
 import { IOutboxRepository } from '../../../core/events/outbox.repository';
@@ -25,14 +26,14 @@ export class CreateRazorpayOrderUseCase {
     private readonly payments: IPaymentRepository,
     private readonly razorpay: {
       createOrder(amount: number, currency: string, receipt: string): Promise<{ id: string }>;
-    }
+    },
   ) {}
 
   async execute(
     payableType: PayableType,
     payableId: string,
     amount: number,
-    currency: string
+    currency: string,
   ): Promise<{ gatewayOrderId: string; amount: number; currency: string; status: string }> {
     // 1. Create Razorpay order
     const rzpOrder = await this.razorpay.createOrder(amount, currency, payableId);
@@ -67,7 +68,7 @@ export class ConfirmWebhookPaymentUseCase {
     private readonly payments: IPaymentRepository,
     private readonly orderPort: IOrderPaymentPort,
     private readonly inventoryPort: IInventoryCommitPort,
-    private readonly outbox?: IOutboxRepository // optional for now to not break tests that mock it
+    private readonly outbox?: IOutboxRepository, // optional for now to not break tests that mock it
   ) {}
 
   async executeCapture(event: RazorpayWebhookEvent): Promise<void> {
@@ -80,7 +81,9 @@ export class ConfirmWebhookPaymentUseCase {
 
     if (!existing) {
       // Edge case: webhook arrived before our order creation completed (very rare).
-      throw new NotFoundError('Payment record not found for gatewayOrderId: ' + event.gatewayOrderId);
+      throw new NotFoundError(
+        'Payment record not found for gatewayOrderId: ' + event.gatewayOrderId,
+      );
     }
 
     // 1. Update payment record to CAPTURED
@@ -100,19 +103,46 @@ export class ConfirmWebhookPaymentUseCase {
       await this.inventoryPort.commitStockDeduction(existing.payableId, items);
     }
 
-    // 4. Publish ORDER_PAID event
+    // 4. Publish ORDER_PAID or ORDER_MILESTONE_ADVANCE_PAID event
     if (this.outbox && existing.payableType === PayableType.ORDER) {
+      let orderDetails = null;
+      if (this.orderPort.getOrderDetails) {
+        orderDetails = await this.orderPort.getOrderDetails(existing.payableId);
+      }
+
+      const isMilestone = orderDetails?.paymentPlan === 'MILESTONE_50_50';
+      const eventType = isMilestone
+        ? DomainEventType.ORDER_MILESTONE_ADVANCE_PAID
+        : DomainEventType.ORDER_PAID;
+
+      const totalAmount = orderDetails?.totalAmount || existing.amount;
+      const advanceAmount = existing.amount;
+      const balanceDue = isMilestone ? Math.max(0, totalAmount - advanceAmount) : 0;
+
       await this.outbox.append({
-        eventType: DomainEventType.ORDER_PAID,
+        eventType,
         aggregateType: 'Order',
         aggregateId: existing.payableId,
         payload: {
           paymentId: existing.id,
+          orderId: existing.payableId,
+          orderNumber: orderDetails?.orderNumber || existing.payableId,
+          userId: orderDetails?.userId,
+          customerEmail: orderDetails?.customerEmail,
+          customerName: orderDetails?.customerName || 'Valued Patron',
+          totalAmount,
           amount: existing.amount,
+          advanceAmount,
+          balanceAmount: balanceDue,
+          paymentPlan: orderDetails?.paymentPlan || 'FULL',
+          items: orderDetails?.items || items,
+          deliveryAddress: orderDetails?.shippingAddress
+            ? `${orderDetails.shippingAddress.line1}, ${orderDetails.shippingAddress.city} - ${orderDetails.shippingAddress.pincode}`
+            : undefined,
         },
       });
     }
-    
+
     // 5. Publish PAYMENT_CAPTURED event (for invoices)
     if (this.outbox) {
       await this.outbox.append({
@@ -132,7 +162,10 @@ export class ConfirmWebhookPaymentUseCase {
     if (!existing) return; // no record → nothing to fail
 
     // Idempotency — already in a terminal state
-    if (existing.status === PaymentRecordStatus.FAILED || existing.status === PaymentRecordStatus.CAPTURED) {
+    if (
+      existing.status === PaymentRecordStatus.FAILED ||
+      existing.status === PaymentRecordStatus.CAPTURED
+    ) {
       return;
     }
 
@@ -187,7 +220,7 @@ export class VerifyPaymentUseCase {
     private readonly orderPort: IOrderPaymentPort,
     private readonly inventoryPort: IInventoryCommitPort,
     private readonly razorpaySecret: string,
-    private readonly outbox?: IOutboxRepository
+    private readonly outbox?: IOutboxRepository,
   ) {}
 
   async execute(params: {
@@ -204,7 +237,7 @@ export class VerifyPaymentUseCase {
         params.gatewayOrderId,
         params.gatewayPaymentId,
         params.gatewaySignature,
-        this.razorpaySecret
+        this.razorpaySecret,
       );
       if (!isValid) {
         throw new ValidationError('Invalid payment gateway signature');
@@ -229,11 +262,41 @@ export class VerifyPaymentUseCase {
       }
 
       if (this.outbox && existing.payableType === PayableType.ORDER) {
+        let orderDetails = null;
+        if (this.orderPort.getOrderDetails) {
+          orderDetails = await this.orderPort.getOrderDetails(existing.payableId);
+        }
+
+        const isMilestone = orderDetails?.paymentPlan === 'MILESTONE_50_50';
+        const eventType = isMilestone
+          ? DomainEventType.ORDER_MILESTONE_ADVANCE_PAID
+          : DomainEventType.ORDER_PAID;
+
+        const totalAmount = orderDetails?.totalAmount || existing.amount;
+        const advanceAmount = existing.amount;
+        const balanceDue = isMilestone ? Math.max(0, totalAmount - advanceAmount) : 0;
+
         await this.outbox.append({
-          eventType: DomainEventType.ORDER_PAID,
+          eventType,
           aggregateType: 'Order',
           aggregateId: existing.payableId,
-          payload: { paymentId: existing.id, amount: existing.amount },
+          payload: {
+            paymentId: existing.id,
+            orderId: existing.payableId,
+            orderNumber: orderDetails?.orderNumber || existing.payableId,
+            userId: orderDetails?.userId,
+            customerEmail: orderDetails?.customerEmail,
+            customerName: orderDetails?.customerName || 'Valued Patron',
+            totalAmount,
+            amount: existing.amount,
+            advanceAmount,
+            balanceAmount: balanceDue,
+            paymentPlan: orderDetails?.paymentPlan || 'FULL',
+            items: orderDetails?.items || items,
+            deliveryAddress: orderDetails?.shippingAddress
+              ? `${orderDetails.shippingAddress.line1}, ${orderDetails.shippingAddress.city} - ${orderDetails.shippingAddress.pincode}`
+              : undefined,
+          },
         });
       }
     } else if (params.orderId) {
@@ -252,7 +315,9 @@ export class VerifyPaymentUseCase {
     }
 
     if (!updatedPayment) {
-      throw new NotFoundError('Payment record not found for gatewayOrderId: ' + params.gatewayOrderId);
+      throw new NotFoundError(
+        'Payment record not found for gatewayOrderId: ' + params.gatewayOrderId,
+      );
     }
 
     return updatedPayment;
@@ -266,7 +331,7 @@ export class ReconcilePaymentUseCase {
     private readonly payments: IPaymentRepository,
     private readonly orderPort: IOrderPaymentPort,
     private readonly inventoryPort: IInventoryCommitPort,
-    private readonly outbox?: IOutboxRepository
+    private readonly outbox?: IOutboxRepository,
   ) {}
 
   async execute(params: {
@@ -351,7 +416,7 @@ export class RefundPaymentUseCase {
 export class GetPaymentMetricsUseCase {
   constructor(private readonly payments: IPaymentRepository) {}
 
-  async execute(): Promise<any> {
+  async execute(): Promise<PaymentMetrics> {
     if (this.payments.getMetrics) {
       return this.payments.getMetrics();
     }
@@ -366,7 +431,10 @@ export class GetPaymentMetricsUseCase {
       if (p.status === PaymentRecordStatus.CAPTURED) {
         totalRevenue += p.amount;
         capturedCount++;
-      } else if (p.status === PaymentRecordStatus.CREATED || p.status === PaymentRecordStatus.AUTHORIZED) {
+      } else if (
+        p.status === PaymentRecordStatus.CREATED ||
+        p.status === PaymentRecordStatus.AUTHORIZED
+      ) {
         pendingCount++;
       } else if (p.status === PaymentRecordStatus.FAILED) {
         failedCount++;

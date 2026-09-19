@@ -1,11 +1,23 @@
 import { Notification, NotificationType } from '../domain/notifications.types';
 
+export interface EmailAttachment {
+  filename: string;
+  content: Buffer | string;
+  contentType?: string | undefined;
+}
+
+export interface SendEmailOptions {
+  type?: NotificationType | undefined;
+  payload?: Record<string, unknown> | undefined;
+  attachments?: EmailAttachment[] | undefined;
+}
+
 export interface IEmailService {
   sendEmail(
     to: string,
     subject: string,
     body: string,
-    options?: { type?: NotificationType | undefined; payload?: Record<string, unknown> | undefined } | undefined
+    options?: SendEmailOptions | undefined,
   ): Promise<boolean>;
 }
 

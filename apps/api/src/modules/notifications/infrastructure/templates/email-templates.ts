@@ -171,15 +171,17 @@ export function renderOrderConfirmedEmail(data: {
   orderId: string;
   customerName: string;
   totalAmount: string | number;
-  items?: Array<{ name: string; quantity: number; price?: string | number | undefined }> | undefined;
+  items?:
+    Array<{ name: string; quantity: number; price?: string | number | undefined }> | undefined;
   deliveryAddress?: string | undefined;
   actionUrl?: string | undefined;
 }): EmailTemplateRenderResult {
   const subject = `Order Confirmed: ${data.orderId} — National Furniture & Interiors`;
   const preheader = `Your order ${data.orderId} is confirmed and reserved for artisanal crafting.`;
 
-  const itemsHtml = data.items && data.items.length > 0
-    ? `<table width="100%" cellpadding="8" cellspacing="0" style="margin: 16px 0; border-collapse: collapse; font-size: 13px;">
+  const itemsHtml =
+    data.items && data.items.length > 0
+      ? `<table width="100%" cellpadding="8" cellspacing="0" style="margin: 16px 0; border-collapse: collapse; font-size: 13px;">
         <thead>
           <tr style="border-bottom: 1px solid #E5E5E5; text-align: left; color: #8C7355; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em;">
             <th>Artisanal Item</th>
@@ -188,16 +190,20 @@ export function renderOrderConfirmedEmail(data: {
           </tr>
         </thead>
         <tbody>
-          ${data.items.map(item => `
+          ${data.items
+            .map(
+              (item) => `
             <tr style="border-bottom: 1px solid #F0F0F0;">
               <td style="padding: 10px 8px; color: #171717; font-weight: 500;">${item.name}</td>
               <td style="padding: 10px 8px; text-align: center; color: #666;">${item.quantity}</td>
               <td style="padding: 10px 8px; text-align: right; color: #171717;">${item.price ? `₹${item.price}` : '-'}</td>
             </tr>
-          `).join('')}
+          `,
+            )
+            .join('')}
         </tbody>
       </table>`
-    : '';
+      : '';
 
   const content = `
     <h2 class="heading">Thank you for your acquisition, ${data.customerName}.</h2>
@@ -211,17 +217,27 @@ export function renderOrderConfirmedEmail(data: {
       ${data.deliveryAddress ? `<p style="font-size: 12px; color: #555; margin: 8px 0 0 0;"><strong>Delivery Destination:</strong> ${data.deliveryAddress}</p>` : ''}
     </div>
 
+    <div style="margin: 16px 0; padding: 12px 16px; background-color: #F4EFE6; border-left: 3px solid #C5A059; border-radius: 2px;">
+      <p style="margin: 0; font-size: 12px; color: #171717; font-weight: 500;">
+        <strong>Statutory Tax Invoice:</strong> Your official Form GST INV-1 tax invoice is attached as a PDF to this email for your accounting records.
+      </p>
+    </div>
+
     ${itemsHtml}
 
     <p class="paragraph" style="font-size: 13px; color: #666;">
       Our white-glove delivery concierge will reach out to schedule an arrival time that harmonizes seamlessly with your schedule.
     </p>
 
-    ${data.actionUrl ? `
+    ${
+      data.actionUrl
+        ? `
       <div class="btn-container">
         <a href="${data.actionUrl}" class="btn-gold">Track Order Status</a>
       </div>
-    ` : ''}
+    `
+        : ''
+    }
   `;
 
   return {
@@ -299,12 +315,16 @@ export function renderPaymentReceiptEmail(data: {
           <td style="color: #8C7355; font-weight: 600;">Amount Received:</td>
           <td style="text-align: right; font-weight: bold; font-size: 16px; color: #171717;">₹${data.amount}</td>
         </tr>
-        ${data.method ? `
+        ${
+          data.method
+            ? `
           <tr>
             <td style="color: #8C7355; font-weight: 600;">Payment Mode:</td>
             <td style="text-align: right;">${data.method}</td>
           </tr>
-        ` : ''}
+        `
+            : ''
+        }
         <tr>
           <td style="color: #8C7355; font-weight: 600;">Status:</td>
           <td style="text-align: right; color: #2E7D32; font-weight: 600;">SETTLED</td>
@@ -312,11 +332,15 @@ export function renderPaymentReceiptEmail(data: {
       </table>
     </div>
 
-    ${data.invoiceUrl ? `
+    ${
+      data.invoiceUrl
+        ? `
       <div class="btn-container">
         <a href="${data.invoiceUrl}" class="btn-gold">Download Tax Invoice</a>
       </div>
-    ` : ''}
+    `
+        : ''
+    }
   `;
 
   return {
@@ -353,11 +377,15 @@ export function renderStudioVisitScheduledEmail(data: {
       Enjoy reserved valet parking, artisan espresso, and dedicated one-on-one time with our lead interior architects examining full-scale room vignettes and material libraries.
     </p>
 
-    ${data.actionUrl ? `
+    ${
+      data.actionUrl
+        ? `
       <div class="btn-container">
         <a href="${data.actionUrl}" class="btn-gold">View Appointment &amp; Directions</a>
       </div>
-    ` : ''}
+    `
+        : ''
+    }
   `;
 
   return {
@@ -415,16 +443,255 @@ export function renderGeneralNotificationEmail(data: {
     <h2 class="heading">${data.title}</h2>
     <p class="paragraph">${data.message}</p>
 
-    ${data.actionUrl && data.actionLabel ? `
+    ${
+      data.actionUrl && data.actionLabel
+        ? `
       <div class="btn-container">
         <a href="${data.actionUrl}" class="btn-gold">${data.actionLabel}</a>
       </div>
-    ` : ''}
+    `
+        : ''
+    }
   `;
 
   return {
     subject,
     html: baseEmailLayout(subject, preheader, content),
     text: `${data.title}\n\n${data.message}\n\n${data.actionUrl || ''}`,
+  };
+}
+
+export function renderOrderAdvanceConfirmedEmail(data: {
+  orderId: string;
+  customerName: string;
+  advanceAmount: string | number;
+  balanceAmount: string | number;
+  totalAmount: string | number;
+  items?:
+    Array<{ name: string; quantity: number; price?: string | number | undefined }> | undefined;
+  deliveryAddress?: string | undefined;
+  actionUrl?: string | undefined;
+}): EmailTemplateRenderResult {
+  const subject = `Bespoke Order Confirmed: 50% Advance Received — Order #${data.orderId}`;
+  const preheader = `Your bespoke crafting order #${data.orderId} is confirmed with 50% advance deposit received.`;
+
+  const itemsHtml =
+    data.items && data.items.length > 0
+      ? `<table width="100%" cellpadding="8" cellspacing="0" style="margin: 16px 0; border-collapse: collapse; font-size: 13px;">
+        <thead>
+          <tr style="border-bottom: 1px solid #E5E5E5; text-align: left; color: #8C7355; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em;">
+            <th>Artisanal Piece</th>
+            <th style="text-align: center;">Qty</th>
+            <th style="text-align: right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.items
+            .map(
+              (item) => `
+            <tr style="border-bottom: 1px solid #F0F0F0;">
+              <td style="padding: 10px 8px; color: #171717; font-weight: 500;">${item.name}</td>
+              <td style="padding: 10px 8px; text-align: center; color: #666;">${item.quantity}</td>
+              <td style="padding: 10px 8px; text-align: right; color: #171717;">${item.price ? `₹${item.price}` : '-'}</td>
+            </tr>
+          `,
+            )
+            .join('')}
+        </tbody>
+      </table>`
+      : '';
+
+  const content = `
+    <h2 class="heading">Your bespoke journey begins, ${data.customerName}.</h2>
+    <p class="paragraph">
+      We have received your <strong>50% advance deposit (₹${data.advanceAmount})</strong> for bespoke order <strong>#${data.orderId}</strong>.
+      Our master carpenters and upholstery artisans have scheduled material procurement and timber seasoning for your suite.
+    </p>
+
+    <div class="card">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #8C7355; font-weight: 600; margin-bottom: 6px;">Milestone Schedule (50/50 Plan)</div>
+      <table width="100%" cellpadding="4" cellspacing="0" style="font-size: 13px; color: #333;">
+        <tr>
+          <td style="color: #2E7D32; font-weight: 600;">Advance Paid (50%):</td>
+          <td style="text-align: right; font-weight: 700; color: #2E7D32;">₹${data.advanceAmount} &bull; RECEIVED</td>
+        </tr>
+        <tr>
+          <td style="color: #8C7355; font-weight: 600;">Balance Due Prior to Dispatch (50%):</td>
+          <td style="text-align: right; font-weight: 700; color: #171717;">₹${data.balanceAmount}</td>
+        </tr>
+        <tr style="border-top: 1px solid #EAE6DF;">
+          <td style="color: #171717; font-weight: 600; padding-top: 6px;">Total Order Value:</td>
+          <td style="text-align: right; font-weight: 700; font-size: 15px; color: #171717; padding-top: 6px;">₹${data.totalAmount}</td>
+        </tr>
+      </table>
+      ${data.deliveryAddress ? `<p style="font-size: 12px; color: #555; margin: 12px 0 0 0;"><strong>Delivery Destination:</strong> ${data.deliveryAddress}</p>` : ''}
+    </div>
+
+    <div style="margin: 16px 0; padding: 12px 16px; background-color: #F4EFE6; border-left: 3px solid #C5A059; border-radius: 2px;">
+      <p style="margin: 0; font-size: 12px; color: #171717; font-weight: 500;">
+        <strong>Statutory Form GST INV-1:</strong> Your official advance payment tax invoice is attached as a PDF to this email.
+      </p>
+    </div>
+
+    ${itemsHtml}
+
+    <p class="paragraph" style="font-size: 13px; color: #666;">
+      Once crafting and studio quality assurance are complete, you will receive a notification to settle the remaining balance before white-glove delivery is dispatched.
+    </p>
+
+    ${
+      data.actionUrl
+        ? `
+      <div class="btn-container">
+        <a href="${data.actionUrl}" class="btn-gold">View Bespoke Production Timeline</a>
+      </div>
+    `
+        : ''
+    }
+  `;
+
+  return {
+    subject,
+    html: baseEmailLayout(subject, preheader, content),
+    text: `Bespoke Order #${data.orderId} Confirmed: 50% Advance of ₹${data.advanceAmount} received. Balance ₹${data.balanceAmount} due prior to dispatch. Track status: ${data.actionUrl || 'https://nationalinteriors.in/orders'}`,
+  };
+}
+
+export function renderMilestoneBalanceDueEmail(data: {
+  orderId: string;
+  customerName: string;
+  balanceAmount: string | number;
+  totalAmount: string | number;
+  items?: Array<{ name: string; quantity: number }> | undefined;
+  actionUrl: string;
+}): EmailTemplateRenderResult {
+  const subject = `Artisanal Crafting Complete: Balance Due for Order #${data.orderId}`;
+  const preheader = `Your custom pieces for order #${data.orderId} are crafted and ready for final inspection and dispatch.`;
+
+  const itemsHtml =
+    data.items && data.items.length > 0
+      ? `<ul style="margin: 10px 0; padding-left: 20px; font-size: 13px; color: #4A4A4A;">
+        ${data.items.map((item) => `<li><strong>${item.name}</strong> (Qty: ${item.quantity})</li>`).join('')}
+      </ul>`
+      : '';
+
+  const content = `
+    <h2 class="heading">Crafting Complete &mdash; Ready for White-Glove Dispatch</h2>
+    <p class="paragraph">
+      Dear ${data.customerName}, our master artisans at the Bengaluru atelier have completed handcrafted production and bench-testing for order <strong>#${data.orderId}</strong>.
+    </p>
+
+    <div class="card">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #8C7355; font-weight: 600; margin-bottom: 6px;">Final Milestone Balance</div>
+      <table width="100%" cellpadding="4" cellspacing="0" style="font-size: 13px; color: #333;">
+        <tr>
+          <td style="color: #8C7355; font-weight: 600;">Total Order Value:</td>
+          <td style="text-align: right; color: #666;">₹${data.totalAmount}</td>
+        </tr>
+        <tr>
+          <td style="color: #8C7355; font-weight: 600;">Advance Previously Received:</td>
+          <td style="text-align: right; color: #2E7D32; font-weight: 600;">PAID (50%)</td>
+        </tr>
+        <tr style="border-top: 1px solid #EAE6DF;">
+          <td style="color: #171717; font-weight: 700; padding-top: 6px; font-size: 14px;">Remaining Balance Payable:</td>
+          <td style="text-align: right; font-weight: 700; font-size: 18px; color: #171717; padding-top: 6px;">₹${data.balanceAmount}</td>
+        </tr>
+      </table>
+    </div>
+
+    ${itemsHtml}
+
+    <p class="paragraph">
+      To schedule your personalized white-glove delivery date and complete dispatch, please finalize the remaining balance below.
+    </p>
+
+    <div class="btn-container">
+      <a href="${data.actionUrl}" class="btn-gold">Settle Balance &amp; Schedule Delivery</a>
+    </div>
+
+    <p class="paragraph" style="font-size: 12px; color: #777; text-align: center;">
+      Our logistics concierge will contact you immediately upon settlement to coordinate your preferred delivery window.
+    </p>
+  `;
+
+  return {
+    subject,
+    html: baseEmailLayout(subject, preheader, content),
+    text: `Artisan crafting complete for order #${data.orderId}. Remaining balance payable: ₹${data.balanceAmount}. Complete payment here: ${data.actionUrl}`,
+  };
+}
+
+export function renderAdminLeadAlertEmail(data: {
+  leadId: string;
+  name: string;
+  phone: string;
+  email?: string | undefined;
+  interestType: string;
+  projectType?: string | undefined;
+  budgetRange?: { min: number; max: number } | undefined;
+  timeline?: string | undefined;
+  priority: string;
+  score: number;
+  actionUrl: string;
+}): EmailTemplateRenderResult {
+  const subject = `[Lead Alert - ${data.priority}] ${data.name} — ${data.interestType} (${data.score} pts)`;
+  const preheader = `New high-intent architectural lead: ${data.name} &bull; Budget: ${data.budgetRange ? `₹${data.budgetRange.min / 100000}L - ₹${data.budgetRange.max / 100000}L` : 'Custom'}`;
+
+  const content = `
+    <h2 class="heading">New Patron Inquiry &bull; CRM Triage</h2>
+    <p class="paragraph">
+      A prospective client has submitted an architectural/furniture inquiry requiring rapid concierge assignment.
+    </p>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #8C7355; font-weight: 600;">Lead Profile</span>
+        <span style="display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 700; color: #FFFFFF; background-color: ${data.priority === 'HOT' ? '#C53030' : '#D69E2E'}; border-radius: 2px;">${data.priority} &bull; ${data.score} PTS</span>
+      </div>
+      <table width="100%" cellpadding="4" cellspacing="0" style="font-size: 13px; color: #333;">
+        <tr>
+          <td style="color: #8C7355; font-weight: 600; width: 40%;">Client Name:</td>
+          <td style="font-weight: 600; color: #171717;">${data.name}</td>
+        </tr>
+        <tr>
+          <td style="color: #8C7355; font-weight: 600;">Direct Contact:</td>
+          <td><a href="tel:${data.phone}" style="color: #171717; text-decoration: underline;">${data.phone}</a> ${data.email ? `&bull; <a href="mailto:${data.email}">${data.email}</a>` : ''}</td>
+        </tr>
+        <tr>
+          <td style="color: #8C7355; font-weight: 600;">Interest Category:</td>
+          <td style="font-weight: 500;">${data.interestType}${data.projectType ? ` (${data.projectType})` : ''}</td>
+        </tr>
+        ${
+          data.budgetRange
+            ? `
+          <tr>
+            <td style="color: #8C7355; font-weight: 600;">Budget Estimate:</td>
+            <td style="font-weight: 600; color: #C5A059;">₹${(data.budgetRange.min / 100000).toFixed(1)}L &mdash; ₹${(data.budgetRange.max / 100000).toFixed(1)}L</td>
+          </tr>
+        `
+            : ''
+        }
+        ${
+          data.timeline
+            ? `
+          <tr>
+            <td style="color: #8C7355; font-weight: 600;">Timeline:</td>
+            <td>${data.timeline}</td>
+          </tr>
+        `
+            : ''
+        }
+      </table>
+    </div>
+
+    <div class="btn-container">
+      <a href="${data.actionUrl}" class="btn-gold">Assign &amp; Open in CRM</a>
+    </div>
+  `;
+
+  return {
+    subject,
+    html: baseEmailLayout(subject, preheader, content),
+    text: `New Lead [${data.priority}]: ${data.name} (${data.phone}). Interest: ${data.interestType}. Review: ${data.actionUrl}`,
   };
 }
