@@ -1,16 +1,21 @@
 import { Request, Response, NextFunction } from 'express';
+import { sendSuccess } from '../../../../core/exceptions';
 import { CrmUseCases } from '../../application/crm.use-cases';
-import { 
-  createCustomerSchema, 
-  updateCustomerSchema, 
-  updatePipelineStageSchema, 
-  assignSalesRepSchema, 
-  convertLeadToProjectSchema, 
-  convertLeadToOrderSchema, 
-  recordLeadActivitySchema, 
-  trackLeadStatusTransitionSchema 
+import {
+  createCustomerSchema,
+  updateCustomerSchema,
+  updatePipelineStageSchema,
+  assignSalesRepSchema,
+  convertLeadToProjectSchema,
+  convertLeadToOrderSchema,
+  recordLeadActivitySchema,
+  trackLeadStatusTransitionSchema,
 } from '../dto/crm.dto';
 import { PipelineStageId } from '../../domain/crm.types';
+
+interface AuthenticatedRequest extends Request {
+  user?: { name?: string; email?: string } | undefined;
+}
 
 export class CrmController {
   constructor(private readonly useCases: CrmUseCases) {}
@@ -25,7 +30,7 @@ export class CrmController {
         ...(repId ? { repId } : {}),
         ...(search ? { search } : {}),
       });
-      res.status(200).json(pipeline);
+      sendSuccess(req, res, 200, pipeline);
     } catch (error) {
       next(error);
     }
@@ -34,7 +39,7 @@ export class CrmController {
   getCrmKpis = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const kpis = await this.useCases.getCrmKpis();
-      res.status(200).json(kpis);
+      sendSuccess(req, res, 200, kpis);
     } catch (error) {
       next(error);
     }
@@ -43,12 +48,15 @@ export class CrmController {
   updatePipelineStage = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsedBody = updatePipelineStageSchema.parse(req.body);
-      const performedBy = (req as any).user?.name || (req as any).user?.email || 'Sales Manager';
+      const performedBy =
+        (req as AuthenticatedRequest).user?.name ||
+        (req as AuthenticatedRequest).user?.email ||
+        'Sales Manager';
       const updated = await this.useCases.updateLeadPipelineStage(
         req.params.id as string,
         parsedBody.stage as PipelineStageId,
         parsedBody.reason,
-        performedBy
+        performedBy,
       );
       res.status(200).json(updated);
     } catch (error) {
@@ -58,10 +66,10 @@ export class CrmController {
 
   // ---------------- Sales Team Management ----------------
 
-  getSalesTeam = async (_req: Request, res: Response, next: NextFunction) => {
+  getSalesTeam = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const team = await this.useCases.getSalesTeam();
-      res.status(200).json(team);
+      sendSuccess(req, res, 200, team);
     } catch (error) {
       next(error);
     }
@@ -70,11 +78,14 @@ export class CrmController {
   assignSalesRep = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsedBody = assignSalesRepSchema.parse(req.body);
-      const performedBy = (req as any).user?.name || (req as any).user?.email || 'Sales Manager';
+      const performedBy =
+        (req as AuthenticatedRequest).user?.name ||
+        (req as AuthenticatedRequest).user?.email ||
+        'Sales Manager';
       const updated = await this.useCases.assignSalesRep(
         req.params.id as string,
         parsedBody.repId,
-        performedBy
+        performedBy,
       );
       res.status(200).json(updated);
     } catch (error) {
@@ -96,11 +107,14 @@ export class CrmController {
   convertLeadToProject = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsedBody = convertLeadToProjectSchema.parse(req.body);
-      const performedBy = (req as any).user?.name || (req as any).user?.email || 'Sales Consultant';
+      const performedBy =
+        (req as AuthenticatedRequest).user?.name ||
+        (req as AuthenticatedRequest).user?.email ||
+        'Sales Consultant';
       const result = await this.useCases.convertDealToProject(
         req.params.id as string,
         parsedBody,
-        performedBy
+        performedBy,
       );
       res.status(200).json(result);
     } catch (error) {
@@ -111,11 +125,14 @@ export class CrmController {
   convertLeadToOrder = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsedBody = convertLeadToOrderSchema.parse(req.body);
-      const performedBy = (req as any).user?.name || (req as any).user?.email || 'Sales Consultant';
+      const performedBy =
+        (req as AuthenticatedRequest).user?.name ||
+        (req as AuthenticatedRequest).user?.email ||
+        'Sales Consultant';
       const result = await this.useCases.convertDealToOrder(
         req.params.id as string,
         parsedBody,
-        performedBy
+        performedBy,
       );
       res.status(200).json(result);
     } catch (error) {
@@ -163,8 +180,12 @@ export class CrmController {
         lifetimeValue: 0,
         totalOrders: 0,
         totalDesignProjects: 0,
-        ...(parsedBody.preferredContactChannel ? { preferredContactChannel: parsedBody.preferredContactChannel } : {}),
-        ...(parsedBody.acquisitionSource ? { acquisitionSource: parsedBody.acquisitionSource } : {}),
+        ...(parsedBody.preferredContactChannel
+          ? { preferredContactChannel: parsedBody.preferredContactChannel }
+          : {}),
+        ...(parsedBody.acquisitionSource
+          ? { acquisitionSource: parsedBody.acquisitionSource }
+          : {}),
         ...(parsedBody.notes ? { notes: parsedBody.notes } : {}),
       });
       res.status(201).json(customer);
@@ -176,7 +197,10 @@ export class CrmController {
   updateCustomerProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsedBody = updateCustomerSchema.parse(req.body);
-      const customer = await this.useCases.updateCustomerProfile(req.params.id as string, parsedBody);
+      const customer = await this.useCases.updateCustomerProfile(
+        req.params.id as string,
+        parsedBody,
+      );
       res.status(200).json(customer);
     } catch (error) {
       next(error);
@@ -192,8 +216,15 @@ export class CrmController {
         ...(parsedBody.direction ? { direction: parsedBody.direction } : {}),
         summary: parsedBody.summary,
         ...(parsedBody.outcome ? { outcome: parsedBody.outcome } : {}),
-        performedBy: parsedBody.performedBy || (req as any).user?.name || (req as any).auth?.email || 'Concierge Consultant',
-        ...(parsedBody.scheduledFollowUpAt ? { scheduledFollowUpAt: new Date(parsedBody.scheduledFollowUpAt) } : {}),
+        performedBy:
+          parsedBody.performedBy ||
+          (req as AuthenticatedRequest).user?.name ||
+          (req as AuthenticatedRequest).user?.email ||
+          req.auth?.roleName ||
+          'Concierge Consultant',
+        ...(parsedBody.scheduledFollowUpAt
+          ? { scheduledFollowUpAt: new Date(parsedBody.scheduledFollowUpAt) }
+          : {}),
         ...(parsedBody.metadata ? { metadata: parsedBody.metadata } : {}),
       });
       res.status(201).json(activity);
@@ -218,7 +249,12 @@ export class CrmController {
         leadId: parsedBody.leadId,
         fromStatus: parsedBody.fromStatus,
         toStatus: parsedBody.toStatus,
-        changedBy: parsedBody.changedBy || (req as any).user?.name || (req as any).auth?.email || 'Concierge Consultant',
+        changedBy:
+          parsedBody.changedBy ||
+          (req as AuthenticatedRequest).user?.name ||
+          (req as AuthenticatedRequest).user?.email ||
+          req.auth?.roleName ||
+          'Concierge Consultant',
         ...(parsedBody.reason ? { reason: parsedBody.reason } : {}),
       });
       res.status(201).json(transition);
@@ -236,4 +272,3 @@ export class CrmController {
     }
   };
 }
-
