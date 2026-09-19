@@ -18,6 +18,13 @@ export const authService = {
     return apiClient.post<AuthResponse>('/api/v1/auth/login', data);
   },
 
+  googleLogin: async (data: {
+    idToken?: string;
+    accessToken?: string;
+  }): Promise<ApiResponse<AuthResponse>> => {
+    return apiClient.post<AuthResponse>('/api/v1/auth/google', data);
+  },
+
   register: async (data: RegisterFormData): Promise<ApiResponse<{ accessToken: string }>> => {
     return apiClient.post<{ accessToken: string }>('/api/v1/auth/register', data);
   },

@@ -198,7 +198,7 @@ export function createAuthController(deps: AuthControllerDeps) {
     async googleLogin(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
         const body = googleAuthSchema.parse(req.body);
-        const outcome = await deps.authenticateWithGoogle.execute(body.idToken);
+        const outcome = await deps.authenticateWithGoogle.execute(body);
 
         if (outcome.status !== 'AUTHENTICATED') {
           sendSuccess(req, res, 200, { status: outcome.status, userId: outcome.userId });

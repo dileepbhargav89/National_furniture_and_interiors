@@ -7,16 +7,17 @@ import { authService } from '../services/auth.service';
 import { authValidation, RegisterFormData } from '@nfi/shared';
 import { useAuthStore } from '../store/auth.store';
 import { useRouter } from 'next/navigation';
-import { Button, Input, Label } from '@nfi/ui';
+import { Button, Input, Label, SocialLoginButton } from '@nfi/ui';
 import { Eye, EyeOff, Check, X } from 'lucide-react';
+import { useGoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
 
-export function RegisterForm() {
+function RegisterFormComponent() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
-  const setToken = useAuthStore(state => state.setToken);
+  const setToken = useAuthStore((state) => state.setToken);
 
   const {
     register,
@@ -85,12 +86,37 @@ export function RegisterForm() {
     }
   };
 
+  const loginWithGoogle = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await authService.googleLogin({
+          accessToken: tokenResponse.access_token,
+        });
+        if (response.success && response.data) {
+          if (response.data.status === 'AUTHENTICATED' && response.data.accessToken) {
+            setToken(response.data.accessToken);
+            router.push('/');
+          }
+        } else {
+          setError(response.message || 'Google registration failed');
+        }
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Google registration failed');
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: () => setError('Google sign-in was cancelled or failed'),
+  });
+
   return (
     <div className="grid gap-6">
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="grid gap-4">
           {error && <div className="text-destructive text-sm font-medium">{error}</div>}
-          
+
           <div className="grid gap-2">
             <Label htmlFor="fullName">Full Name</Label>
             <Input
@@ -100,7 +126,9 @@ export function RegisterForm() {
               disabled={loading}
               {...register('fullName')}
             />
-            {errors.fullName && <p className="text-destructive text-xs">{errors.fullName.message}</p>}
+            {errors.fullName && (
+              <p className="text-destructive text-xs">{errors.fullName.message}</p>
+            )}
           </div>
 
           <div className="grid gap-2">
@@ -142,29 +170,38 @@ export function RegisterForm() {
               />
               <button
                 type="button"
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex items-center pr-3"
                 onClick={() => setShowPassword(!showPassword)}
                 tabIndex={-1}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            
+
             {passwordValue && (
-              <div className="grid gap-1 mt-2 mb-2 p-2 bg-muted rounded-md text-xs">
+              <div className="bg-muted mb-2 mt-2 grid gap-1 rounded-md p-2 text-xs">
                 {passwordRules.map((rule, idx) => {
                   const passed = rule.test(passwordValue);
                   return (
-                    <div key={idx} className={`flex items-center gap-2 ${passed ? 'text-green-600' : 'text-muted-foreground'}`}>
-                      {passed ? <Check className="h-3 w-3" /> : <X className="h-3 w-3 opacity-50" />}
+                    <div
+                      key={idx}
+                      className={`flex items-center gap-2 ${passed ? 'text-green-600' : 'text-muted-foreground'}`}
+                    >
+                      {passed ? (
+                        <Check className="h-3 w-3" />
+                      ) : (
+                        <X className="h-3 w-3 opacity-50" />
+                      )}
                       <span>{rule.label}</span>
                     </div>
                   );
                 })}
               </div>
             )}
-            
-            {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
+
+            {errors.password && (
+              <p className="text-destructive text-xs">{errors.password.message}</p>
+            )}
           </div>
 
           <div className="grid gap-2">
@@ -179,14 +216,16 @@ export function RegisterForm() {
               />
               <button
                 type="button"
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex items-center pr-3"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 tabIndex={-1}
               >
                 {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {errors.confirmPassword && <p className="text-destructive text-xs">{errors.confirmPassword.message}</p>}
+            {errors.confirmPassword && (
+              <p className="text-destructive text-xs">{errors.confirmPassword.message}</p>
+            )}
           </div>
 
           <Button disabled={loading} type="submit">
@@ -194,6 +233,32 @@ export function RegisterForm() {
           </Button>
         </div>
       </form>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background text-muted-foreground px-2">Or continue with</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <SocialLoginButton provider="google" onClick={() => loginWithGoogle()} loading={loading} />
+        <SocialLoginButton
+          provider="facebook"
+          onClick={() => setError('Facebook Login requires App ID configuration.')}
+          loading={loading}
+        />
+      </div>
     </div>
+  );
+}
+
+export function RegisterForm() {
+  return (
+    <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 'dummy-client-id'}>
+      <RegisterFormComponent />
+    </GoogleOAuthProvider>
   );
 }

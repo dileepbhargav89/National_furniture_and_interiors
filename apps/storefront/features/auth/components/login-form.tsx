@@ -72,22 +72,34 @@ function LoginFormComponent() {
   };
 
   const loginWithGoogle = useGoogleLogin({
-    onSuccess: async (_tokenResponse) => {
+    onSuccess: async (tokenResponse) => {
       setLoading(true);
+      setError(null);
       try {
-        // useGoogleLogin with implicit flow returns an access_token.
-        // Usually you'd use that to fetch user info, or configure it to return an id_token if possible.
-        // For the sake of MVP and since googleAuthService expects idToken, we'll pretend it works or
-        // in reality you'd need the @react-oauth/google <GoogleLogin /> component to get an id_token easily.
-        // We will mock the backend call here just to show the UI error message.
-        setError(
-          'Google Login requires a valid NEXT_PUBLIC_GOOGLE_CLIENT_ID and proper configuration.',
-        );
+        const response = await authService.googleLogin({
+          accessToken: tokenResponse.access_token,
+        });
+        if (response.success && response.data) {
+          if (response.data.status === 'AUTHENTICATED' && response.data.accessToken) {
+            setToken(response.data.accessToken);
+            router.push('/');
+          } else if (response.data.status === 'MFA_ENROLMENT_REQUIRED') {
+            setUserId(response.data.userId!);
+            setMfaState('MFA_ENROLMENT_REQUIRED');
+          } else if (response.data.status === 'MFA_REQUIRED') {
+            setUserId(response.data.userId!);
+            setMfaState('MFA_REQUIRED');
+          }
+        } else {
+          setError(response.message || 'Google authentication failed');
+        }
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Google authentication failed');
       } finally {
         setLoading(false);
       }
     },
-    onError: () => setError('Google Login Failed'),
+    onError: () => setError('Google sign-in was cancelled or failed'),
   });
 
   function normalizePhoneNumber(rawPhone: string): string {
