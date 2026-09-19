@@ -190,6 +190,7 @@ import { Msg91SmsAdapter } from '../../modules/notifications/infrastructure/adap
 import { WhatsAppCloudAdapter } from '../../modules/notifications/infrastructure/adapters/whatsapp-cloud.adapter';
 import {
   ProcessOutboxRelayUseCase,
+  IInvoicePdfProvider,
   ListNotificationsUseCase,
   GetMyNotificationsUseCase,
   GetUnreadCountUseCase,
@@ -622,13 +623,6 @@ export function buildAppContext(): AppContext {
   const smsAdapter = new Msg91SmsAdapter();
   const whatsappAdapter = new WhatsAppCloudAdapter();
 
-  const processOutboxRelayUseCase = new ProcessOutboxRelayUseCase(
-    outboxRepository,
-    notificationRepository,
-    emailAdapter,
-    smsAdapter,
-    whatsappAdapter,
-  );
   const listNotificationsUseCase = new ListNotificationsUseCase(notificationRepository);
   const getMyNotificationsUseCase = new GetMyNotificationsUseCase(notificationRepository);
   const getUnreadCountUseCase = new GetUnreadCountUseCase(notificationRepository);
@@ -669,12 +663,6 @@ export function buildAppContext(): AppContext {
     smsAdapter,
     whatsappAdapter,
   };
-
-  const outboxPoller = new OutboxPoller(processOutboxRelayUseCase, 10000);
-  // Do not start the poller in tests, only when actually running the app (handled in app.ts ideally, but ok to start here if we manage teardown, for MVP we start here)
-  if (process.env.NODE_ENV !== 'test') {
-    outboxPoller.start();
-  }
 
   // ---- Sprint 11: CRM Repositories (Initialized early for omnichannel lead sync) ---
   const customerRepository = new MongoCustomerRepository();
@@ -747,6 +735,29 @@ export function buildAppContext(): AppContext {
     markOrderPaymentFailed: async (orderId: string) => {
       const order = await orderRepository.updatePaymentStatus(orderId, PaymentStatus.FAILED);
       return order?.items || [];
+    },
+    getOrderDetails: async (orderId: string) => {
+      const order = await orderRepository.findById(orderId);
+      if (!order) return null;
+      let customerEmail: string | undefined;
+      const customerName: string | undefined = order.shippingAddress?.label || order.companyName;
+      if (order.userId) {
+        const user = await authUserRepository.findById(order.userId);
+        if (user) {
+          customerEmail = user.email;
+        }
+      }
+      return {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        userId: order.userId,
+        customerEmail,
+        customerName: customerName || 'Valued Patron',
+        items: order.items,
+        totalAmount: order.pricing.total,
+        paymentPlan: order.paymentPlan,
+        shippingAddress: order.shippingAddress,
+      };
     },
   };
 
@@ -823,12 +834,31 @@ export function buildAppContext(): AppContext {
       cartProvider,
       inventoryProvider,
       razorpayAdapter,
+      outboxRepository,
     ),
     getOrders: new GetOrdersUseCase(orderRepository),
     getOrderById: new GetOrderByIdUseCase(orderRepository),
-    updateOrderStatus: new UpdateOrderStatusUseCase(orderRepository),
+    updateOrderStatus: new UpdateOrderStatusUseCase(orderRepository, outboxRepository),
     getSalesMetrics: new GetSalesMetricsUseCase(orderRepository),
   };
+
+  const invoicePdfProvider: IInvoicePdfProvider = {
+    generatePdfForOrder: (orderId: string) => payments.generateInvoice.generatePdfForOrder(orderId),
+  };
+
+  const processOutboxRelayUseCase = new ProcessOutboxRelayUseCase(
+    outboxRepository,
+    notificationRepository,
+    emailAdapter,
+    smsAdapter,
+    whatsappAdapter,
+    invoicePdfProvider,
+  );
+
+  const outboxPoller = new OutboxPoller(processOutboxRelayUseCase, 10000);
+  if (process.env.NODE_ENV !== 'test') {
+    outboxPoller.start();
+  }
 
   // ---- Sprint 8: CMS --------------------------------------------------------------
   const blogRepository = new MongoBlogRepository();

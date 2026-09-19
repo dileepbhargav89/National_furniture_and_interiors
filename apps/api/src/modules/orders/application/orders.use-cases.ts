@@ -3,10 +3,13 @@ import {
   IOrderRepository,
   Order,
   FulfillmentStatus,
+  PaymentStatus,
   OrderItem,
   OrderPricing,
 } from '../domain/orders.types';
 import { CheckoutInput, ICartProvider, IPaymentProvider, IInventoryProvider } from './ports';
+import { IOutboxRepository } from '../../../core/events/outbox.repository';
+import { DomainEventType } from '../../../core/events/domain-events';
 
 export class CheckoutUseCase {
   constructor(
@@ -14,6 +17,7 @@ export class CheckoutUseCase {
     private readonly cart: ICartProvider,
     private readonly inventory: IInventoryProvider,
     private readonly payments: IPaymentProvider,
+    private readonly outbox?: IOutboxRepository,
   ) {}
 
   async execute(
@@ -110,7 +114,26 @@ export class CheckoutUseCase {
       order.pricing.currency,
     );
 
-    // 6. Clear cart (after successful order creation)
+    // 6. Publish ORDER_CREATED event
+    if (this.outbox) {
+      await this.outbox.append({
+        eventType: DomainEventType.ORDER_CREATED,
+        aggregateType: 'Order',
+        aggregateId: order.id,
+        payload: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          userId: order.userId,
+          totalAmount: order.pricing.total,
+          payableAmount,
+          paymentPlan: order.paymentPlan || 'FULL',
+          items: order.items,
+          shippingAddress: order.shippingAddress,
+        },
+      });
+    }
+
+    // 7. Clear cart (after successful order creation)
     await this.cart.clearCart(input.userId);
 
     return { order, paymentIntent };
@@ -142,13 +165,60 @@ export class GetOrderByIdUseCase {
 }
 
 export class UpdateOrderStatusUseCase {
-  constructor(private readonly orders: IOrderRepository) {}
+  constructor(
+    private readonly orders: IOrderRepository,
+    private readonly outbox?: IOutboxRepository,
+  ) {}
 
   async executeFulfillment(id: string, status: FulfillmentStatus, note?: string): Promise<Order> {
     const order = await this.orders.updateFulfillmentStatus(id, status, note);
     if (!order) {
       throw new NotFoundError('Order not found');
     }
+
+    if (this.outbox) {
+      // If order is under milestone 50/50 plan and enters PACKED stage (crafting finished, ready for dispatch)
+      // and remaining balance is not fully paid, emit ORDER_MILESTONE_BALANCE_DUE
+      if (
+        order.paymentPlan === 'MILESTONE_50_50' &&
+        status === FulfillmentStatus.PACKED &&
+        order.paymentStatus !== PaymentStatus.PAID
+      ) {
+        const totalAmount = order.pricing.total;
+        const balanceAmount = Math.round(totalAmount / 2);
+        await this.outbox.append({
+          eventType: DomainEventType.ORDER_MILESTONE_BALANCE_DUE,
+          aggregateType: 'Order',
+          aggregateId: order.id,
+          payload: {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            userId: order.userId,
+            totalAmount,
+            balanceAmount,
+            items: order.items,
+            customerName: order.shippingAddress?.label || order.companyName || 'Valued Patron',
+            actionUrl: `/orders/${order.id}`,
+          },
+        });
+      }
+
+      // Always publish fulfillment status update
+      await this.outbox.append({
+        eventType: DomainEventType.ORDER_FULFILLMENT_UPDATED,
+        aggregateType: 'Order',
+        aggregateId: order.id,
+        payload: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          userId: order.userId,
+          status,
+          note,
+          customerName: order.shippingAddress?.label || order.companyName || 'Valued Patron',
+        },
+      });
+    }
+
     return order;
   }
 }

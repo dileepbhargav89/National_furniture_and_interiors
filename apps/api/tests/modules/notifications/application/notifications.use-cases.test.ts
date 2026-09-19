@@ -1,7 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ProcessOutboxRelayUseCase } from '../../../../src/modules/notifications/application/notifications.use-cases';
 import { DomainEventType, OutboxStatus } from '../../../../src/core/events/domain-events';
-import { NotificationChannel, NotificationType, NotificationStatus } from '../../../../src/modules/notifications/domain/notifications.types';
+import {
+  NotificationChannel,
+  NotificationType,
+} from '../../../../src/modules/notifications/domain/notifications.types';
+import type { IOutboxRepository } from '../../../../src/core/events/outbox.repository';
+import type { INotificationRepository } from '../../../../src/modules/notifications/domain/notifications.types';
+import type {
+  IEmailService,
+  ISmsService,
+  IWhatsAppService,
+} from '../../../../src/modules/notifications/application/ports';
 import { notificationsQueue } from '../../../../src/queues';
 
 vi.mock('../../../../src/queues', () => ({
@@ -12,8 +22,25 @@ vi.mock('../../../../src/queues', () => ({
 
 describe('ProcessOutboxRelayUseCase', () => {
   let useCase: ProcessOutboxRelayUseCase;
-  let mockOutboxRepo: any;
-  let mockNotificationRepo: any;
+  let mockOutboxRepo: {
+    findPending: ReturnType<typeof vi.fn>;
+    markProcessed: ReturnType<typeof vi.fn>;
+    markFailed: ReturnType<typeof vi.fn>;
+  };
+  let mockNotificationRepo: {
+    create: ReturnType<typeof vi.fn>;
+    markSent: ReturnType<typeof vi.fn>;
+    markFailed: ReturnType<typeof vi.fn>;
+  };
+  let mockEmailService: {
+    sendEmail: ReturnType<typeof vi.fn>;
+  };
+  let mockSmsService: {
+    sendSms: ReturnType<typeof vi.fn>;
+  };
+  let mockWhatsappService: {
+    sendWhatsAppMessage: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -30,12 +57,24 @@ describe('ProcessOutboxRelayUseCase', () => {
       markFailed: vi.fn(),
     };
 
+    mockEmailService = {
+      sendEmail: vi.fn().mockResolvedValue({ id: 'email-1' }),
+    };
+
+    mockSmsService = {
+      sendSms: vi.fn().mockResolvedValue({ id: 'sms-1' }),
+    };
+
+    mockWhatsappService = {
+      sendWhatsAppMessage: vi.fn().mockResolvedValue({ id: 'wa-1' }),
+    };
+
     useCase = new ProcessOutboxRelayUseCase(
-      mockOutboxRepo,
-      mockNotificationRepo,
-      {} as any,
-      {} as any,
-      {} as any
+      mockOutboxRepo as unknown as IOutboxRepository,
+      mockNotificationRepo as unknown as INotificationRepository,
+      mockEmailService as unknown as IEmailService,
+      mockSmsService as unknown as ISmsService,
+      mockWhatsappService as unknown as IWhatsAppService,
     );
   });
 
@@ -46,7 +85,7 @@ describe('ProcessOutboxRelayUseCase', () => {
         eventType: DomainEventType.LEAD_CREATED,
         aggregateType: 'Lead',
         aggregateId: 'lead-1',
-        payload: { email: 'test@example.com' },
+        payload: { email: 'test@example.com', name: 'John Doe', priority: 'HOT' },
         status: OutboxStatus.PENDING,
       },
     ];
@@ -57,17 +96,15 @@ describe('ProcessOutboxRelayUseCase', () => {
     await useCase.execute();
 
     expect(mockOutboxRepo.findPending).toHaveBeenCalledWith(50);
-    expect(mockNotificationRepo.create).toHaveBeenCalledWith(expect.objectContaining({
-      recipientId: null,
-      channel: NotificationChannel.EMAIL,
-      type: NotificationType.GENERAL,
-      title: 'New Lead Received',
-      message: 'Lead lead-1 has been created and requires triage.',
-      payload: { email: 'test@example.com' },
-      status: NotificationStatus.PENDING,
-      isRead: false,
-    }));
-    expect(notificationsQueue.add).toHaveBeenCalledWith('send-notification', { notificationId: 'notif-1' });
+    expect(mockNotificationRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientId: null,
+        channel: NotificationChannel.IN_APP,
+        type: NotificationType.LEAD_CONCIERGE_ALERT,
+        title: 'New [HOT] Inquiry: John Doe',
+      }),
+    );
+    expect(mockEmailService.sendEmail).toHaveBeenCalledTimes(2);
     expect(mockOutboxRepo.markProcessed).toHaveBeenCalledWith('outbox-1');
   });
 
