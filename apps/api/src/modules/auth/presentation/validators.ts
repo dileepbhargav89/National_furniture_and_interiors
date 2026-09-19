@@ -47,9 +47,14 @@ export const mfaVerifySchema = z.object({
     .regex(/^\d+$/, 'TOTP code must contain only digits'),
 });
 
-export const googleAuthSchema = z.object({
-  idToken: z.string().min(1, 'idToken is required'),
-});
+export const googleAuthSchema = z
+  .object({
+    idToken: z.string().optional(),
+    accessToken: z.string().optional(),
+  })
+  .refine((data) => Boolean(data.idToken || data.accessToken), {
+    message: 'Either idToken or accessToken is required',
+  });
 
 export const facebookAuthSchema = z.object({
   accessToken: z.string().min(1, 'accessToken is required'),

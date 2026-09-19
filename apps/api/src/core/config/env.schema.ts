@@ -28,6 +28,7 @@ export const envSchema = z.object({
   MFA_TOTP_ISSUER: z.string().min(1, 'MFA_TOTP_ISSUER is required'),
 
   GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
   FACEBOOK_APP_ID: z.string().optional(),
   FACEBOOK_APP_SECRET: z.string().optional(),
 

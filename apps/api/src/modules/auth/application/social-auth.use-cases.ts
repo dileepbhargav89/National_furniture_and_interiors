@@ -1,5 +1,11 @@
 import { UnauthorizedError } from '../../../core/exceptions';
-import type { IAuthUserRepository, IGoogleAuthService, IFacebookAuthService } from './ports';
+import type {
+  IAuthUserRepository,
+  IGoogleAuthService,
+  IFacebookAuthService,
+  GoogleAuthParams,
+  GooglePayload,
+} from './ports';
 import { canAuthenticate, isLockedOut, requiresMfaEnrolment } from '../domain/auth-user';
 import { requiresMfa } from '../domain/user-type';
 import type { LoginOutcome } from './login-user.use-case';
@@ -11,9 +17,24 @@ export class AuthenticateWithGoogle {
     private readonly resolveCustomerRoleId: () => Promise<string>,
   ) {}
 
-  async execute(idToken: string): Promise<LoginOutcome> {
-    const payload = await this.googleAuth.verifyIdToken(idToken);
-    
+  async execute(input: string | GoogleAuthParams): Promise<LoginOutcome> {
+    let payload: GooglePayload;
+    if (typeof input === 'string') {
+      payload = await this.googleAuth.verifyIdToken(input);
+    } else if (input.idToken) {
+      payload = await this.googleAuth.verifyIdToken(input.idToken);
+    } else if (input.accessToken) {
+      if (this.googleAuth.verifyAccessToken) {
+        payload = await this.googleAuth.verifyAccessToken(input.accessToken);
+      } else if (this.googleAuth.verifyToken) {
+        payload = await this.googleAuth.verifyToken(input);
+      } else {
+        throw new Error('Google access token verification not supported by service');
+      }
+    } else {
+      throw new Error('Either idToken or accessToken must be provided');
+    }
+
     let user = await this.users.findByEmail(payload.email);
 
     if (!user) {
@@ -34,7 +55,7 @@ export class AuthenticateWithGoogle {
       if (isLockedOut(user) || !canAuthenticate(user)) {
         throw new UnauthorizedError('Invalid account status');
       }
-      
+
       // Update missing Google info if they signed up differently
       // In a real application, you'd want a separate update method in the repo for this
       // But for simplicity, we just proceed.
@@ -62,7 +83,7 @@ export class AuthenticateWithFacebook {
 
   async execute(accessToken: string): Promise<LoginOutcome> {
     const payload = await this.facebookAuth.verifyAccessToken(accessToken);
-    
+
     let user = await this.users.findByEmail(payload.email);
 
     if (!user) {

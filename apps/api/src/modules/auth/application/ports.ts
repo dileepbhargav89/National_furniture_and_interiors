@@ -96,8 +96,15 @@ export interface FacebookPayload {
   name?: string | undefined;
 }
 
+export interface GoogleAuthParams {
+  idToken?: string | undefined;
+  accessToken?: string | undefined;
+}
+
 export interface IGoogleAuthService {
   verifyIdToken(idToken: string): Promise<GooglePayload>;
+  verifyAccessToken?(accessToken: string): Promise<GooglePayload>;
+  verifyToken?(params: GoogleAuthParams): Promise<GooglePayload>;
 }
 
 export interface IFacebookAuthService {

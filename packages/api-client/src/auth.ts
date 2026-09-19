@@ -43,7 +43,7 @@ export const AuthService = {
     );
   },
 
-  googleLogin: async (data: { idToken: string }) => {
+  googleLogin: async (data: { idToken?: string; accessToken?: string }) => {
     return apiClient.post<{
       status: 'AUTHENTICATED' | 'MFA_REQUIRED' | 'MFA_ENROLMENT_REQUIRED';
       accessToken?: string;
