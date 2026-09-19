@@ -2,7 +2,7 @@ import { apiClient } from './client';
 
 export type ClientTier = 'VIP_PLATINUM' | 'HIGH_NET_WORTH' | 'COMMERCIAL' | 'RETAIL' | 'PROSPECT';
 export type PreferredStudio = 'INDIRANAGAR' | 'WHITEFIELD' | 'HSR_LAYOUT' | 'VIRTUAL';
-export type PipelineStageId = 
+export type PipelineStageId =
   | 'NEW_INQUIRY'
   | 'QUALIFIED'
   | 'STUDIO_CONSULTATION'
@@ -26,12 +26,14 @@ export interface CustomerProfile {
   tags: string[];
   clientTier?: ClientTier | undefined;
   preferredStudio?: PreferredStudio | undefined;
-  propertyDetails?: {
-    community?: string | undefined;
-    configuration?: string | undefined;
-    estimatedAreaSqFt?: number | undefined;
-    possessionDate?: string | undefined;
-  } | undefined;
+  propertyDetails?:
+    | {
+        community?: string | undefined;
+        configuration?: string | undefined;
+        estimatedAreaSqFt?: number | undefined;
+        possessionDate?: string | undefined;
+      }
+    | undefined;
   estimatedDealValue?: number | undefined;
   currentPipelineStage?: PipelineStageId | undefined;
   assignedRepId?: string | undefined;
@@ -86,7 +88,8 @@ export interface SalesRepresentative {
   email: string;
   phone: string;
   avatarUrl?: string | undefined;
-  specialization: 'LUXURY_RESIDENTIAL' | 'COMMERCIAL_OFFICE' | 'MODULAR_KITCHEN' | 'BESPOKE_FURNITURE';
+  specialization:
+    'LUXURY_RESIDENTIAL' | 'COMMERCIAL_OFFICE' | 'MODULAR_KITCHEN' | 'BESPOKE_FURNITURE';
   monthlyTarget: number; // in paise
   achievedRevenue: number; // in paise
   activeLeadsCount: number;
@@ -113,7 +116,8 @@ export interface LeadActivity {
   id: string;
   _id?: string | undefined;
   leadId: string;
-  activityType?: 'NOTE' | 'EMAIL' | 'CALL' | 'MEETING' | 'STATUS_CHANGE' | 'STUDIO_VISIT' | undefined;
+  activityType?:
+    'NOTE' | 'EMAIL' | 'CALL' | 'MEETING' | 'STATUS_CHANGE' | 'STUDIO_VISIT' | undefined;
   type?: string | undefined;
   summary?: string | undefined;
   description?: string | undefined;
@@ -146,69 +150,90 @@ export interface CustomerDossier {
   activities: LeadActivity[];
   statusHistory: LeadStatusHistory[];
   designProjects: Array<{ id: string; title: string; stage: string; estimatedBudget: number }>;
-  orders: Array<{ id: string; orderNumber: string; status: string; totalAmount: number; createdAt: string }>;
+  orders: Array<{
+    id: string;
+    orderNumber: string;
+    status: string;
+    totalAmount: number;
+    createdAt: string;
+  }>;
 }
 
 export const CrmService = {
   // Executive Pipeline & KPIs
-  getCrmKpis: () =>
-    apiClient.get<CrmKpis>('/crm/kpis'),
+  getCrmKpis: () => apiClient.get<CrmKpis>('/api/v1/crm/kpis'),
 
   getPipeline: (params?: { repId?: string | undefined; search?: string | undefined }) =>
-    apiClient.get<PipelineStage[]>('/crm/pipeline', params ? { params } : undefined),
+    apiClient.get<PipelineStage[]>('/api/v1/crm/pipeline', params ? { params } : undefined),
 
   updateDealStage: (dealId: string, stage: PipelineStageId, reason?: string | undefined) =>
-    apiClient.patch<CustomerProfile>(`/crm/deals/${dealId}/stage`, { stage, reason }),
+    apiClient.patch<CustomerProfile>(`/api/v1/crm/deals/${dealId}/stage`, { stage, reason }),
 
   // Sales Team Operations
-  getSalesTeam: () =>
-    apiClient.get<SalesRepresentative[]>('/crm/sales-team'),
+  getSalesTeam: () => apiClient.get<SalesRepresentative[]>('/api/v1/crm/sales-team'),
 
   assignSalesRep: (dealId: string, repId: string) =>
-    apiClient.post<CustomerProfile>(`/crm/deals/${dealId}/assign`, { repId }),
+    apiClient.post<CustomerProfile>(`/api/v1/crm/deals/${dealId}/assign`, { repId }),
 
   // Customer 360 Dossier & Conversions
   getCustomerDossier: (customerId: string) =>
-    apiClient.get<CustomerDossier>(`/crm/customers/${customerId}/dossier`),
+    apiClient.get<CustomerDossier>(`/api/v1/crm/customers/${customerId}/dossier`),
 
-  convertDealToProject: (dealId: string, data: { projectName?: string | undefined; scope?: string | undefined; estimatedBudget?: number | undefined }) =>
-    apiClient.post<{ projectId: string; dealId: string; message: string }>(`/crm/deals/${dealId}/convert-project`, data),
+  convertDealToProject: (
+    dealId: string,
+    data: {
+      projectName?: string | undefined;
+      scope?: string | undefined;
+      estimatedBudget?: number | undefined;
+    },
+  ) =>
+    apiClient.post<{ projectId: string; dealId: string; message: string }>(
+      `/api/v1/crm/deals/${dealId}/convert-project`,
+      data,
+    ),
 
-  convertDealToOrder: (dealId: string, data: { itemsDescription?: string | undefined; totalAmount?: number | undefined }) =>
-    apiClient.post<{ orderId: string; orderNumber: string; dealId: string; message: string }>(`/crm/deals/${dealId}/convert-order`, data),
+  convertDealToOrder: (
+    dealId: string,
+    data: { itemsDescription?: string | undefined; totalAmount?: number | undefined },
+  ) =>
+    apiClient.post<{ orderId: string; orderNumber: string; dealId: string; message: string }>(
+      `/api/v1/crm/deals/${dealId}/convert-order`,
+      data,
+    ),
 
   // Standard Customer Profile Management
   createCustomerProfile: (data: Partial<CustomerProfile>) =>
-    apiClient.post<CustomerProfile>('/crm/customers', data),
+    apiClient.post<CustomerProfile>('/api/v1/crm/customers', data),
 
-  getCustomerProfile: (id: string) =>
-    apiClient.get<CustomerProfile>(`/crm/customers/${id}`),
+  getCustomerProfile: (id: string) => apiClient.get<CustomerProfile>(`/api/v1/crm/customers/${id}`),
 
   updateCustomerProfile: (id: string, data: Partial<CustomerProfile>) =>
-    apiClient.patch<CustomerProfile>(`/crm/customers/${id}`, data),
+    apiClient.patch<CustomerProfile>(`/api/v1/crm/customers/${id}`, data),
 
   getCustomerProfileByUserId: (userId: string) =>
-    apiClient.get<CustomerProfile>(`/crm/customers/user/${userId}`),
+    apiClient.get<CustomerProfile>(`/api/v1/crm/customers/user/${userId}`),
 
-  recordLeadActivity: (data: { 
-    leadId: string; 
-    type: string; 
-    summary: string; 
-    direction?: string | undefined; 
-    outcome?: string | undefined; 
-    performedBy: string; 
+  recordLeadActivity: (data: {
+    leadId: string;
+    type: string;
+    summary: string;
+    direction?: string | undefined;
+    outcome?: string | undefined;
+    performedBy: string;
     scheduledFollowUpAt?: string | undefined;
-    metadata?: Record<string, unknown> | undefined 
-  }) =>
-    apiClient.post<LeadActivity>('/crm/lead-activities', data),
+    metadata?: Record<string, unknown> | undefined;
+  }) => apiClient.post<LeadActivity>('/api/v1/crm/lead-activities', data),
 
   getLeadActivities: (leadId: string) =>
-    apiClient.get<LeadActivity[]>(`/crm/lead-activities/${leadId}`),
+    apiClient.get<LeadActivity[]>(`/api/v1/crm/lead-activities/${leadId}`),
 
-  trackLeadStatusTransition: (data: { leadId: string; fromStatus: string; toStatus: string; reason?: string | undefined }) =>
-    apiClient.post<LeadStatusHistory>('/crm/lead-status-history', data),
+  trackLeadStatusTransition: (data: {
+    leadId: string;
+    fromStatus: string;
+    toStatus: string;
+    reason?: string | undefined;
+  }) => apiClient.post<LeadStatusHistory>('/api/v1/crm/lead-status-history', data),
 
   getLeadStatusHistory: (leadId: string) =>
-    apiClient.get<LeadStatusHistory[]>(`/crm/lead-status-history/${leadId}`),
+    apiClient.get<LeadStatusHistory[]>(`/api/v1/crm/lead-status-history/${leadId}`),
 };
-
