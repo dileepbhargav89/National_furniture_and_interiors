@@ -2,7 +2,6 @@ import {
   IDesignProjectRepository,
   IDesignProject,
   DesignProjectStage,
-  DesignProjectType,
   IQuotationItem,
   ISiteInspectionReport,
   ISitePhotoStreamItem,
@@ -10,6 +9,7 @@ import {
   SiteWorkPhase,
   SnagSeverity,
   SnagStatus,
+  CreateDesignProjectInput,
 } from '../domain/design-projects.types';
 import {
   DesignProjectNotFoundError,
@@ -25,13 +25,17 @@ const VALID_TRANSITIONS: Record<DesignProjectStage, DesignProjectStage[]> = {
   [DesignProjectStage.CONSULTATION_SCHEDULED]: [DesignProjectStage.SITE_VISIT_COMPLETED],
   [DesignProjectStage.SITE_VISIT_COMPLETED]: [DesignProjectStage.PROPOSAL_IN_PROGRESS],
   [DesignProjectStage.PROPOSAL_IN_PROGRESS]: [DesignProjectStage.QUOTATION_SENT],
-  [DesignProjectStage.QUOTATION_SENT]: [DesignProjectStage.CLIENT_REVIEW],
+  [DesignProjectStage.QUOTATION_SENT]: [
+    DesignProjectStage.CLIENT_REVIEW,
+    DesignProjectStage.REVISION,
+    DesignProjectStage.LOST,
+  ],
   [DesignProjectStage.CLIENT_REVIEW]: [
     DesignProjectStage.APPROVED,
     DesignProjectStage.REVISION,
     DesignProjectStage.LOST,
   ],
-  [DesignProjectStage.REVISION]: [DesignProjectStage.PROPOSAL_IN_PROGRESS],
+  [DesignProjectStage.REVISION]: [DesignProjectStage.QUOTATION_SENT, DesignProjectStage.LOST],
   [DesignProjectStage.APPROVED]: [DesignProjectStage.ADVANCE_PAYMENT_COLLECTED],
   [DesignProjectStage.ADVANCE_PAYMENT_COLLECTED]: [DesignProjectStage.PROCUREMENT],
   [DesignProjectStage.PROCUREMENT]: [DesignProjectStage.EXECUTION_IN_PROGRESS],
@@ -39,7 +43,10 @@ const VALID_TRANSITIONS: Record<DesignProjectStage, DesignProjectStage[]> = {
     DesignProjectStage.MILESTONE_PAYMENT_COLLECTED,
     DesignProjectStage.QUALITY_CHECK,
   ],
-  [DesignProjectStage.MILESTONE_PAYMENT_COLLECTED]: [DesignProjectStage.EXECUTION_IN_PROGRESS],
+  [DesignProjectStage.MILESTONE_PAYMENT_COLLECTED]: [
+    DesignProjectStage.EXECUTION_IN_PROGRESS,
+    DesignProjectStage.QUALITY_CHECK,
+  ],
   [DesignProjectStage.QUALITY_CHECK]: [DesignProjectStage.HANDOVER],
   [DesignProjectStage.HANDOVER]: [DesignProjectStage.WARRANTY_AMC],
   [DesignProjectStage.WARRANTY_AMC]: [],
@@ -49,22 +56,7 @@ const VALID_TRANSITIONS: Record<DesignProjectStage, DesignProjectStage[]> = {
 export class CreateDesignProjectUseCase {
   constructor(private readonly repository: IDesignProjectRepository) {}
 
-  async execute(params: {
-    leadId?: string;
-    customerId: string;
-    projectType: DesignProjectType;
-    assignedDesignerId?: string;
-    budgetRange: { min: number; max: number };
-    propertyAddress: {
-      street: string;
-      city: string;
-      state: string;
-      postalCode: string;
-      country: string;
-    };
-    propertyDetails: { areaSqft: number; rooms?: number; bhk?: number };
-    actorId: string;
-  }): Promise<IDesignProject> {
+  async execute(params: CreateDesignProjectInput): Promise<IDesignProject> {
     const projectCode = `DP-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`;
 
     return this.repository.create({

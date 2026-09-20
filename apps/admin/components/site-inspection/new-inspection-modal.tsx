@@ -1,32 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { SiteWorkPhase, SitePhotoStreamItem, SnagChecklistItem } from '@nfi/api-client';
+import { SiteWorkPhase, SitePhotoStreamItem, RecordInspectionRequest } from '@nfi/api-client';
 import { NfiButton } from '../ui/nfi-button';
 
 interface NewInspectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   expectedVersion: number;
-  onSave: (payload: {
-    expectedVersion: number;
-    inspectionDate: string;
-    inspectorName: string;
-    inspectorRole: 'SITE_SUPERVISOR' | 'PROJECT_ENGINEER' | 'QUALITY_AUDITOR' | 'LEAD_ARCHITECT';
-    currentPhase: SiteWorkPhase;
-    workCompletedToday: string;
-    manpowerCount: {
-      carpenters: number;
-      polishers: number;
-      electricians: number;
-      helpers: number;
-    };
-    materialDeliveriesVerified?: string[] | undefined;
-    siteCleanlinessRating?: 'EXCELLENT' | 'GOOD' | 'NEEDS_ATTENTION' | 'FAILED' | undefined;
-    blockersOrDelays?: string | undefined;
-    photos?: Omit<SitePhotoStreamItem, 'id' | 'uploadedAt'>[] | undefined;
-    snags?: Omit<SnagChecklistItem, 'id' | 'reportedAt' | 'status'>[] | undefined;
-  }) => Promise<void>;
+  onSave: (payload: RecordInspectionRequest) => Promise<void>;
 }
 
 const PHASES: { value: SiteWorkPhase; label: string }[] = [

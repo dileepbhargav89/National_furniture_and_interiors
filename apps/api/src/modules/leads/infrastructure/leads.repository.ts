@@ -155,9 +155,10 @@ export class MongoLeadRepository implements ILeadRepository {
   }> {
     const filter: Record<string, unknown> = { isDeleted: false };
     if (startDate || endDate) {
-      filter.createdAt = {};
-      if (startDate) filter.createdAt.$gte = new Date(startDate);
-      if (endDate) filter.createdAt.$lte = new Date(endDate);
+      const createdAtFilter: Record<string, Date> = {};
+      if (startDate) createdAtFilter.$gte = new Date(startDate);
+      if (endDate) createdAtFilter.$lte = new Date(endDate);
+      filter.createdAt = createdAtFilter;
     }
 
     const aggregation = await LeadModel.aggregate([

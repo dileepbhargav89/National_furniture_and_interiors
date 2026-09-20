@@ -243,3 +243,20 @@ export interface IDesignProjectRepository {
     completed: number;
   }>;
 }
+
+export interface CreateDesignProjectInput {
+  leadId?: string | undefined;
+  customerId: string;
+  projectType: DesignProjectType;
+  assignedDesignerId?: string | undefined;
+  budgetRange: { min: number; max: number };
+  propertyAddress: {
+    street: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  };
+  propertyDetails: { areaSqft: number; rooms?: number | undefined; bhk?: number | undefined };
+  actorId: string;
+}

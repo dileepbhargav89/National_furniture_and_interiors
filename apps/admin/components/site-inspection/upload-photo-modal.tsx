@@ -88,7 +88,7 @@ export function UploadPhotoModal({
       await onUpload({
         expectedVersion,
         url: url.trim(),
-        thumbnailUrl: thumbnailUrl.trim() || undefined,
+        thumbnailUrl: url.trim() || undefined,
         roomName,
         caption: caption.trim(),
         workPhase,
