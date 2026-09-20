@@ -1,7 +1,6 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
-import { LogOut } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { AdminNotificationBell } from './notifications/admin-notification-bell';
 import { useAuthStore } from '../features/auth/store/auth.store';
 import { useAdminUIStore } from '../features/ui/store/ui.store';
@@ -40,16 +39,9 @@ function getPageTitle(pathname: string): string {
 
 export function AdminHeader() {
   const pathname = usePathname();
-  const router = useRouter();
   const pageTitle = getPageTitle(pathname);
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
   const toggleMobileNav = useAdminUIStore((s) => s.toggleMobileNav);
-
-  const handleLogout = () => {
-    logout();
-    router.push('/login');
-  };
 
   return (
     <header
@@ -197,18 +189,6 @@ export function AdminHeader() {
           </svg>
           <span className="hidden sm:inline">Storefront</span>
         </a>
-
-        {/* Executive Sign Out Shortcut */}
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-stone-500 transition-all hover:bg-rose-50 hover:text-rose-700 active:scale-95"
-          title="Sign out of Executive Portal"
-          aria-label="Sign out"
-        >
-          <LogOut className="h-3.5 w-3.5 text-stone-400 hover:text-rose-600" />
-          <span className="hidden sm:inline">Logout</span>
-        </button>
       </div>
     </header>
   );
