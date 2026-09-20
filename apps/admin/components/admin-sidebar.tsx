@@ -57,8 +57,43 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    section: 'Catalog',
+    section: 'Client Pipeline',
     items: [
+      {
+        label: 'Sales CRM & Leads',
+        href: '/crm',
+        icon: Contact,
+        requiredPermission: 'leads.read',
+      },
+      {
+        label: 'Design Projects',
+        href: '/design-projects',
+        icon: DraftingCompass,
+        requiredPermission: 'design-projects.read',
+      },
+      {
+        label: 'Design Portfolio',
+        href: '/design-projects/portfolio',
+        icon: Images,
+        requiredPermission: 'design-projects.read',
+      },
+    ],
+  },
+  {
+    section: 'Commerce & Atelier',
+    items: [
+      {
+        label: 'All Orders',
+        href: '/orders',
+        icon: ShoppingCart,
+        requiredPermission: 'orders.read',
+      },
+      {
+        label: 'Payments',
+        href: '/payments',
+        icon: CreditCard,
+        requiredPermission: 'payments.read',
+      },
       {
         label: 'Products',
         href: '/catalog/products',
@@ -87,59 +122,29 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    section: 'Orders',
+    section: 'Communications',
     items: [
-      {
-        label: 'All Orders',
-        href: '/orders',
-        icon: ShoppingCart,
-        requiredPermission: 'orders.read',
-      },
-      {
-        label: 'Payments',
-        href: '/payments',
-        icon: CreditCard,
-        requiredPermission: 'payments.read',
-      },
-    ],
-  },
-  {
-    section: 'Operations',
-    items: [
-      {
-        label: 'Design Projects',
-        href: '/design-projects',
-        icon: DraftingCompass,
-        requiredPermission: 'design-projects.read',
-      },
-      {
-        label: 'Design Portfolio',
-        href: '/design-projects/portfolio',
-        icon: Images,
-        requiredPermission: 'design-projects.read',
-      },
-      { label: 'Customers (CRM)', href: '/crm', icon: Contact, requiredPermission: 'leads.read' },
       {
         label: 'Notifications',
         href: '/notifications',
         icon: Bell,
         requiredPermission: 'notifications.read',
       },
-    ],
-  },
-  {
-    section: 'CMS',
-    items: [
       { label: 'Blogs', href: '/cms/blogs', icon: FileText, requiredPermission: 'cms.read' },
       { label: 'Banners', href: '/cms/banners', icon: ImageIcon, requiredPermission: 'cms.read' },
     ],
   },
   {
-    section: 'Access Control',
+    section: 'Governance',
     items: [
-      { label: 'Users', href: '/users', icon: Users, allowedRoles: ['SUPER_ADMIN', 'ADMIN'] },
       {
-        label: 'Roles & Permissions',
+        label: 'Users & Staff',
+        href: '/users',
+        icon: Users,
+        allowedRoles: ['SUPER_ADMIN', 'ADMIN'],
+      },
+      {
+        label: 'Roles & Access',
         href: '/roles',
         icon: ShieldCheck,
         allowedRoles: ['SUPER_ADMIN', 'ADMIN'],
@@ -307,197 +312,211 @@ export function AdminSidebar() {
   }, [pathname, closeMobileNav]);
 
   const renderContent = (isMobile: boolean, isExpanded: boolean) => (
-    <div className="flex h-full flex-col justify-between overflow-hidden">
-      {/* Top Brand Header */}
-      <div>
-        <div
-          className="flex h-16 flex-shrink-0 items-center justify-between px-3.5 transition-all"
-          style={{ borderBottom: '1px solid rgba(253, 248, 242, 0.08)' }}
-        >
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2.5 overflow-hidden"
-            onClick={() => {
-              if (isMobile) closeMobileNav();
-            }}
-          >
-            <div
-              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-xs font-black tracking-wider text-white shadow-md transition-transform hover:scale-105"
-              style={{
-                backgroundColor: 'var(--nfi-orange)',
-                boxShadow: '0 2px 10px rgba(224,112,32,0.3)',
-              }}
-            >
-              NFI
-            </div>
-            {isExpanded && (
-              <div className="animate-in fade-in min-w-0 transition-opacity duration-200">
-                <span
-                  className="block truncate text-xs font-bold leading-none tracking-tight"
-                  style={{ color: 'var(--nfi-cream)' }}
-                >
-                  National Furniture
-                </span>
-                <span
-                  className="mt-1 block truncate text-[10px] font-medium tracking-wide"
-                  style={{ color: 'var(--nfi-sidebar-muted)' }}
-                >
-                  Executive Portal
-                </span>
-              </div>
-            )}
-          </Link>
-
-          {/* Desktop Pin/Unpin Toggle */}
-          {!isMobile && isExpanded && (
-            <button
-              type="button"
-              onClick={togglePin}
-              title={isPinned ? 'Unpin sidebar (auto-collapse on hover out)' : 'Pin sidebar open'}
-              aria-label={isPinned ? 'Unpin sidebar' : 'Pin sidebar'}
-              className="rounded-lg p-1.5 text-stone-400 transition-colors hover:bg-white/10 hover:text-white"
-            >
-              {isPinned ? (
-                <PinOff className="h-4 w-4 text-[#F5A060]" />
-              ) : (
-                <Pin className="h-4 w-4 opacity-70 hover:opacity-100" />
-              )}
-            </button>
-          )}
-
-          {/* Mobile Close Button */}
-          {isMobile && (
-            <button
-              type="button"
-              onClick={closeMobileNav}
-              className="rounded-lg p-1.5 text-stone-400 transition-colors hover:bg-white/10 hover:text-white"
-              aria-label="Close navigation"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          )}
-        </div>
-
-        {/* Navigation List */}
-        <nav
-          className="no-scrollbar flex-1 overflow-y-auto px-2 py-3"
-          style={{ maxHeight: 'calc(100vh - 145px)' }}
-        >
-          {navGroups.map((group, gi) => {
-            const visibleItems = group.items.filter(canViewItem);
-            if (visibleItems.length === 0) return null;
-
-            return (
-              <div key={gi} className={gi > 0 ? (isExpanded ? 'mt-3.5' : 'mt-2') : ''}>
-                {group.section && (
-                  <>
-                    {isExpanded ? (
-                      <p
-                        className="animate-in fade-in mb-1.5 px-3 text-[10px] font-bold uppercase tracking-wider transition-opacity duration-200"
-                        style={{ color: 'var(--nfi-sidebar-muted)' }}
-                      >
-                        {group.section}
-                      </p>
-                    ) : (
-                      <div className="mx-2 my-1.5 border-t border-white/5" />
-                    )}
-                  </>
-                )}
-                <ul className="space-y-1">
-                  {visibleItems.map((item) => {
-                    const active = isActive(item.href);
-                    const IconComponent = item.icon;
-
-                    return (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          title={!isExpanded ? item.label : undefined}
-                          onClick={() => {
-                            if (isMobile) closeMobileNav();
-                          }}
-                          className={`nav-item relative flex items-center rounded-xl text-xs transition-all ${
-                            isExpanded ? 'gap-3 px-3 py-2.5' : 'mx-auto h-10 w-10 justify-center'
-                          } ${active ? 'font-semibold' : 'font-medium'}`}
-                          style={
-                            active
-                              ? {
-                                  backgroundColor: 'rgba(224, 112, 32, 0.22)',
-                                  color: '#F5A060',
-                                  ...(isExpanded
-                                    ? { borderLeft: '3px solid var(--nfi-orange)' }
-                                    : {}),
-                                }
-                              : {
-                                  color: 'rgba(245, 237, 224, 0.75)',
-                                  ...(isExpanded ? { borderLeft: '3px solid transparent' } : {}),
-                                }
-                          }
-                          onMouseEnter={(e) => {
-                            if (!active) {
-                              (e.currentTarget as HTMLElement).style.backgroundColor =
-                                'rgba(253, 248, 242, 0.08)';
-                              (e.currentTarget as HTMLElement).style.color = 'var(--nfi-cream)';
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (!active) {
-                              (e.currentTarget as HTMLElement).style.backgroundColor =
-                                'transparent';
-                              (e.currentTarget as HTMLElement).style.color =
-                                'rgba(245, 237, 224, 0.75)';
-                            }
-                          }}
-                        >
-                          <IconComponent
-                            className={`flex-shrink-0 transition-colors ${
-                              isExpanded ? 'h-4 w-4' : 'h-5 w-5'
-                            } ${active ? 'text-[#E07020]' : 'text-stone-400 group-hover:text-stone-200'}`}
-                          />
-
-                          {isExpanded && (
-                            <span className="animate-in fade-in flex-1 truncate text-left transition-opacity duration-200">
-                              {item.label}
-                            </span>
-                          )}
-
-                          {/* Active badge dot when collapsed */}
-                          {!isExpanded && active && (
-                            <span
-                              className="absolute right-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full ring-2 ring-[#3D1A08]"
-                              style={{ backgroundColor: 'var(--nfi-orange)' }}
-                            />
-                          )}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* User Footer with Role Badge */}
+    <div className="flex h-full flex-col overflow-hidden">
+      {/* 1. Top Brand Header (Compact height) */}
       <div
-        className="flex-shrink-0 p-2.5"
-        style={{
-          borderTop: '1px solid rgba(253, 248, 242, 0.08)',
-          backgroundColor: 'rgba(0,0,0,0.22)',
-        }}
+        className="h-13 flex flex-shrink-0 items-center justify-between px-3 transition-all"
+        style={{ borderBottom: '1px solid rgba(253, 248, 242, 0.08)' }}
       >
-        <div
-          className={`flex items-center rounded-lg ${isExpanded ? 'gap-2.5 px-1 py-1' : 'justify-center'}`}
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-2 overflow-hidden"
+          onClick={() => {
+            if (isMobile) closeMobileNav();
+          }}
         >
           <div
-            title={!isExpanded ? user?.fullName || 'Administrator' : undefined}
-            className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${getAvatarBadgeClass()}`}
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-[11px] font-black tracking-wider text-white shadow-sm transition-transform hover:scale-105"
+            style={{
+              backgroundColor: 'var(--nfi-orange)',
+              boxShadow: '0 2px 8px rgba(224,112,32,0.3)',
+            }}
           >
-            {getInitials(user?.fullName)}
+            NFI
           </div>
-
           {isExpanded && (
+            <div className="animate-in fade-in min-w-0 transition-opacity duration-200">
+              <span
+                className="block truncate text-xs font-bold leading-none tracking-tight"
+                style={{ color: 'var(--nfi-cream)' }}
+              >
+                National Furniture
+              </span>
+              <span
+                className="mt-0.5 block truncate text-[9.5px] font-medium tracking-wide"
+                style={{ color: 'var(--nfi-sidebar-muted)' }}
+              >
+                Executive Portal
+              </span>
+            </div>
+          )}
+        </Link>
+
+        {/* Desktop Pin/Unpin Toggle */}
+        {!isMobile && isExpanded && (
+          <button
+            type="button"
+            onClick={togglePin}
+            title={isPinned ? 'Unpin sidebar (auto-collapse on hover out)' : 'Pin sidebar open'}
+            aria-label={isPinned ? 'Unpin sidebar' : 'Pin sidebar'}
+            className="rounded-md p-1 text-stone-400 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            {isPinned ? (
+              <PinOff className="h-3.5 w-3.5 text-[#F5A060]" />
+            ) : (
+              <Pin className="h-3.5 w-3.5 opacity-70 hover:opacity-100" />
+            )}
+          </button>
+        )}
+
+        {/* Mobile Close Button */}
+        {isMobile && (
+          <button
+            type="button"
+            onClick={closeMobileNav}
+            className="rounded-md p-1 text-stone-400 transition-colors hover:bg-white/10 hover:text-white"
+            aria-label="Close navigation"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {/* 2. Navigation List: Flex-1, scrollable, never pushes footer off-screen */}
+      <nav className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-1.5 py-2">
+        {navGroups.map((group, gi) => {
+          const visibleItems = group.items.filter(canViewItem);
+          if (visibleItems.length === 0) return null;
+
+          return (
+            <div key={gi} className={gi > 0 ? (isExpanded ? 'mt-2.5' : 'mt-1.5') : ''}>
+              {group.section && (
+                <>
+                  {isExpanded ? (
+                    <p className="animate-in fade-in mb-1 px-2.5 text-[9px] font-bold uppercase tracking-wider text-[#D8B79B]/60 transition-opacity duration-200">
+                      {group.section}
+                    </p>
+                  ) : (
+                    <div className="mx-auto my-1 w-6 border-t border-white/10" />
+                  )}
+                </>
+              )}
+              <ul className="space-y-0.5">
+                {visibleItems.map((item) => {
+                  const active = isActive(item.href);
+                  const IconComponent = item.icon;
+
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        title={!isExpanded ? item.label : undefined}
+                        onClick={() => {
+                          if (isMobile) closeMobileNav();
+                        }}
+                        className={`nav-item relative flex items-center rounded-lg text-xs transition-all ${
+                          isExpanded
+                            ? 'gap-2.5 px-2.5 py-1.5'
+                            : 'h-8.5 w-8.5 mx-auto justify-center'
+                        } ${active ? 'font-semibold' : 'font-medium'}`}
+                        style={
+                          active
+                            ? {
+                                backgroundColor: 'rgba(224, 112, 32, 0.22)',
+                                color: '#F5A060',
+                                ...(isExpanded
+                                  ? { borderLeft: '3px solid var(--nfi-orange)' }
+                                  : {}),
+                              }
+                            : {
+                                color: 'rgba(245, 237, 224, 0.75)',
+                                ...(isExpanded ? { borderLeft: '3px solid transparent' } : {}),
+                              }
+                        }
+                        onMouseEnter={(e) => {
+                          if (!active) {
+                            (e.currentTarget as HTMLElement).style.backgroundColor =
+                              'rgba(253, 248, 242, 0.08)';
+                            (e.currentTarget as HTMLElement).style.color = 'var(--nfi-cream)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!active) {
+                            (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+                            (e.currentTarget as HTMLElement).style.color =
+                              'rgba(245, 237, 224, 0.75)';
+                          }
+                        }}
+                      >
+                        <IconComponent
+                          className={`flex-shrink-0 transition-colors ${
+                            isExpanded ? 'h-4 w-4' : 'h-4 w-4'
+                          } ${active ? 'text-[#E07020]' : 'text-stone-400 group-hover:text-stone-200'}`}
+                        />
+
+                        {isExpanded && (
+                          <span className="animate-in fade-in flex-1 truncate text-left text-[11.5px] transition-opacity duration-200">
+                            {item.label}
+                          </span>
+                        )}
+
+                        {/* Active badge dot when collapsed */}
+                        {!isExpanded && active && (
+                          <span
+                            className="absolute right-1 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full ring-2 ring-[#46220E]"
+                            style={{ backgroundColor: 'var(--nfi-orange)' }}
+                          />
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
+      </nav>
+
+      {/* 3. User Footer with Profile & Logout (PERMANENTLY PINNED AT BOTTOM) */}
+      <div
+        className="flex-shrink-0 p-2"
+        style={{
+          borderTop: '1px solid rgba(253, 248, 242, 0.08)',
+          backgroundColor: 'rgba(0,0,0,0.3)',
+        }}
+      >
+        {!isExpanded ? (
+          /* Collapsed View: Profile Avatar + Direct 1-Click Logout Button */
+          <div className="flex flex-col items-center gap-1.5 py-0.5">
+            <div
+              title={`${user?.fullName || 'Administrator'} • ${user?.roleName ? user.roleName.replace(/_/g, ' ') : 'Platform Admin'}`}
+              className={`h-7.5 w-7.5 shadow-xs relative flex cursor-default items-center justify-center rounded-full text-[10.5px] font-bold ${getAvatarBadgeClass()}`}
+            >
+              {getInitials(user?.fullName)}
+              <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-[#46220E] bg-emerald-500" />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              title={`Sign Out (${user?.fullName || 'Administrator'})`}
+              aria-label="Sign out of portal"
+              className="h-7.5 w-7.5 flex items-center justify-center rounded-lg text-stone-400 transition-all hover:bg-rose-500/20 hover:text-rose-300 active:scale-95"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : (
+          /* Expanded View: Full Card with Avatar, Name, Role Badge, and Logout */
+          <div className="flex items-center gap-2 rounded-lg px-1 py-0.5">
+            <div
+              title={user?.fullName || 'Administrator'}
+              className={`shadow-xs relative flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${getAvatarBadgeClass()}`}
+            >
+              {getInitials(user?.fullName)}
+              <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-[#46220E] bg-emerald-500" />
+            </div>
+
             <div className="animate-in fade-in min-w-0 flex-1 transition-opacity duration-200">
               <p
                 className="truncate text-xs font-semibold leading-tight"
@@ -505,16 +524,13 @@ export function AdminSidebar() {
               >
                 {user?.fullName || 'Administrator'}
               </p>
-              <p
-                className="mt-0.5 truncate text-[10px] leading-tight"
-                style={{ color: 'var(--nfi-sidebar-muted)' }}
-              >
+              <p className="mt-0.5 truncate text-[10px] leading-tight text-stone-400">
                 {user?.email || 'admin@nationalinteriors.com'}
               </p>
               <div className="mt-1">
                 {user?.roleName === 'SUPER_ADMIN' ? (
                   <span
-                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold"
+                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[8.5px] font-bold"
                     style={{
                       backgroundColor: 'rgba(224,112,32,0.25)',
                       color: '#F5A060',
@@ -524,58 +540,48 @@ export function AdminSidebar() {
                     <span
                       className="h-1 w-1 rounded-full"
                       style={{ backgroundColor: 'var(--nfi-orange)' }}
-                    ></span>
+                    />
                     SUPER ADMIN
                   </span>
                 ) : user?.roleName === 'ADMIN' ? (
                   <span
-                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold"
+                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[8.5px] font-bold"
                     style={{
                       backgroundColor: 'rgba(253,248,242,0.1)',
                       color: 'rgba(245,237,224,0.85)',
                       border: '1px solid rgba(253,248,242,0.15)',
                     }}
                   >
-                    <span className="h-1 w-1 rounded-full bg-amber-400"></span>
+                    <span className="h-1 w-1 rounded-full bg-amber-400" />
                     ADMINISTRATOR
                   </span>
                 ) : (
                   <span
-                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold"
+                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[8.5px] font-semibold"
                     style={{
                       backgroundColor: 'rgba(253,248,242,0.08)',
                       color: 'rgba(245,237,224,0.7)',
                       border: '1px solid rgba(253,248,242,0.12)',
                     }}
                   >
-                    <span className="h-1 w-1 rounded-full bg-blue-400"></span>
+                    <span className="h-1 w-1 rounded-full bg-blue-400" />
                     {user?.roleName ? user.roleName.replace(/_/g, ' ') : 'STAFF'}
                   </span>
                 )}
               </div>
             </div>
-          )}
 
-          {isExpanded && (
             <button
+              type="button"
               onClick={handleLogout}
-              title="Sign out"
+              title="Sign out of portal"
               aria-label="Sign out"
-              className="flex-shrink-0 rounded-lg p-1.5 transition-colors"
-              style={{ color: 'rgba(245,237,224,0.45)' }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.color = '#FF6B6B';
-                (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(192,40,28,0.2)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.color = 'rgba(245,237,224,0.45)';
-                (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
-              }}
+              className="h-7.5 w-7.5 flex flex-shrink-0 items-center justify-center rounded-lg text-stone-400 transition-all hover:bg-rose-500/20 hover:text-rose-300 active:scale-95"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-3.5 w-3.5" />
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -586,7 +592,7 @@ export function AdminSidebar() {
       <div
         className="relative hidden flex-shrink-0 transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] md:block"
         style={{
-          width: isPinned ? 260 : 68,
+          width: isPinned ? 236 : 60,
         }}
       >
         <aside
@@ -594,8 +600,8 @@ export function AdminSidebar() {
           onMouseLeave={handleMouseLeave}
           className={`absolute bottom-0 left-0 top-0 flex select-none flex-col overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
             isExpandedDesktop
-              ? 'z-40 w-[260px] shadow-2xl shadow-black/60'
-              : 'z-20 w-[68px] shadow-sm'
+              ? 'z-40 w-[236px] shadow-2xl shadow-black/60'
+              : 'z-20 w-[60px] shadow-sm'
           }`}
           style={{
             backgroundColor: 'var(--nfi-brown-dark)',
@@ -619,7 +625,7 @@ export function AdminSidebar() {
 
           {/* Drawer Sidebar */}
           <div
-            className="animate-in slide-in-from-left relative z-10 flex h-full w-[85%] max-w-[300px] flex-col overflow-y-auto shadow-2xl duration-200"
+            className="animate-in slide-in-from-left relative z-10 flex h-full w-[85%] max-w-[280px] flex-col overflow-y-auto shadow-2xl duration-200"
             style={{
               backgroundColor: 'var(--nfi-brown-dark)',
               borderRight: '1px solid rgba(253, 248, 242, 0.1)',
