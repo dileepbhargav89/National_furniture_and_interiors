@@ -5,14 +5,14 @@ import { DesignProjectsController } from './design-projects.controller';
 export function createDesignProjectsRouter(
   controller: DesignProjectsController,
   authMiddleware: RequestHandler,
-  requirePermission: (permission: string) => RequestHandler
+  requirePermission: (permission: string) => RequestHandler,
 ): Router {
   const router = Router();
 
   const standardLimiter = createRateLimiter({
     windowMs: 60_000,
     max: 120,
-    keyPrefix: 'design-projects'
+    keyPrefix: 'design-projects',
   });
 
   router.use(standardLimiter);
@@ -26,42 +26,42 @@ export function createDesignProjectsRouter(
     '/admin/portfolio',
     authMiddleware,
     requirePermission('design_projects.read'),
-    controller.adminListPortfolio
+    controller.adminListPortfolio,
   );
 
   router.post(
     '/admin/portfolio',
     authMiddleware,
     requirePermission('design_projects.write'),
-    controller.adminCreatePortfolio
+    controller.adminCreatePortfolio,
   );
 
   router.put(
     '/admin/portfolio/:id',
     authMiddleware,
     requirePermission('design_projects.write'),
-    controller.adminUpdatePortfolio
+    controller.adminUpdatePortfolio,
   );
 
   router.patch(
     '/admin/portfolio/:id',
     authMiddleware,
     requirePermission('design_projects.write'),
-    controller.adminUpdatePortfolio
+    controller.adminUpdatePortfolio,
   );
 
   router.delete(
     '/admin/portfolio/:id',
     authMiddleware,
     requirePermission('design_projects.write'),
-    controller.adminDeletePortfolio
+    controller.adminDeletePortfolio,
   );
 
   router.post(
     '/admin/portfolio/seed',
     authMiddleware,
     requirePermission('design_projects.write'),
-    controller.adminSeedPortfolio
+    controller.adminSeedPortfolio,
   );
 
   // ── Client Design Pipeline Endpoints (Auth Required) ──────────────────────
@@ -69,49 +69,101 @@ export function createDesignProjectsRouter(
     '/',
     authMiddleware,
     requirePermission('design_projects.read'),
-    controller.listDesignProjects
+    controller.listDesignProjects,
   );
 
   router.get(
     '/metrics/funnel',
     authMiddleware,
     requirePermission('design_projects.read'),
-    controller.getFunnelMetrics
+    controller.getFunnelMetrics,
   );
 
   router.get(
     '/:id',
     authMiddleware,
     requirePermission('design_projects.read'),
-    controller.getDesignProjectById
+    controller.getDesignProjectById,
   );
 
   router.post(
     '/',
     authMiddleware,
     requirePermission('design_projects.write'),
-    controller.createDesignProject
+    controller.createDesignProject,
   );
 
   router.patch(
     '/:id/stage',
     authMiddleware,
     requirePermission('design_projects.write'),
-    controller.advanceProjectStage
+    controller.advanceProjectStage,
   );
 
   router.post(
     '/:id/quotations',
     authMiddleware,
     requirePermission('design_projects.write'),
-    controller.addQuotation
+    controller.addQuotation,
+  );
+
+  router.get(
+    '/:id/quotations/:qid/pdf',
+    authMiddleware,
+    requirePermission('design_projects.read'),
+    controller.getQuotationPdf,
   );
 
   router.patch(
     '/:id/quotations/:qid/approve',
     authMiddleware,
     requirePermission('design_projects.write'),
-    controller.approveQuotation
+    controller.approveQuotation,
+  );
+
+  // ── Site Inspection & Daily Progress Feed Endpoints ─────────────────────
+  router.post(
+    '/:id/inspections',
+    authMiddleware,
+    requirePermission('design_projects.write'),
+    controller.recordInspection,
+  );
+
+  router.get(
+    '/:id/inspections',
+    authMiddleware,
+    requirePermission('design_projects.read'),
+    controller.listInspections,
+  );
+
+  // ── On-Site Photo Stream Endpoints ──────────────────────────────────────
+  router.post(
+    '/:id/photos',
+    authMiddleware,
+    requirePermission('design_projects.write'),
+    controller.addSitePhoto,
+  );
+
+  router.get(
+    '/:id/photos',
+    authMiddleware,
+    requirePermission('design_projects.read'),
+    controller.listPhotos,
+  );
+
+  // ── Snag Checklist / Punch List Endpoints ──────────────────────────────
+  router.post(
+    '/:id/snags',
+    authMiddleware,
+    requirePermission('design_projects.write'),
+    controller.logSnag,
+  );
+
+  router.patch(
+    '/:id/snags/:snagId',
+    authMiddleware,
+    requirePermission('design_projects.write'),
+    controller.updateSnagStatus,
   );
 
   return router;

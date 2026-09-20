@@ -10,6 +10,8 @@ export interface CreateLeadInput {
   projectType?: Lead['projectType'] | undefined;
   budgetRange?: Lead['budgetRange'] | undefined;
   timeline?: Lead['timeline'] | undefined;
+  consultationBooking?: Lead['consultationBooking'] | undefined;
+  swatchKitOrder?: Lead['swatchKitOrder'] | undefined;
   marketingConsent: Lead['marketingConsent'];
   score: number;
   priority: LeadPriority;
@@ -33,9 +35,16 @@ export interface ListLeadsFilters {
 export interface ILeadRepository {
   create(input: CreateLeadInput): Promise<Lead>;
   findById(id: string): Promise<Lead | null>;
-  find(filters: ListLeadsFilters, limit?: number, offset?: number): Promise<{ leads: Lead[], total: number }>;
+  find(
+    filters: ListLeadsFilters,
+    limit?: number,
+    offset?: number,
+  ): Promise<{ leads: Lead[]; total: number }>;
   update(id: string, updates: UpdateLeadInput, expectedVersion: number): Promise<Lead | null>;
-  getFunnelMetrics(startDate?: string, endDate?: string): Promise<{
+  getFunnelMetrics(
+    startDate?: string,
+    endDate?: string,
+  ): Promise<{
     totalLeads: number;
     newLeads: number;
     contactedLeads: number;

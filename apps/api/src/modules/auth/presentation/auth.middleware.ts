@@ -14,14 +14,27 @@ import type { ITokenService } from '../application/ports';
 
 export function createAuthMiddleware(tokens: ITokenService) {
   return function authMiddleware(req: Request, _res: Response, next: NextFunction): void {
+    let tokenStr: string | null = null;
     const header = req.header('Authorization');
-    if (!header?.startsWith('Bearer ')) {
+    if (header?.startsWith('Bearer ')) {
+      tokenStr = header.slice('Bearer '.length);
+    } else if (req.cookies?.['access_token']) {
+      tokenStr = req.cookies['access_token'];
+    } else if (
+      (req.path.includes('/stream') || (req.originalUrl && req.originalUrl.includes('/stream'))) &&
+      typeof req.query.token === 'string'
+    ) {
+      tokenStr = req.query.token;
+    }
+
+    if (!tokenStr) {
       next(new UnauthorizedError('Authentication required'));
       return;
     }
+
     try {
-      req.auth = tokens.verifyAccessToken(header.slice('Bearer '.length));
-      (req as any).user = { id: req.auth.sub };
+      req.auth = tokens.verifyAccessToken(tokenStr);
+      (req as unknown as { user?: { id: string } }).user = { id: req.auth.sub };
       next();
     } catch (error) {
       next(error);

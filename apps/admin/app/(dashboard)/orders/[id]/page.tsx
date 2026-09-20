@@ -649,7 +649,7 @@ export default function AdminOrderDetailsPage({ params }: { params: Promise<{ id
                       <div>
                         <div className="flex flex-wrap items-center justify-between gap-1">
                           <span className="text-xs font-semibold uppercase tracking-wide text-stone-900">
-                            {event.status.replace(/_/g, ' ')}
+                            {(event.status || '').replace(/_/g, ' ')}
                           </span>
                           <span className="text-[11px] text-stone-400">
                             {formatDate(event.changedAt, true)}

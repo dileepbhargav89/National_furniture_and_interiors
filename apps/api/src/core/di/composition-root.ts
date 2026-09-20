@@ -142,6 +142,10 @@ import {
   ListDesignProjectsUseCase,
   GetDesignFunnelUseCase,
   GetDesignProjectByIdUseCase,
+  RecordSiteInspectionUseCase,
+  AddSitePhotoUseCase,
+  LogSnagItemUseCase,
+  UpdateSnagStatusUseCase,
 } from '../../modules/design-projects/application/design-projects.use-cases';
 import { MongoDesignProjectRepository } from '../../modules/design-projects/infrastructure/repositories/mongo-design-project.repository';
 import { MongoPortfolioRepository } from '../../modules/design-projects/infrastructure/repositories/mongo-portfolio.repository';
@@ -359,6 +363,10 @@ export interface AppContext {
     listDesignProjects: ListDesignProjectsUseCase;
     getDesignProjectById: GetDesignProjectByIdUseCase;
     getFunnelMetrics: GetDesignFunnelUseCase;
+    recordSiteInspection: RecordSiteInspectionUseCase;
+    addSitePhoto: AddSitePhotoUseCase;
+    logSnagItem: LogSnagItemUseCase;
+    updateSnagStatus: UpdateSnagStatusUseCase;
     portfolioRepository: MongoPortfolioRepository;
   };
   readonly orders: {
@@ -704,6 +712,10 @@ export function buildAppContext(): AppContext {
     listDesignProjects: new ListDesignProjectsUseCase(designProjectRepository),
     getDesignProjectById: new GetDesignProjectByIdUseCase(designProjectRepository),
     getFunnelMetrics: new GetDesignFunnelUseCase(designProjectRepository),
+    recordSiteInspection: new RecordSiteInspectionUseCase(designProjectRepository),
+    addSitePhoto: new AddSitePhotoUseCase(designProjectRepository),
+    logSnagItem: new LogSnagItemUseCase(designProjectRepository),
+    updateSnagStatus: new UpdateSnagStatusUseCase(designProjectRepository),
     portfolioRepository,
   };
 

@@ -15,6 +15,7 @@ import {
 } from '@nfi/api-client';
 import { PageHeader } from '@/components/ui/page-header';
 import { NfiButton } from '@/components/ui/nfi-button';
+import { BoqBuilderModal } from '@/components/boq/boq-builder-modal';
 
 // ---------------- Brand Styling & Utilities ----------------
 
@@ -247,6 +248,19 @@ const INITIAL_PIPELINE_DEALS: PipelineDeal[] = [
     probability: 30,
     clientTier: 'HIGH_NET_WORTH',
     priority: 'HOT',
+    swatchKitOrder: {
+      kitType: 'HARDWOOD_VENEERS',
+      deliveryAddress: {
+        line1: 'Tower 4, Apt 802, Total Environment In That Quiet Earth',
+        city: 'Bengaluru',
+        state: 'Karnataka',
+        pincode: '560049',
+      },
+      depositAmount: 49900,
+      isDepositRefundable: true,
+      dispatchStatus: 'DISPATCHED',
+      courierTrackingNumber: 'BLR-EXP-98231',
+    },
     assignedRepId: 'rep_2',
     assignedRepName: 'Arjun Mehta',
     daysInStage: 2,
@@ -388,20 +402,24 @@ const INITIAL_ACTIVITIES: LeadActivity[] = [
 
 export default function CRMDashboardPage() {
   // State variables
-  const [activeTab, setActiveTab] = useState<'pipeline' | 'directory' | 'team' | 'activities'>(
-    'pipeline',
-  );
+  const [activeTab, setActiveTab] = useState<
+    'inbox' | 'pipeline' | 'directory' | 'team' | 'activities'
+  >('pipeline');
   const [deals, setDeals] = useState<PipelineDeal[]>([]);
   const [salesTeam, setSalesTeam] = useState<SalesRepresentative[]>([]);
   const [activities, setActivities] = useState<LeadActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [highlightedDealId, setHighlightedDealId] = useState<string | null>(null);
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedRepFilter, setSelectedRepFilter] = useState('all');
   const [selectedTierFilter, setSelectedTierFilter] = useState('all');
+  const [quickFilter, setQuickFilter] = useState<
+    'all' | 'today' | 'unassigned' | 'high_value' | 'scheduled' | 'swatches'
+  >('all');
 
   // Slide-Over Dossier state
   const [activeDossierDeal, setActiveDossierDeal] = useState<PipelineDeal | null>(null);
@@ -412,6 +430,7 @@ export default function CRMDashboardPage() {
   const [showNewClientModal, setShowNewClientModal] = useState(false);
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [dealToReassign, setDealToReassign] = useState<PipelineDeal | null>(null);
+  const [boqModalDeal, setBoqModalDeal] = useState<PipelineDeal | null>(null);
 
   // New Client Form state
   const [newClientName, setNewClientName] = useState('');
@@ -506,6 +525,106 @@ export default function CRMDashboardPage() {
     loadCrmData();
   }, [loadCrmData]);
 
+  // Periodic background polling (every 45s) for real-time inquiry arrival
+  useEffect(() => {
+    const timer = setInterval(() => {
+      CrmService.getPipeline()
+        .then((pipelineRes) => {
+          if (pipelineRes.data && Array.isArray(pipelineRes.data)) {
+            const apiDeals = pipelineRes.data.flatMap((stage: PipelineStage) => stage.deals || []);
+            if (apiDeals.length > 0) {
+              setDeals(apiDeals);
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('nfi_crm_deals', JSON.stringify(apiDeals));
+              }
+            }
+          }
+        })
+        .catch(() => {
+          // silent background refresh
+        });
+    }, 45000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Direct Phone Call helper
+  const launchPhoneCall = (deal: PipelineDeal) => {
+    const cleanPhone = (deal.phone || '').replace(/[^0-9]/g, '');
+    if (!cleanPhone) return;
+    const phoneWithPlus = cleanPhone.startsWith('91') ? `+${cleanPhone}` : `+91${cleanPhone}`;
+    window.location.href = `tel:${phoneWithPlus}`;
+  };
+
+  // Swatch Kit Dispatch Status Update
+  const handleUpdateSwatchStatus = (
+    deal: PipelineDeal,
+    newStatus: 'ORDERED' | 'PACKED' | 'DISPATCHED' | 'DELIVERED',
+  ) => {
+    if (!deal.swatchKitOrder) return;
+
+    const updatedSwatch = {
+      ...deal.swatchKitOrder,
+      dispatchStatus: newStatus,
+    };
+
+    const updatedDeals = deals.map((d) => {
+      if (d.id === deal.id) {
+        return {
+          ...d,
+          swatchKitOrder: updatedSwatch,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return d;
+    });
+
+    setDeals(updatedDeals);
+    if (activeDossierDeal && activeDossierDeal.id === deal.id) {
+      setActiveDossierDeal({
+        ...activeDossierDeal,
+        swatchKitOrder: updatedSwatch,
+      });
+    }
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('nfi_crm_deals', JSON.stringify(updatedDeals));
+    }
+
+    const newAct: LeadActivity = {
+      id: `act_${Date.now()}`,
+      leadId: deal.id,
+      type: 'NOTE',
+      summary: `Swatch Box dispatch status updated to "${newStatus}".`,
+      performedBy: 'Logistics Operations',
+      createdAt: new Date().toISOString(),
+    };
+    const updatedActivities = [newAct, ...activities];
+    setActivities(updatedActivities);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('nfi_crm_activities', JSON.stringify(updatedActivities));
+    }
+
+    showToast(`Swatch kit status marked as ${newStatus}`);
+  };
+
+  // Human-readable elapsed time helper
+  const getTimeAgo = (dateStr?: string | Date) => {
+    if (!dateStr) return 'Recently';
+    try {
+      const diffMs = Date.now() - new Date(dateStr).getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays === 1) return 'Yesterday';
+      return `${diffDays}d ago`;
+    } catch {
+      return 'Recently';
+    }
+  };
+
   // Show temporary toast notification
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -559,6 +678,21 @@ export default function CRMDashboardPage() {
   // Filtered Deals
   const filteredDeals = useMemo(() => {
     return deals.filter((d) => {
+      if (quickFilter === 'today') {
+        const time = new Date(d.createdAt || d.updatedAt).getTime();
+        if (Date.now() - time > 24 * 3600 * 1000) return false;
+      } else if (quickFilter === 'unassigned') {
+        if (d.assignedRepId && d.assignedRepId !== 'unassigned') return false;
+      } else if (quickFilter === 'high_value') {
+        if (d.estimatedDealValue < 150000000) return false;
+      } else if (quickFilter === 'scheduled') {
+        const hasBooking = !!d.consultationBooking || (d.notes && d.notes.includes('Scheduled:'));
+        if (!hasBooking) return false;
+      } else if (quickFilter === 'swatches') {
+        const hasSwatch = !!d.swatchKitOrder || (d.notes && d.notes.includes('Swatch Kit:'));
+        if (!hasSwatch) return false;
+      }
+
       if (selectedRepFilter !== 'all' && d.assignedRepId !== selectedRepFilter) {
         return false;
       }
@@ -576,12 +710,51 @@ export default function CRMDashboardPage() {
       }
       return true;
     });
-  }, [deals, selectedRepFilter, selectedTierFilter, debouncedSearch]);
+  }, [deals, selectedRepFilter, selectedTierFilter, debouncedSearch, quickFilter]);
 
-  // Grouped Kanban Stages
+  // Dedicated Inquiries Dataset (NEW_INQUIRY stage, sorted newest first)
+  const newInquiries = useMemo(() => {
+    return deals
+      .filter((d) => d.stage === 'NEW_INQUIRY')
+      .sort((a, b) => {
+        const tA = new Date(a.createdAt || a.updatedAt).getTime();
+        const tB = new Date(b.createdAt || b.updatedAt).getTime();
+        return tB - tA;
+      });
+  }, [deals]);
+
+  const todayInquiriesCount = useMemo(() => {
+    return newInquiries.filter(
+      (d) => Date.now() - new Date(d.createdAt || d.updatedAt).getTime() < 24 * 3600 * 1000,
+    ).length;
+  }, [newInquiries]);
+
+  const unassignedCount = useMemo(() => {
+    return newInquiries.filter((d) => !d.assignedRepId || d.assignedRepId === 'unassigned').length;
+  }, [newInquiries]);
+
+  const scheduledCount = useMemo(() => {
+    return deals.filter(
+      (d) => !!d.consultationBooking || (d.notes && d.notes.includes('Scheduled:')),
+    ).length;
+  }, [deals]);
+
+  const swatchesCount = useMemo(() => {
+    return deals.filter((d) => !!d.swatchKitOrder || (d.notes && d.notes.includes('Swatch Kit:')))
+      .length;
+  }, [deals]);
+
+  const latestInquiry = newInquiries.length > 0 ? newInquiries[0] : null;
+
+  // Grouped Kanban Stages (Sorted newest deals first in each stage)
   const kanbanStages: PipelineStage[] = useMemo(() => {
     return STAGE_ORDER.map((stageId) => {
       const stageDeals = filteredDeals.filter((d) => d.stage === stageId);
+      stageDeals.sort((a, b) => {
+        const tA = new Date(a.createdAt || a.updatedAt).getTime();
+        const tB = new Date(b.createdAt || b.updatedAt).getTime();
+        return tB - tA;
+      });
       const totalValue = stageDeals.reduce((sum, d) => sum + d.estimatedDealValue, 0);
       return {
         id: stageId,
@@ -733,7 +906,7 @@ export default function CRMDashboardPage() {
           ? [
               {
                 id: `ord_${deal.id}`,
-                orderNumber: `NFI-2026-${deal.customerCode.replace('NFI-C-', '')}`,
+                orderNumber: `NFI-2026-${(deal.customerCode || deal.id || 'ORDER').replace('NFI-C-', '')}`,
                 status: 'IN_PRODUCTION',
                 totalAmount: deal.estimatedDealValue,
                 createdAt: deal.updatedAt,
@@ -747,11 +920,36 @@ export default function CRMDashboardPage() {
 
   // 1-Click WhatsApp Concierge Launch
   const launchWhatsAppConcierge = (deal: PipelineDeal) => {
-    const cleanPhone = deal.phone.replace(/[^0-9]/g, '');
-    const phoneWithCountry = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+    const cleanPhone = (deal.phone || '').replace(/[^0-9]/g, '');
+    const phoneWithCountry =
+      cleanPhone.length === 10
+        ? `91${cleanPhone}`
+        : cleanPhone.startsWith('91')
+          ? cleanPhone
+          : `91${cleanPhone}`;
     const repName = deal.assignedRepName || 'Design Consultant';
 
-    const message = `Hello ${deal.clientName},\n\nThank you for consulting National Furniture & Interiors regarding your ${deal.configuration} at ${deal.community}.\n\nOur senior design lead, ${repName}, has prepared your bespoke woodwork concept proposal and 3D specifications. Would you like to review the renders this week?\n\nWarm regards,\nNational Furniture & Interiors Concierge\nBengaluru Experience Studios (Indiranagar · Whitefield · HSR Layout)`;
+    let message = `Hello ${deal.clientName},\n\nThank you for consulting National Furniture & Interiors regarding your ${deal.configuration} at ${deal.community}.\n\nOur senior design lead, ${repName}, has prepared your bespoke woodwork concept proposal and 3D specifications. Would you like to review the renders this week?\n\nWarm regards,\nNational Furniture & Interiors Concierge\nBengaluru Experience Studios (Indiranagar · Whitefield · HSR Layout)`;
+
+    if (deal.consultationBooking) {
+      const b = deal.consultationBooking;
+      const venueStr =
+        b.studioLocation === 'VIRTUAL'
+          ? 'Virtual 3D Video Call (Zoom / Google Meet)'
+          : `${b.studioLocation || 'Indiranagar'} Experience Studio`;
+
+      message = `Hello ${deal.clientName},\n\nYour design consultation at National Furniture & Interiors is confirmed for:\n🏛️ Location: ${venueStr}\n📅 Date: ${b.scheduledDate}\n⏰ Time Window: ${b.timeSlot}\n\nOur Senior Interior Architect, ${repName}, has reserved this slot exclusively for your ${deal.configuration} at ${deal.community} to walk through material finishes and 3D concept plans.\n\nLooking forward to welcoming you!\n\nWarm regards,\nNational Furniture & Interiors Concierge\nBengaluru Flagship: 100ft Rd, Indiranagar · Whitefield · HSR Layout`;
+    } else if (deal.swatchKitOrder) {
+      const s = deal.swatchKitOrder;
+      const kitName = s.kitType ? s.kitType.replace(/_/g, ' ') : 'Curated Swatch Box';
+      const trackingStr = s.courierTrackingNumber
+        ? `\n📦 Courier Tracking AWB: ${s.courierTrackingNumber}`
+        : '';
+      const destStr = s.deliveryAddress
+        ? `\n📍 Destination: ${s.deliveryAddress.line1 || ''}, ${s.deliveryAddress.city || ''} - ${s.deliveryAddress.pincode || ''}`
+        : '';
+      message = `Hello ${deal.clientName},\n\nYour National Furniture & Interiors Luxury Swatch Box has been prepared!\n\n📦 Collection: ${kitName}${destStr}\n🚚 Status: ${s.dispatchStatus || 'ORDERED'}${trackingStr}\n\nFeel free to touch and compare our authentic solid Burma teak, walnut veneers, and Italian upholstery fabrics under your home's natural lighting.\n\nOur Design Concierge, ${repName}, is available to answer any finishing queries.\n\nWarm regards,\nNational Furniture & Interiors Material Lab`;
+    }
 
     const whatsappUrl = `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
@@ -774,6 +972,60 @@ export default function CRMDashboardPage() {
     showToast(`WhatsApp concierge template launched for ${deal.clientName}`);
   };
 
+  // 1-Click Inline Rep Assignment
+  const handleInlineAssignRep = async (dealId: string, repId: string) => {
+    const assignedRep = salesTeam.find((r) => r.id === repId);
+    if (!assignedRep) return;
+
+    const updatedDeals = deals.map((d) => {
+      if (d.id === dealId) {
+        return {
+          ...d,
+          assignedRepId: assignedRep.id,
+          assignedRepName: assignedRep.name,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return d;
+    });
+
+    setDeals(updatedDeals);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('nfi_crm_deals', JSON.stringify(updatedDeals));
+    }
+
+    try {
+      await CrmService.assignSalesRep(dealId, repId);
+    } catch {
+      // Offline resiliency
+    }
+
+    showToast(`Lead assigned to ${assignedRep.name}`);
+  };
+
+  // Deep linking: check URL search params for leadId, dealId, or id
+  useEffect(() => {
+    if (typeof window !== 'undefined' && deals.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get('leadId') || params.get('dealId') || params.get('id');
+      if (targetId) {
+        const cleanTarget = targetId.trim().toLowerCase();
+        const match = deals.find(
+          (d) =>
+            d.id === targetId ||
+            d.customerId === targetId ||
+            d.customerCode.toLowerCase() === cleanTarget ||
+            (d.phone &&
+              d.phone.replace(/[^0-9]/g, '').includes(cleanTarget.replace(/[^0-9]/g, ''))),
+        );
+        if (match) {
+          setHighlightedDealId(match.id);
+          openDossier(match);
+        }
+      }
+    }
+  }, [deals]);
+
   // 1-Click Conversion: Interior Design Project
   const convertToDesignProject = async (deal: PipelineDeal) => {
     await advanceDealStage(deal, 'CLOSED_WON');
@@ -782,7 +1034,7 @@ export default function CRMDashboardPage() {
       id: `act_${Date.now()}`,
       leadId: deal.id,
       type: 'NOTE',
-      summary: `🎉 CONVERTED TO INTERIOR DESIGN PROJECT: Project #DP-2026-${deal.customerCode.replace('NFI-C-', '')} generated with budget ${formatInr(deal.estimatedDealValue)}.`,
+      summary: `🎉 CONVERTED TO INTERIOR DESIGN PROJECT: Project #DP-2026-${(deal.customerCode || deal.id || '').replace('NFI-C-', '')} generated with budget ${formatInr(deal.estimatedDealValue)}.`,
       performedBy: deal.assignedRepName || 'Design Consultant',
       createdAt: new Date().toISOString(),
     };
@@ -794,7 +1046,7 @@ export default function CRMDashboardPage() {
     }
 
     showToast(
-      `Converted to Active Design Project #DP-2026-${deal.customerCode.replace('NFI-C-', '')}`,
+      `Converted to Active Design Project #DP-2026-${(deal.customerCode || deal.id || '').replace('NFI-C-', '')}`,
     );
   };
 
@@ -1024,8 +1276,102 @@ export default function CRMDashboardPage() {
         }
       />
 
-      {/* ── Executive Sales Growth KPI Bar (4 Cards) ────────────────────────── */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* ── Live Inquiries Action Banner ─────────────────────────────────── */}
+      {newInquiries.length > 0 && (
+        <div className="mb-6 flex flex-col items-start justify-between gap-4 rounded-xl border border-amber-300/80 bg-gradient-to-r from-amber-50/90 via-white to-amber-50/60 p-4 shadow-sm md:flex-row md:items-center">
+          <div className="flex items-center gap-3.5">
+            <span className="relative flex h-3.5 w-3.5 flex-shrink-0">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-amber-600"></span>
+            </span>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-amber-950">
+                  ⚡ High-Velocity Inquiries Stream
+                </span>
+                <span className="rounded-full bg-amber-200/90 px-2.5 py-0.5 text-[11px] font-bold text-amber-900">
+                  {newInquiries.length} New Inquiries
+                </span>
+                {todayInquiriesCount > 0 && (
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
+                    {todayInquiriesCount} Today
+                  </span>
+                )}
+                {unassignedCount > 0 && (
+                  <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-[11px] font-bold text-rose-800">
+                    {unassignedCount} Unassigned
+                  </span>
+                )}
+              </div>
+              {latestInquiry && (
+                <p className="mt-1 text-xs text-slate-700">
+                  Latest: <strong className="text-slate-900">{latestInquiry.clientName}</strong> (
+                  {latestInquiry.phone}) · 📍 {latestInquiry.community} ·{' '}
+                  <span className="font-semibold text-amber-800">
+                    {getTimeAgo(latestInquiry.createdAt || latestInquiry.updatedAt)}
+                  </span>
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex w-full flex-shrink-0 items-center gap-2.5 md:w-auto">
+            <button
+              onClick={() => setActiveTab('inbox')}
+              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 md:flex-none"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
+              </svg>
+              <span>Review Inquiries ({newInquiries.length})</span>
+            </button>
+            {latestInquiry && (
+              <button
+                type="button"
+                onClick={() => launchWhatsAppConcierge(latestInquiry)}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
+              >
+                <span>WhatsApp Latest</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Executive Sales Growth KPI Bar (5 Cards) ────────────────────────── */}
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {/* KPI 0: Inquiries Stream Highlight */}
+        <div
+          onClick={() => setActiveTab('inbox')}
+          className="cursor-pointer rounded-xl border border-amber-300/80 bg-gradient-to-b from-amber-50/60 to-white p-5 shadow-sm transition-all hover:shadow-md"
+        >
+          <div className="mb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-amber-900">
+            <span>Inquiries Inbox</span>
+            <span className="rounded-lg bg-amber-100 p-1.5 text-amber-800">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                />
+              </svg>
+            </span>
+          </div>
+          <div className="text-2xl font-extrabold tracking-tight text-amber-950">
+            {newInquiries.length}{' '}
+            <span className="text-xs font-semibold text-amber-700">Leads</span>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">
+            <span className="font-bold text-emerald-700">{todayInquiriesCount} Today</span> ·{' '}
+            {unassignedCount} Unassigned
+          </p>
+        </div>
+
         {/* KPI 1: Active Pipeline Value */}
         <div
           className="rounded-xl border bg-white p-5 shadow-sm"
@@ -1062,7 +1408,7 @@ export default function CRMDashboardPage() {
           style={{ borderColor: 'var(--nfi-border)' }}
         >
           <div className="mb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
-            <span>Consultation Win Rate</span>
+            <span>Win Rate</span>
             <span className="rounded-lg bg-emerald-50 p-1.5 text-emerald-700">
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -1104,7 +1450,7 @@ export default function CRMDashboardPage() {
           <div className="text-2xl font-extrabold tracking-tight text-slate-900">
             {kpis.averageDealVelocityDays} Days
           </div>
-          <p className="mt-1 text-xs text-slate-500">First inquiry to design contract signing</p>
+          <p className="mt-1 text-xs text-slate-500">Inquiry to design contract signing</p>
         </div>
 
         {/* KPI 4: Average Client Value */}
@@ -1113,7 +1459,7 @@ export default function CRMDashboardPage() {
           style={{ borderColor: 'var(--nfi-border)' }}
         >
           <div className="mb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
-            <span>Avg Deal Size (HNW)</span>
+            <span>Avg Deal Size</span>
             <span className="rounded-lg bg-purple-50 p-1.5 text-purple-700">
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -1130,10 +1476,86 @@ export default function CRMDashboardPage() {
           </div>
           <p className="mt-1 text-xs text-slate-500">
             Quota Progress:{' '}
-            <span className="font-semibold text-amber-700">{kpis.targetAchievementRate}%</span>{' '}
-            achieved
+            <span className="font-semibold text-amber-700">{kpis.targetAchievementRate}%</span>
           </p>
         </div>
+      </div>
+
+      {/* ── Quick Filter Pills Bar ───────────────────────────────────────── */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-xs font-semibold text-slate-500">Quick Filters:</span>
+        <button
+          onClick={() => setQuickFilter('all')}
+          className={`rounded-full px-3.5 py-1 text-xs font-medium transition-all ${
+            quickFilter === 'all'
+              ? 'bg-slate-900 font-semibold text-white shadow-sm'
+              : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          All Deals ({deals.length})
+        </button>
+        <button
+          onClick={() => setQuickFilter('today')}
+          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-medium transition-all ${
+            quickFilter === 'today'
+              ? 'bg-emerald-700 font-semibold text-white shadow-sm'
+              : 'border border-slate-200 bg-white text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'
+          }`}
+        >
+          <span>🔥 Today&apos;s Inquiries</span>
+          <span className="py-0.2 rounded-full bg-emerald-100 px-1.5 text-[10px] font-bold text-emerald-800">
+            {todayInquiriesCount}
+          </span>
+        </button>
+        <button
+          onClick={() => setQuickFilter('unassigned')}
+          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-medium transition-all ${
+            quickFilter === 'unassigned'
+              ? 'bg-rose-700 font-semibold text-white shadow-sm'
+              : 'border border-slate-200 bg-white text-slate-600 hover:bg-rose-50 hover:text-rose-700'
+          }`}
+        >
+          <span>⚠️ Unassigned Leads</span>
+          <span className="py-0.2 rounded-full bg-rose-100 px-1.5 text-[10px] font-bold text-rose-800">
+            {unassignedCount}
+          </span>
+        </button>
+        <button
+          onClick={() => setQuickFilter('high_value')}
+          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-medium transition-all ${
+            quickFilter === 'high_value'
+              ? 'bg-amber-700 font-semibold text-white shadow-sm'
+              : 'border border-slate-200 bg-white text-slate-600 hover:bg-amber-50 hover:text-amber-700'
+          }`}
+        >
+          <span>💎 High-Value (₹15L+)</span>
+        </button>
+        <button
+          onClick={() => setQuickFilter('scheduled')}
+          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-medium transition-all ${
+            quickFilter === 'scheduled'
+              ? 'bg-blue-700 font-semibold text-white shadow-sm'
+              : 'border border-slate-200 bg-white text-slate-600 hover:bg-blue-50 hover:text-blue-700'
+          }`}
+        >
+          <span>📅 Consultations Booked</span>
+          <span className="py-0.2 rounded-full bg-blue-100 px-1.5 text-[10px] font-bold text-blue-800">
+            {scheduledCount}
+          </span>
+        </button>
+        <button
+          onClick={() => setQuickFilter('swatches')}
+          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-medium transition-all ${
+            quickFilter === 'swatches'
+              ? 'bg-amber-800 font-semibold text-white shadow-sm'
+              : 'border border-slate-200 bg-white text-slate-600 hover:bg-amber-50 hover:text-amber-800'
+          }`}
+        >
+          <span>📦 Swatch Kits Ordered</span>
+          <span className="py-0.2 rounded-full bg-amber-100 px-1.5 text-[10px] font-bold text-amber-900">
+            {swatchesCount}
+          </span>
+        </button>
       </div>
 
       {/* ── Toolbar: Tabs & Search Controls ─────────────────────────────────── */}
@@ -1143,6 +1565,28 @@ export default function CRMDashboardPage() {
       >
         {/* Navigation Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+          <button
+            onClick={() => setActiveTab('inbox')}
+            className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+              activeTab === 'inbox'
+                ? 'bg-amber-600 text-white shadow'
+                : 'bg-amber-50/80 text-amber-900 hover:bg-amber-100'
+            }`}
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500"></span>
+            </span>
+            ⚡ Inquiries Inbox
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                activeTab === 'inbox' ? 'bg-amber-800 text-white' : 'bg-amber-200 text-amber-900'
+              }`}
+            >
+              {newInquiries.length}
+            </span>
+          </button>
+
           <button
             onClick={() => setActiveTab('pipeline')}
             className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
@@ -1286,6 +1730,250 @@ export default function CRMDashboardPage() {
         </div>
       </div>
 
+      {/* ── TAB 0: FAST-RESPONSE INQUIRIES INBOX (TABLE VIEW) ──────────────── */}
+      {activeTab === 'inbox' && (
+        <div
+          className="mb-6 overflow-hidden rounded-xl border bg-white shadow-sm"
+          style={{ borderColor: 'var(--nfi-border)' }}
+        >
+          <div
+            className="flex flex-col justify-between gap-2 border-b bg-amber-50/50 p-4 sm:flex-row sm:items-center"
+            style={{ borderColor: 'var(--nfi-border)' }}
+          >
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                <span>⚡ High-Velocity Inquiries Inbox</span>
+                <span className="rounded-full bg-amber-200 px-2.5 py-0.5 text-xs font-bold text-amber-900">
+                  {newInquiries.length} Inquiries
+                </span>
+              </h3>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Fast-triage website and showroom inquiries. Direct 1-click WhatsApp and Phone
+                outreach with assigned architects.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-600">
+                Sorted by: <strong>Newest First</strong>
+              </span>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y" style={{ borderColor: 'var(--nfi-border)' }}>
+              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="px-5 py-3.5">Patron / Client</th>
+                  <th className="px-5 py-3.5">Direct Contact</th>
+                  <th className="px-5 py-3.5">Requirement & Location</th>
+                  <th className="px-5 py-3.5">Received / SLA</th>
+                  <th className="px-5 py-3.5">Assigned Consultant</th>
+                  <th className="px-5 py-3.5 text-right">Quick Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y bg-white" style={{ borderColor: 'var(--nfi-border)' }}>
+                {newInquiries.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-12 text-center text-sm text-slate-500">
+                      No new inquiries in the inbox right now.
+                    </td>
+                  </tr>
+                ) : (
+                  newInquiries.map((inquiry) => {
+                    const isToday =
+                      Date.now() - new Date(inquiry.createdAt || inquiry.updatedAt).getTime() <
+                      24 * 3600 * 1000;
+                    const isHighlighted = highlightedDealId === inquiry.id;
+
+                    return (
+                      <tr
+                        key={inquiry.id}
+                        className={`transition-colors hover:bg-amber-50/30 ${
+                          isHighlighted ? 'bg-amber-100/50 ring-1 ring-amber-400' : ''
+                        }`}
+                      >
+                        {/* Patron & Code */}
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white shadow-sm">
+                              {inquiry.clientName.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-sm font-bold text-slate-900">
+                                  {inquiry.clientName}
+                                </span>
+                                {isToday && (
+                                  <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                                    NEW
+                                  </span>
+                                )}
+                              </div>
+                              <span className="font-mono text-[11px] text-slate-500">
+                                {inquiry.customerCode}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Direct Contact (WhatsApp & Call) */}
+                        <td className="px-5 py-4">
+                          <div className="space-y-1.5">
+                            <div className="text-xs font-medium text-slate-900">
+                              📞 {inquiry.phone}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => launchWhatsAppConcierge(inquiry)}
+                                className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
+                              >
+                                <svg className="h-3 w-3 fill-current" viewBox="0 0 24 24">
+                                  <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.694.067-2.033-.496-1.637-.688-2.684-2.355-2.766-2.464-.082-.109-.659-.877-.659-1.672 0-.796.417-1.188.566-1.348.149-.16.326-.2.435-.2.11 0 .218.001.313.006.101.006.236-.038.37.283.138.331.472 1.15.513 1.233.041.083.069.18.014.288-.055.109-.082.176-.164.271-.082.096-.173.214-.247.287-.083.082-.169.171-.073.336.096.165.426.702.914 1.136.629.56 1.159.733 1.325.815.166.083.263.069.361-.042.097-.111.417-.485.528-.651.111-.166.222-.138.375-.083.153.055.972.458 1.139.541.167.083.278.125.319.194.042.07.042.404-.102.809z" />
+                                </svg>
+                                WhatsApp
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => launchPhoneCall(inquiry)}
+                                className="inline-flex items-center gap-1 rounded bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition-colors hover:bg-slate-200"
+                              >
+                                Call
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Requirement & Community */}
+                        <td className="max-w-xs px-5 py-4">
+                          <div className="text-xs font-semibold text-slate-900">
+                            {inquiry.configuration}
+                          </div>
+                          <div className="line-clamp-1 text-[11px] text-slate-600">
+                            📍 {inquiry.community}
+                          </div>
+                          {inquiry.consultationBooking ? (
+                            <div className="shadow-2xs mt-1.5 inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-900">
+                              <span>📅</span>
+                              <span>
+                                {inquiry.consultationBooking.studioLocation === 'VIRTUAL'
+                                  ? 'Virtual Video Call'
+                                  : `${inquiry.consultationBooking.studioLocation || 'Indiranagar'} Studio`}
+                              </span>
+                              <span className="text-amber-500">·</span>
+                              <span>{inquiry.consultationBooking.scheduledDate}</span>
+                              <span className="text-amber-500">@</span>
+                              <span>{inquiry.consultationBooking.timeSlot}</span>
+                            </div>
+                          ) : inquiry.notes && inquiry.notes.includes('Scheduled:') ? (
+                            <div className="shadow-2xs mt-1.5 inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-900">
+                              <span>📅</span>
+                              <span>
+                                {inquiry.notes.split('Scheduled:')[1]?.replace(']', '') ||
+                                  'Consultation Booked'}
+                              </span>
+                            </div>
+                          ) : null}
+                          {inquiry.swatchKitOrder ? (
+                            <div className="shadow-2xs mt-1.5 inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-100/80 px-2 py-1 text-[11px] font-bold text-amber-950">
+                              <span>📦</span>
+                              <span>
+                                {inquiry.swatchKitOrder.kitType
+                                  ? inquiry.swatchKitOrder.kitType.replace(/_/g, ' ')
+                                  : 'Sample Swatch Box'}
+                              </span>
+                              {inquiry.swatchKitOrder.deliveryAddress?.city && (
+                                <>
+                                  <span className="text-amber-600">·</span>
+                                  <span>{inquiry.swatchKitOrder.deliveryAddress.city}</span>
+                                </>
+                              )}
+                              {inquiry.swatchKitOrder.dispatchStatus && (
+                                <span className="py-0.2 rounded bg-amber-200 px-1 text-[9px] font-extrabold uppercase text-amber-900">
+                                  {inquiry.swatchKitOrder.dispatchStatus}
+                                </span>
+                              )}
+                            </div>
+                          ) : inquiry.notes && inquiry.notes.includes('Swatch Kit:') ? (
+                            <div className="shadow-2xs mt-1.5 inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-100/80 px-2 py-1 text-[11px] font-bold text-amber-950">
+                              <span>📦</span>
+                              <span>
+                                {inquiry.notes.split('Swatch Kit:')[1]?.replace(']', '') ||
+                                  'Swatch Kit Order'}
+                              </span>
+                            </div>
+                          ) : null}
+                          {inquiry.notes && !inquiry.notes.includes('Scheduled:') && (
+                            <p className="mt-0.5 line-clamp-1 text-[11px] italic text-amber-800">
+                              &ldquo;{inquiry.notes}&rdquo;
+                            </p>
+                          )}
+                        </td>
+
+                        {/* Time Received / SLA */}
+                        <td className="whitespace-nowrap px-5 py-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="relative flex h-2 w-2">
+                              <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500"></span>
+                            </span>
+                            <span className="text-xs font-bold text-slate-900">
+                              {getTimeAgo(inquiry.createdAt || inquiry.updatedAt)}
+                            </span>
+                          </div>
+                          <span className="block text-[11px] text-slate-500">
+                            {formatDate(
+                              inquiry.createdAt ? String(inquiry.createdAt) : inquiry.updatedAt,
+                            )}
+                          </span>
+                        </td>
+
+                        {/* Assigned Consultant (Inline Dropdown) */}
+                        <td className="px-5 py-4">
+                          <select
+                            value={inquiry.assignedRepId || 'unassigned'}
+                            onChange={(e) => handleInlineAssignRep(inquiry.id, e.target.value)}
+                            className="rounded-lg border bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 focus:outline-none"
+                            style={{ borderColor: 'var(--nfi-border)' }}
+                          >
+                            <option value="unassigned">⚠️ Unassigned</option>
+                            {salesTeam.map((rep) => (
+                              <option key={rep.id} value={rep.id}>
+                                {rep.name}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="whitespace-nowrap px-5 py-4 text-right">
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openDossier(inquiry)}
+                              className="rounded-lg border px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                              style={{ borderColor: 'var(--nfi-border)' }}
+                            >
+                              Dossier
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => advanceDealStage(inquiry, 'QUALIFIED')}
+                              className="rounded-lg bg-amber-600 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-amber-700"
+                            >
+                              Qualify →
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* ── TAB 1: VISUAL KANBAN PIPELINE BOARD ───────────────────────────── */}
       {activeTab === 'pipeline' && (
         <div className="overflow-x-auto pb-6">
@@ -1333,26 +2021,40 @@ export default function CRMDashboardPage() {
                       stage.deals.map((deal) => {
                         const tier = TIER_BADGES[deal.clientTier] || TIER_BADGES.PROSPECT;
                         const prio = PRIORITY_STYLES[deal.priority] || PRIORITY_STYLES.WARM;
+                        const isNewToday =
+                          deal.stage === 'NEW_INQUIRY' &&
+                          Date.now() - new Date(deal.createdAt || deal.updatedAt).getTime() <
+                            24 * 3600 * 1000;
+                        const isHighlighted = highlightedDealId === deal.id;
 
                         return (
                           <div
                             key={deal.id}
-                            className="group cursor-pointer rounded-xl border bg-white p-4 shadow-sm transition-all hover:shadow-md"
+                            className={`group cursor-pointer rounded-xl border bg-white p-4 shadow-sm transition-all hover:shadow-md ${
+                              isHighlighted ? 'animate-pulse shadow-md ring-2 ring-amber-500' : ''
+                            }`}
                             style={{ borderColor: 'var(--nfi-border)' }}
                             onClick={() => openDossier(deal)}
                           >
                             {/* Card Top: Community & Priority */}
                             <div className="mb-2 flex items-start justify-between gap-2">
-                              <span
-                                className="rounded-md border px-2 py-0.5 text-[10px] font-bold"
-                                style={{
-                                  backgroundColor: tier.bg,
-                                  color: tier.text,
-                                  borderColor: tier.border,
-                                }}
-                              >
-                                {tier.label}
-                              </span>
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span
+                                  className="rounded-md border px-2 py-0.5 text-[10px] font-bold"
+                                  style={{
+                                    backgroundColor: tier.bg,
+                                    color: tier.text,
+                                    borderColor: tier.border,
+                                  }}
+                                >
+                                  {tier.label}
+                                </span>
+                                {isNewToday && (
+                                  <span className="animate-pulse rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                                    ✨ NEW TODAY
+                                  </span>
+                                )}
+                              </div>
                               <span
                                 className="rounded px-1.5 py-0.5 text-[10px] font-bold"
                                 style={{ backgroundColor: prio.bg, color: prio.text }}
@@ -1371,6 +2073,46 @@ export default function CRMDashboardPage() {
                             <p className="mt-0.5 text-[11px] text-slate-500">
                               {deal.configuration}
                             </p>
+                            {deal.consultationBooking && (
+                              <div className="mt-2 inline-flex items-center gap-1 rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-800">
+                                <span>📅</span>
+                                <span>
+                                  {deal.consultationBooking.studioLocation === 'VIRTUAL'
+                                    ? 'Virtual Call'
+                                    : `${deal.consultationBooking.studioLocation || 'Studio'}`}
+                                </span>
+                                {deal.consultationBooking.scheduledDate && (
+                                  <>
+                                    <span>·</span>
+                                    <span>{deal.consultationBooking.scheduledDate}</span>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                            {deal.swatchKitOrder && (
+                              <div className="mt-2 inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                                <span>📦</span>
+                                <span>
+                                  {deal.swatchKitOrder.kitType === 'HARDWOOD_VENEERS'
+                                    ? 'Hardwood Box'
+                                    : deal.swatchKitOrder.kitType === 'FABRICS_LEATHER'
+                                      ? 'Fabrics Box'
+                                      : deal.swatchKitOrder.kitType === 'MODULAR_KITCHEN'
+                                        ? 'Kitchen Box'
+                                        : deal.swatchKitOrder.kitType
+                                          ? deal.swatchKitOrder.kitType.replace(/_/g, ' ')
+                                          : 'Swatch Box'}
+                                </span>
+                                {deal.swatchKitOrder.dispatchStatus && (
+                                  <>
+                                    <span>·</span>
+                                    <span className="text-[9px] font-extrabold uppercase">
+                                      {deal.swatchKitOrder.dispatchStatus}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            )}
 
                             {/* Deal Value */}
                             <div
@@ -1394,29 +2136,42 @@ export default function CRMDashboardPage() {
                                 </span>
                               </div>
                               <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">
-                                {deal.daysInStage}d in stage
+                                {getTimeAgo(deal.createdAt || deal.updatedAt)}
                               </span>
                             </div>
 
                             {/* Card Footer: Quick Action Buttons */}
                             <div
-                              className="mt-3 flex items-center justify-between gap-2 border-t pt-2"
+                              className="mt-3 flex items-center justify-between gap-1.5 border-t pt-2"
                               style={{ borderColor: 'var(--nfi-border)' }}
                             >
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  launchWhatsAppConcierge(deal);
-                                }}
-                                className="flex items-center gap-1 rounded bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100"
-                                title="Open WhatsApp Concierge"
-                              >
-                                <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
-                                  <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.694.067-2.033-.496-1.637-.688-2.684-2.355-2.766-2.464-.082-.109-.659-.877-.659-1.672 0-.796.417-1.188.566-1.348.149-.16.326-.2.435-.2.11 0 .218.001.313.006.101.006.236-.038.37.283.138.331.472 1.15.513 1.233.041.083.069.18.014.288-.055.109-.082.176-.164.271-.082.096-.173.214-.247.287-.083.082-.169.171-.073.336.096.165.426.702.914 1.136.629.56 1.159.733 1.325.815.166.083.263.069.361-.042.097-.111.417-.485.528-.651.111-.166.222-.138.375-.083.153.055.972.458 1.139.541.167.083.278.125.319.194.042.07.042.404-.102.809z" />
-                                </svg>
-                                WhatsApp
-                              </button>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    launchWhatsAppConcierge(deal);
+                                  }}
+                                  className="flex items-center gap-1 rounded bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100"
+                                  title="Open WhatsApp Concierge"
+                                >
+                                  <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
+                                    <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.694.067-2.033-.496-1.637-.688-2.684-2.355-2.766-2.464-.082-.109-.659-.877-.659-1.672 0-.796.417-1.188.566-1.348.149-.16.326-.2.435-.2.11 0 .218.001.313.006.101.006.236-.038.37.283.138.331.472 1.15.513 1.233.041.083.069.18.014.288-.055.109-.082.176-.164.271-.082.096-.173.214-.247.287-.083.082-.169.171-.073.336.096.165.426.702.914 1.136.629.56 1.159.733 1.325.815.166.083.263.069.361-.042.097-.111.417-.485.528-.651.111-.166.222-.138.375-.083.153.055.972.458 1.139.541.167.083.278.125.319.194.042.07.042.404-.102.809z" />
+                                  </svg>
+                                  WhatsApp
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    launchPhoneCall(deal);
+                                  }}
+                                  className="flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200"
+                                  title="Call Patron"
+                                >
+                                  Call
+                                </button>
+                              </div>
 
                               {deal.stage !== 'CLOSED_WON' && deal.stage !== 'CLOSED_LOST' && (
                                 <button
@@ -1425,7 +2180,7 @@ export default function CRMDashboardPage() {
                                     e.stopPropagation();
                                     advanceDealStage(deal);
                                   }}
-                                  className="flex items-center gap-1 rounded bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-800 transition-colors hover:bg-amber-100 hover:text-amber-900"
+                                  className="flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-800 transition-colors hover:bg-amber-100 hover:text-amber-900"
                                 >
                                   Advance →
                                 </button>
@@ -1608,7 +2363,7 @@ export default function CRMDashboardPage() {
                     <div>
                       <h4 className="text-sm font-bold text-slate-900">{rep.name}</h4>
                       <p className="text-xs font-semibold text-amber-800">
-                        {rep.specialization.replace(/_/g, ' ')}
+                        {(rep.specialization || 'CONSULTANT').replace(/_/g, ' ')}
                       </p>
                       <p className="text-[11px] text-slate-500">{rep.phone}</p>
                     </div>
@@ -1737,7 +2492,7 @@ export default function CRMDashboardPage() {
                     {activeDossierDeal.customerCode}
                   </span>
                   <span className="text-xs font-semibold text-amber-200">
-                    {activeDossierDeal.clientTier.replace(/_/g, ' ')}
+                    {(activeDossierDeal.clientTier || 'PROSPECT').replace(/_/g, ' ')}
                   </span>
                 </div>
                 <h2 className="text-xl font-extrabold text-white">
@@ -1813,6 +2568,13 @@ export default function CRMDashboardPage() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={() => setBoqModalDeal(activeDossierDeal)}
+                  className="shadow-xs rounded-lg border border-amber-500 bg-amber-400 px-3 py-1.5 text-xs font-bold text-slate-950 transition-colors hover:bg-amber-300"
+                >
+                  📄 Build Luxury BOQ
+                </button>
+                <button
+                  type="button"
                   onClick={() => convertToDesignProject(activeDossierDeal)}
                   className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-bold text-amber-400 shadow hover:bg-slate-800"
                 >
@@ -1831,6 +2593,126 @@ export default function CRMDashboardPage() {
 
             {/* Drawer Content Body */}
             <div className="flex-1 space-y-6 overflow-y-auto p-6">
+              {/* Reserved Consultation Card */}
+              {activeDossierDeal.consultationBooking && (
+                <div className="space-y-2 rounded-xl border border-amber-300 bg-amber-50/70 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-950">
+                      <span>📅</span>
+                      <span>Reserved Design Consultation</span>
+                    </div>
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                      CONFIRMED
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="block text-[11px] text-slate-500">Location / Mode</span>
+                      <span className="font-bold text-slate-900">
+                        {activeDossierDeal.consultationBooking.studioLocation === 'VIRTUAL'
+                          ? 'Virtual 3D Video Call (Zoom)'
+                          : `${activeDossierDeal.consultationBooking.studioLocation || 'Indiranagar'} Experience Studio`}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[11px] text-slate-500">
+                        Scheduled Date &amp; Slot
+                      </span>
+                      <span className="font-bold text-emerald-800">
+                        {activeDossierDeal.consultationBooking.scheduledDate} (
+                        {activeDossierDeal.consultationBooking.timeSlot})
+                      </span>
+                    </div>
+                  </div>
+                  {activeDossierDeal.consultationBooking.meetingNotes && (
+                    <p className="mt-1 border-t border-amber-200/60 pt-1.5 text-[11px] italic text-amber-900">
+                      Patron Note: &ldquo;{activeDossierDeal.consultationBooking.meetingNotes}
+                      &rdquo;
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Swatch Kit Order Card */}
+              {activeDossierDeal.swatchKitOrder && (
+                <div className="space-y-3 rounded-xl border border-amber-300 bg-amber-50/70 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-950">
+                      <span>📦</span>
+                      <span>Luxury Material Swatch Box</span>
+                    </div>
+                    {activeDossierDeal.swatchKitOrder.dispatchStatus && (
+                      <span className="rounded-full border border-amber-300 bg-amber-200 px-2.5 py-0.5 text-[10px] font-extrabold uppercase text-amber-900">
+                        {activeDossierDeal.swatchKitOrder.dispatchStatus}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="block text-[11px] text-slate-500">Curated Box</span>
+                      <span className="font-bold text-slate-900">
+                        {activeDossierDeal.swatchKitOrder.kitType
+                          ? activeDossierDeal.swatchKitOrder.kitType.replace(/_/g, ' ')
+                          : 'Sample Swatch Box'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[11px] text-slate-500">Advance Token</span>
+                      <span className="font-bold text-emerald-800">
+                        ₹
+                        {Math.round(
+                          (activeDossierDeal.swatchKitOrder.depositAmount || 49900) / 100,
+                        )}{' '}
+                        (100% Refundable)
+                      </span>
+                    </div>
+                    {activeDossierDeal.swatchKitOrder.deliveryAddress && (
+                      <div className="col-span-2">
+                        <span className="block text-[11px] text-slate-500">Doorstep Address</span>
+                        <span className="font-medium text-slate-800">
+                          {activeDossierDeal.swatchKitOrder.deliveryAddress.line1 || ''}
+                          {activeDossierDeal.swatchKitOrder.deliveryAddress.line2
+                            ? `, ${activeDossierDeal.swatchKitOrder.deliveryAddress.line2}`
+                            : ''}
+                          {activeDossierDeal.swatchKitOrder.deliveryAddress.city
+                            ? `, ${activeDossierDeal.swatchKitOrder.deliveryAddress.city}`
+                            : ''}
+                          {activeDossierDeal.swatchKitOrder.deliveryAddress.state
+                            ? `, ${activeDossierDeal.swatchKitOrder.deliveryAddress.state}`
+                            : ''}
+                          {activeDossierDeal.swatchKitOrder.deliveryAddress.pincode
+                            ? ` - ${activeDossierDeal.swatchKitOrder.deliveryAddress.pincode}`
+                            : ''}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Dispatch Status Fast Switcher */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-amber-200/80 pt-2">
+                    <span className="text-[11px] font-bold text-slate-600">
+                      Update Courier Status:
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {(['ORDERED', 'PACKED', 'DISPATCHED', 'DELIVERED'] as const).map((st) => (
+                        <button
+                          key={st}
+                          type="button"
+                          onClick={() => handleUpdateSwatchStatus(activeDossierDeal, st)}
+                          className={`rounded px-2 py-0.5 text-[10px] font-bold transition-all ${
+                            activeDossierDeal.swatchKitOrder?.dispatchStatus === st
+                              ? 'shadow-xs bg-amber-900 text-white'
+                              : 'border border-amber-300 bg-white text-amber-900 hover:bg-amber-100'
+                          }`}
+                        >
+                          {st}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Client Details Card */}
               <div
                 className="space-y-3 rounded-xl border bg-slate-50 p-4"
@@ -1922,7 +2804,7 @@ export default function CRMDashboardPage() {
                         </p>
                       </div>
                       <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-                        {proj.stage.replace(/_/g, ' ')}
+                        {(proj.stage || 'ACTIVE').replace(/_/g, ' ')}
                       </span>
                     </div>
                   ))}
@@ -2015,7 +2897,7 @@ export default function CRMDashboardPage() {
                   <div>
                     <p className="text-xs font-bold text-slate-900">{rep.name}</p>
                     <p className="text-[11px] text-slate-500">
-                      {rep.specialization.replace(/_/g, ' ')}
+                      {(rep.specialization || 'CONSULTANT').replace(/_/g, ' ')}
                     </p>
                   </div>
                   <div className="text-right">
@@ -2197,6 +3079,62 @@ export default function CRMDashboardPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* BOQ & Multi-Stage Quotation PDF Builder Modal */}
+      {boqModalDeal && (
+        <BoqBuilderModal
+          isOpen={!!boqModalDeal}
+          onClose={() => setBoqModalDeal(null)}
+          projectContext={{
+            id: boqModalDeal.id,
+            projectCode: `DP-${boqModalDeal.id.slice(-6).toUpperCase()}`,
+            clientName: boqModalDeal.clientName,
+            clientPhone: boqModalDeal.phone,
+            clientEmail: boqModalDeal.email,
+            propertyAddress: `${boqModalDeal.community}, Bengaluru`,
+            areaSqft: 2400,
+            configuration: boqModalDeal.configuration,
+            existingQuotationsCount: 0,
+            expectedVersion: 1,
+          }}
+          onSaveQuotation={async (payload) => {
+            const updatedDeals = deals.map((d) => {
+              if (d.id === boqModalDeal.id) {
+                return {
+                  ...d,
+                  stage: 'DESIGN_PROPOSAL_SENT' as const,
+                  estimatedDealValue: payload.financialBreakdown.grandTotal,
+                  updatedAt: new Date().toISOString(),
+                };
+              }
+              return d;
+            });
+            setDeals(updatedDeals);
+            if (activeDossierDeal && activeDossierDeal.id === boqModalDeal.id) {
+              setActiveDossierDeal({
+                ...activeDossierDeal,
+                stage: 'DESIGN_PROPOSAL_SENT',
+                estimatedDealValue: payload.financialBreakdown.grandTotal,
+              });
+            }
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('nfi_crm_deals', JSON.stringify(updatedDeals));
+            }
+
+            const newAct: LeadActivity = {
+              id: `act_${Date.now()}`,
+              leadId: boqModalDeal.id,
+              activityType: 'STATUS_CHANGE',
+              type: 'DESIGN_PROPOSAL_SENT',
+              summary: `Generated Architectural BOQ Quotation (v1.0) of ${formatInr(payload.financialBreakdown.grandTotal)} with Century BWP 710 & Blum hardware.`,
+              performedBy: 'Lead Architect',
+              createdAt: new Date().toISOString(),
+            };
+            setActivities([newAct, ...activities]);
+            setBoqModalDeal(null);
+          }}
+        />
       )}
     </div>
   );

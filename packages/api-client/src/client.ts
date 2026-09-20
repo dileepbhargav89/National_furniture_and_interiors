@@ -57,6 +57,10 @@ export class ApiClient {
     this.baseUrl = url;
   }
 
+  public getBaseUrl(): string {
+    return this.baseUrl;
+  }
+
   private async fetch<T>(path: string, options?: FetchOptions): Promise<ApiResponse<T>> {
     const url = new URL(`${this.baseUrl}${path}`);
     if (options?.params) {
@@ -100,7 +104,7 @@ export class ApiClient {
       throw new ApiError(
         `Failed to connect to API at ${url.toString()} (${errMessage}). Ensure the API server is active on port 4000.`,
         'NETWORK_ERROR',
-        { url: url.toString(), originalError: errMessage }
+        { url: url.toString(), originalError: errMessage },
       );
     }
 
@@ -115,9 +119,12 @@ export class ApiClient {
       if (response.status === 401 && _onUnauthorized && !path.includes('/auth/login')) {
         _onUnauthorized();
       }
-      const errObj = (data.error && typeof data.error === 'object' ? data.error : null) as Record<string, unknown> | null;
+      const errObj = (data.error && typeof data.error === 'object' ? data.error : null) as Record<
+        string,
+        unknown
+      > | null;
       const message = String(data.message || errObj?.message || response.statusText);
-      const code = (errObj?.code ? String(errObj.code) : undefined);
+      const code = errObj?.code ? String(errObj.code) : undefined;
       const errorData = errObj?.details || data.data;
       throw new ApiError(message, code, errorData);
     }

@@ -54,7 +54,10 @@ function createRedisStore(keyPrefix: string): Store {
  */
 export function createRateLimiter(
   config: RateLimiterConfig,
-  store: Store | undefined = process.env.NODE_ENV === 'development' ? undefined : createRedisStore(config.keyPrefix),
+  store: Store | undefined = process.env.NODE_ENV === 'development' ||
+  process.env.NODE_ENV === 'test'
+    ? undefined
+    : createRedisStore(config.keyPrefix),
 ): RateLimitRequestHandler {
   return rateLimit({
     windowMs: config.windowMs,

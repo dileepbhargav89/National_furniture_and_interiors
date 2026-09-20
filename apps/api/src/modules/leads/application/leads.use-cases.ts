@@ -1,17 +1,26 @@
 import { NotFoundError, ValidationError, ConflictError } from '../../../core/exceptions';
-import type { Lead, LeadPriority, LeadStatus, LeadSource, LeadInterestType } from '../domain/leads.types';
+import type {
+  Lead,
+  LeadPriority,
+  LeadStatus,
+  LeadSource,
+  LeadInterestType,
+} from '../domain/leads.types';
 import type { ILeadRepository, CreateLeadInput, ListLeadsFilters } from './ports';
 import { IOutboxRepository } from '../../../core/events/outbox.repository';
 import { DomainEventType } from '../../../core/events/domain-events';
 import type { CustomerRepository } from '../../crm/application/ports';
+import { NotificationEventHub } from '../../notifications/infrastructure/services/notification-event-hub';
 
 export interface SubmitLeadRequest {
   source: LeadSource;
-  sourceDetail?: { 
-    utmSource?: string | undefined; 
-    utmMedium?: string | undefined; 
-    utmCampaign?: string | undefined; 
-  } | undefined;
+  sourceDetail?:
+    | {
+        utmSource?: string | undefined;
+        utmMedium?: string | undefined;
+        utmCampaign?: string | undefined;
+      }
+    | undefined;
   name: string;
   email?: string | undefined;
   phone: string;
@@ -19,6 +28,8 @@ export interface SubmitLeadRequest {
   projectType?: Lead['projectType'] | undefined;
   budgetRange?: { min: number; max: number } | undefined;
   timeline?: Lead['timeline'] | undefined;
+  consultationBooking?: Lead['consultationBooking'] | undefined;
+  swatchKitOrder?: Lead['swatchKitOrder'] | undefined;
   marketingConsent: {
     granted: boolean;
     source?: string | undefined;
@@ -31,7 +42,7 @@ export class SubmitLeadUseCase {
   constructor(
     private readonly leadsRepo: ILeadRepository,
     private readonly outboxRepo: IOutboxRepository,
-    private readonly customerRepo?: CustomerRepository
+    private readonly customerRepo?: CustomerRepository,
   ) {}
 
   async execute(request: SubmitLeadRequest): Promise<Lead> {
@@ -54,9 +65,11 @@ export class SubmitLeadUseCase {
     if (request.projectType) score += 20;
     if (request.budgetRange) score += 30;
     if (request.timeline === 'IMMEDIATE') score += 20;
+    if (request.consultationBooking) score += 30;
+    if (request.swatchKitOrder) score += 35;
 
     let priority: LeadPriority = 'COLD';
-    if (score >= 80) priority = 'HOT';
+    if (request.consultationBooking || request.swatchKitOrder || score >= 80) priority = 'HOT';
     else if (score >= 40) priority = 'WARM';
 
     // 4. Create lead
@@ -70,6 +83,8 @@ export class SubmitLeadUseCase {
       ...(request.projectType ? { projectType: request.projectType } : {}),
       ...(request.budgetRange ? { budgetRange: request.budgetRange } : {}),
       ...(request.timeline ? { timeline: request.timeline } : {}),
+      ...(request.consultationBooking ? { consultationBooking: request.consultationBooking } : {}),
+      ...(request.swatchKitOrder ? { swatchKitOrder: request.swatchKitOrder } : {}),
       marketingConsent: {
         granted: request.marketingConsent.granted,
         ...(request.marketingConsent.granted ? { grantedAt: new Date() } : {}),
@@ -78,11 +93,11 @@ export class SubmitLeadUseCase {
       },
       score,
       priority,
-      status: 'NEW',
+      status: request.consultationBooking ? 'CONSULTATION_SCHEDULED' : 'NEW',
     };
 
     const lead = await this.leadsRepo.create(input);
-    
+
     await this.outboxRepo.append({
       eventType: DomainEventType.LEAD_CREATED,
       aggregateType: 'Lead',
@@ -94,24 +109,60 @@ export class SubmitLeadUseCase {
     if (this.customerRepo) {
       try {
         const cleanPhone = request.phone.replace(/[^0-9]/g, '');
-        const fallbackEmail = request.email || `lead-${cleanPhone || Date.now()}@inquiry.nationalinteriors.in`;
+        const fallbackEmail =
+          request.email || `lead-${cleanPhone || Date.now()}@inquiry.nationalinteriors.in`;
         const budgetMax = request.budgetRange?.max ? request.budgetRange.max * 100 : 25000000;
+        const preferredStudio =
+          request.consultationBooking?.studioLocation &&
+          ['INDIRANAGAR', 'WHITEFIELD', 'HSR_LAYOUT', 'VIRTUAL'].includes(
+            request.consultationBooking.studioLocation,
+          )
+            ? (request.consultationBooking.studioLocation as
+                'INDIRANAGAR' | 'WHITEFIELD' | 'HSR_LAYOUT' | 'VIRTUAL')
+            : 'INDIRANAGAR';
+
+        const bookingNote = request.consultationBooking
+          ? ` [Scheduled: ${request.consultationBooking.consultationType} at ${request.consultationBooking.studioLocation || 'Studio'} on ${request.consultationBooking.scheduledDate} @ ${request.consultationBooking.timeSlot}]`
+          : '';
+
+        const swatchNote = request.swatchKitOrder
+          ? ` [Swatch Kit: ${request.swatchKitOrder.kitType} to ${request.swatchKitOrder.deliveryAddress.city} (${request.swatchKitOrder.deliveryAddress.pincode})]`
+          : '';
+
         await this.customerRepo.save({
           customerCode: `NFI-LEAD-${Date.now().toString().slice(-6)}`,
           name: request.name,
           email: fallbackEmail,
           phone: request.phone,
-          tags: ['STOREFRONT_LEAD', request.interestType],
-          clientTier: score >= 80 ? 'HIGH_NET_WORTH' : 'PROSPECT',
-          preferredStudio: 'INDIRANAGAR',
+          tags: [
+            'STOREFRONT_LEAD',
+            request.interestType,
+            ...(request.consultationBooking ? ['CONSULTATION_BOOKED'] : []),
+            ...(request.swatchKitOrder ? ['SWATCH_KIT_ORDER', request.swatchKitOrder.kitType] : []),
+          ],
+          clientTier:
+            score >= 80 || request.consultationBooking || request.swatchKitOrder
+              ? 'HIGH_NET_WORTH'
+              : 'PROSPECT',
+          preferredStudio,
+          ...(request.consultationBooking
+            ? { consultationBooking: request.consultationBooking }
+            : {}),
+          ...(request.swatchKitOrder ? { swatchKitOrder: request.swatchKitOrder } : {}),
           propertyDetails: {
-            community: (request.sourceDetail?.utmCampaign as string) || request.projectType || 'Bengaluru Prime',
-            configuration: request.interestType === 'INTERIOR_DESIGN' ? 'Full Home Interiors' : 'Bespoke Furnishings',
+            community:
+              (request.sourceDetail?.utmCampaign as string) ||
+              request.projectType ||
+              'Bengaluru Prime',
+            configuration:
+              request.interestType === 'INTERIOR_DESIGN'
+                ? 'Full Home Interiors'
+                : 'Bespoke Furnishings',
           },
           estimatedDealValue: budgetMax,
-          currentPipelineStage: 'NEW_INQUIRY',
+          currentPipelineStage: request.consultationBooking ? 'STUDIO_CONSULTATION' : 'NEW_INQUIRY',
           acquisitionSource: request.source || 'WEBSITE_FORM',
-          notes: `Interest: ${request.interestType}. Priority: ${priority} (Score: ${score}). Timeline: ${request.timeline || 'Flexible'}.`,
+          notes: `Interest: ${request.interestType}. Priority: ${priority} (Score: ${score}). Timeline: ${request.timeline || 'Flexible'}.${bookingNote}${swatchNote}`,
           lifetimeValue: 0,
           totalOrders: 0,
           totalDesignProjects: 0,
@@ -121,7 +172,38 @@ export class SubmitLeadUseCase {
         console.warn('[SubmitLeadUseCase] Auto-sync to CRM customer skipped:', crmErr);
       }
     }
-    
+
+    // 6. Real-Time Push Notification to Admin Staff via NotificationEventHub
+    try {
+      const isHighValue = (request.budgetRange?.max ?? 0) >= 2500000 || priority === 'HOT';
+      const eventHub = NotificationEventHub.getInstance();
+      eventHub.broadcastToStaff('notification', {
+        id: `lead-alert-${lead.id}`,
+        type: request.consultationBooking
+          ? 'CONSULTATION_BOOKED'
+          : request.swatchKitOrder
+            ? 'SWATCH_KIT_ORDERED'
+            : 'LEAD_CONCIERGE_ALERT',
+        title: request.consultationBooking
+          ? `VIP Consultation Scheduled: ${request.name}`
+          : request.swatchKitOrder
+            ? `Luxury Swatch Kit Ordered: ${request.name}`
+            : `Incoming Lead Concierge Alert: ${request.name}`,
+        message: request.consultationBooking
+          ? `${request.consultationBooking.consultationType} on ${request.consultationBooking.scheduledDate} (${request.consultationBooking.timeSlot})`
+          : request.swatchKitOrder
+            ? `${request.swatchKitOrder.kitType} Kit to ${request.swatchKitOrder.deliveryAddress.city}`
+            : `Interest: ${request.interestType} • Priority: ${priority} • Score: ${score}`,
+        priority: isHighValue ? 'URGENT' : 'HIGH',
+        channel: 'IN_APP',
+        actionUrl: '/crm',
+        actionLabel: 'View in CRM',
+        createdAt: new Date().toISOString(),
+      });
+    } catch {
+      // Safe fallback if SSE hub is not initialized
+    }
+
     return lead;
   }
 }
@@ -144,11 +226,7 @@ export class AssignLeadUseCase {
     }
 
     // Attempt atomic update
-    const updatedLead = await this.leadsRepo.update(
-      leadId,
-      { assignedToId },
-      expectedVersion
-    );
+    const updatedLead = await this.leadsRepo.update(leadId, { assignedToId }, expectedVersion);
 
     if (!updatedLead) {
       throw new ConflictError('Concurrent modification detected or lead deleted');
@@ -171,11 +249,7 @@ export class UpdateLeadStatusUseCase {
       throw new ValidationError('Lead must be assigned before it can be marked as CONTACTED');
     }
 
-    const updatedLead = await this.leadsRepo.update(
-      leadId,
-      { status },
-      expectedVersion
-    );
+    const updatedLead = await this.leadsRepo.update(leadId, { status }, expectedVersion);
 
     if (!updatedLead) {
       throw new ConflictError('Concurrent modification detected or lead deleted');
@@ -190,13 +264,12 @@ export class GetLeadsFunnelUseCase {
 
   async execute(startDate?: string, endDate?: string) {
     const metrics = await this.leadsRepo.getFunnelMetrics(startDate, endDate);
-    const conversionRate = metrics.totalLeads > 0 
-      ? (metrics.convertedLeads / metrics.totalLeads) * 100 
-      : 0;
+    const conversionRate =
+      metrics.totalLeads > 0 ? (metrics.convertedLeads / metrics.totalLeads) * 100 : 0;
 
     return {
       ...metrics,
-      conversionRate
+      conversionRate,
     };
   }
 }

@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { Request, Response, NextFunction } from 'express';
 import {
   CreateAndSendNotificationUseCase,
@@ -25,9 +26,16 @@ import {
   renderStudioVisitScheduledEmail,
   renderLeadWelcomeEmail,
 } from '../infrastructure/templates/email-templates';
-import { NotificationChannel, NotificationPriority, NotificationType } from '../domain/notifications.types';
+import {
+  NotificationChannel,
+  NotificationPriority,
+  NotificationType,
+} from '../domain/notifications.types';
+import { NotificationEventHub } from '../infrastructure/services/notification-event-hub';
 
 export class NotificationsController {
+  private readonly eventHub: NotificationEventHub;
+
   constructor(
     private readonly listUseCase: ListNotificationsUseCase,
     private readonly markAsReadUseCase: MarkNotificationAsReadUseCase,
@@ -36,8 +44,27 @@ export class NotificationsController {
     private readonly getUnreadCountUseCase?: GetUnreadCountUseCase,
     private readonly markAllAsReadUseCase?: MarkAllAsReadUseCase,
     private readonly sendTestNotificationUseCase?: SendTestNotificationUseCase,
-    private readonly getDeliveryStatsUseCase?: GetDeliveryStatsUseCase
-  ) {}
+    private readonly getDeliveryStatsUseCase?: GetDeliveryStatsUseCase,
+    eventHub?: NotificationEventHub,
+  ) {
+    this.eventHub = eventHub ?? NotificationEventHub.getInstance();
+  }
+
+  /**
+   * Server-Sent Events stream for instant sub-second notifications
+   */
+  stream = (req: Request, res: Response): void => {
+    const userId = req.auth?.sub || 'anonymous';
+    const roles = req.auth?.roleName ? [req.auth.roleName] : [];
+    const permissions = req.auth?.permissions || [];
+    const clientId = `${userId}_${randomUUID().slice(0, 8)}`;
+
+    const client = this.eventHub.registerClient(clientId, userId, res, roles, permissions);
+
+    req.on('close', () => {
+      this.eventHub.removeClient(client.id);
+    });
+  };
 
   create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -53,6 +80,14 @@ export class NotificationsController {
         actionLabel: parsed.body.actionLabel,
         payload: parsed.body.payload,
       });
+
+      if (result.channel === NotificationChannel.IN_APP) {
+        if (result.recipientId) {
+          this.eventHub.sendToUser(result.recipientId, 'notification', result);
+        } else {
+          this.eventHub.broadcastToStaff('notification', result);
+        }
+      }
 
       res.status(201).json({
         success: true,
@@ -198,6 +233,10 @@ export class NotificationsController {
         actionLabel: parsed.body.actionLabel,
       });
 
+      if (result.channel === NotificationChannel.IN_APP) {
+        this.eventHub.broadcastToStaff('notification', result);
+      }
+
       res.status(201).json({
         success: true,
         message: 'Broadcast notification published successfully',
@@ -236,7 +275,11 @@ export class NotificationsController {
             totalAmount: (data.totalAmount as string | number) || '1,85,000',
             items: [
               { name: 'Artisan Solid Teak Credenza', quantity: 1, price: '1,25,000' },
-              { name: 'Handcrafted Fluted Wall Panel (Brass Accent)', quantity: 2, price: '60,000' },
+              {
+                name: 'Handcrafted Fluted Wall Panel (Brass Accent)',
+                quantity: 2,
+                price: '60,000',
+              },
             ],
             deliveryAddress: 'Penthouse 4B, Kingfisher Towers, Lavelle Road, Bengaluru',
             actionUrl: 'https://nationalinteriors.in/orders',
@@ -245,11 +288,13 @@ export class NotificationsController {
 
         case NotificationType.DESIGN_PROPOSAL_READY:
           rendered = renderDesignProposalReadyEmail({
-            projectName: (data.projectName as string) || 'Bespoke Penthouse Residence — Koramangala',
+            projectName:
+              (data.projectName as string) || 'Bespoke Penthouse Residence — Koramangala',
             clientName: (data.clientName as string) || 'Ananya Sen',
             designerName: 'Kavita Rao',
             actionUrl: 'https://nationalinteriors.in/client-portal',
-            teaserNote: 'Full 3D panoramic layout, bespoke Italian Calacatta marble wall finishes, and custom dimmable cove lighting integration.',
+            teaserNote:
+              'Full 3D panoramic layout, bespoke Italian Calacatta marble wall finishes, and custom dimmable cove lighting integration.',
           });
           break;
 
@@ -286,7 +331,9 @@ export class NotificationsController {
         default:
           rendered = renderGeneralNotificationEmail({
             title: (data.title as string) || 'National Interiors Exclusive Announcement',
-            message: (data.message as string) || 'Experience our new Autumn 2026 Heirloom Furniture Collection in our Bengaluru studios.',
+            message:
+              (data.message as string) ||
+              'Experience our new Autumn 2026 Heirloom Furniture Collection in our Bengaluru studios.',
             actionLabel: 'Explore Collection',
             actionUrl: 'https://nationalinteriors.in/catalog',
           });

@@ -1,8 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { LeadService, LeadInterestType, LeadProjectType, LeadTimeline, MarketingChannel } from '@nfi/api-client';
-import { CheckCircle2, MessageCircle, Phone, ShieldCheck } from 'lucide-react';
+import {
+  LeadService,
+  LeadInterestType,
+  LeadProjectType,
+  LeadTimeline,
+  MarketingChannel,
+} from '@nfi/api-client';
+import { CheckCircle2, MessageCircle, Phone, ShieldCheck, Calendar } from 'lucide-react';
+import { ConsultationSchedulerModal } from './consultation/consultation-scheduler-modal';
 
 // ── Label maps ────────────────────────────────────────────────────────────────
 const INTEREST_LABELS: Record<LeadInterestType, string> = {
@@ -104,6 +111,7 @@ export function LeadForm({
   });
   const [submitState, setSubmitState] = useState<SubmitState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [isSchedulerOpen, setIsSchedulerOpen] = useState(false);
 
   const set = (key: keyof FormState, value: string | boolean) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -157,25 +165,30 @@ export function LeadForm({
   if (submitState === 'success') {
     const firstName = form.name.trim().split(' ')[0] || 'Esteemed Patron';
     const whatsappMsg = encodeURIComponent(
-      `Hello National Furniture & Interiors team, I just requested a complimentary 3D architectural consultation for my property (${form.phone}).`
+      `Hello National Furniture & Interiors team, I just requested a complimentary 3D architectural consultation for my property (${form.phone}).`,
     );
 
     return (
-      <div className={`text-center py-8 px-6 ${compact ? '' : 'max-w-lg mx-auto'} bg-white rounded-xl`}>
-        <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-200 shadow-xs">
-          <CheckCircle2 className="w-7 h-7" />
+      <div
+        className={`px-6 py-8 text-center ${compact ? '' : 'mx-auto max-w-lg'} rounded-xl bg-white`}
+      >
+        <div className="shadow-xs mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600">
+          <CheckCircle2 className="h-7 w-7" />
         </div>
-        <h3 className="text-xl font-serif font-bold text-gray-900 mb-2">
+        <h3 className="mb-2 font-serif text-xl font-bold text-gray-900">
           Consultation Request Confirmed, {firstName}!
         </h3>
-        <p className="text-gray-600 text-xs sm:text-sm leading-relaxed max-w-sm mx-auto mb-6">
-          A Senior Interior Architect has been assigned to your project. We will connect with you via Call / WhatsApp at <strong className="text-gray-900">{form.phone}</strong> within <strong className="text-emerald-700">2 business hours</strong> with a curated digital lookbook and to schedule your spatial audit.
+        <p className="mx-auto mb-6 max-w-sm text-xs leading-relaxed text-gray-600 sm:text-sm">
+          A Senior Interior Architect has been assigned to your project. We will connect with you
+          via Call / WhatsApp at <strong className="text-gray-900">{form.phone}</strong> within{' '}
+          <strong className="text-emerald-700">2 business hours</strong> with a curated digital
+          lookbook and to schedule your spatial audit.
         </p>
 
         {/* Next Steps Card */}
-        <div className="bg-[#FAF9F6] border border-[#EBE8E3] rounded-xl p-4 text-left space-y-2 mb-6 text-xs text-gray-600">
-          <div className="flex items-center gap-2 text-gray-900 font-semibold">
-            <ShieldCheck className="w-4 h-4 text-[#8C7355]" />
+        <div className="mb-6 space-y-2 rounded-xl border border-[#EBE8E3] bg-[#FAF9F6] p-4 text-left text-xs text-gray-600">
+          <div className="flex items-center gap-2 font-semibold text-gray-900">
+            <ShieldCheck className="h-4 w-4 text-[#8C7355]" />
             <span>What happens next:</span>
           </div>
           <p className="pl-6 text-[11px] text-gray-500">
@@ -190,21 +203,21 @@ export function LeadForm({
         </div>
 
         {/* Direct Concierge Connect */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <div className="flex flex-col justify-center gap-3 sm:flex-row">
           <a
             href={`https://wa.me/919663628302?text=${whatsappMsg}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 transition-all shadow-sm"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-700 px-5 py-3 text-xs font-bold text-white shadow-sm transition-all hover:bg-emerald-800"
           >
-            <MessageCircle className="w-4 h-4" />
+            <MessageCircle className="h-4 w-4" />
             <span>Connect on WhatsApp Now</span>
           </a>
           <a
             href="tel:+919663628302"
-            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-100 px-5 py-3 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-200"
           >
-            <Phone className="w-3.5 h-3.5" />
+            <Phone className="h-3.5 w-3.5" />
             <span>Direct Concierge: +91 96636 28302</span>
           </a>
         </div>
@@ -213,14 +226,51 @@ export function LeadForm({
   }
 
   // ── Form ───────────────────────────────────────────────────────────────────
-  const inputClass = 'w-full border border-gray-200 text-sm px-4 py-3 focus:outline-none focus:border-black transition-colors bg-white placeholder:text-gray-400';
+  const inputClass =
+    'w-full border border-gray-200 text-sm px-4 py-3 focus:outline-none focus:border-black transition-colors bg-white placeholder:text-gray-400';
   const labelClass = 'block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5';
   const selectClass = `${inputClass} cursor-pointer`;
 
   return (
-    <form onSubmit={handleSubmit} className={compact ? 'space-y-4' : 'space-y-5 max-w-xl'} noValidate>
+    <form
+      onSubmit={handleSubmit}
+      className={compact ? 'space-y-4' : 'max-w-xl space-y-5'}
+      noValidate
+    >
+      {/* Studio Appointment Quick Banner */}
+      <div className="shadow-2xs flex items-center justify-between gap-3 rounded-xl border border-amber-200/90 bg-[#FAF9F6] p-3.5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="shrink-0 rounded-lg bg-amber-100/70 p-2 text-amber-800">
+            <Calendar className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="block truncate text-xs font-bold text-stone-900">
+              Prefer an In-Person Experience Studio Visit?
+            </span>
+            <span className="block truncate text-[11px] text-stone-500">
+              Indiranagar · Whitefield · HSR Layout · Live 3D BIM Walkthrough
+            </span>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsSchedulerOpen(true)}
+          className="shadow-xs shrink-0 whitespace-nowrap rounded-lg bg-[#8C7355] px-3 py-1.5 text-[11px] font-semibold text-white transition-all hover:bg-[#786144]"
+        >
+          Pick Date &amp; Slot →
+        </button>
+      </div>
+
+      <ConsultationSchedulerModal
+        isOpen={isSchedulerOpen}
+        onClose={() => setIsSchedulerOpen(false)}
+        defaultStudio="INDIRANAGAR"
+      />
+
       {/* Row 1: Name + Phone */}
-      <div className={`grid gap-4 ${compact ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 md:grid-cols-2'}`}>
+      <div
+        className={`grid gap-4 ${compact ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 md:grid-cols-2'}`}
+      >
         <div>
           <label htmlFor="lead-name" className={labelClass}>
             Full Name <span className="text-red-400">*</span>
@@ -255,7 +305,9 @@ export function LeadForm({
 
       {/* Email */}
       <div>
-        <label htmlFor="lead-email" className={labelClass}>Email</label>
+        <label htmlFor="lead-email" className={labelClass}>
+          Email
+        </label>
         <input
           id="lead-email"
           type="email"
@@ -281,7 +333,9 @@ export function LeadForm({
         >
           <option value="">Select an option…</option>
           {(Object.entries(INTEREST_LABELS) as [LeadInterestType, string][]).map(([val, label]) => (
-            <option key={val} value={val}>{label}</option>
+            <option key={val} value={val}>
+              {label}
+            </option>
           ))}
         </select>
       </div>
@@ -291,7 +345,9 @@ export function LeadForm({
         <>
           {/* Project type */}
           <div>
-            <label htmlFor="lead-project" className={labelClass}>Project Type</label>
+            <label htmlFor="lead-project" className={labelClass}>
+              Project Type
+            </label>
             <select
               id="lead-project"
               value={form.projectType}
@@ -299,16 +355,24 @@ export function LeadForm({
               className={selectClass}
             >
               <option value="">Select project type…</option>
-              {(Object.entries(PROJECT_TYPE_LABELS) as [LeadProjectType, string][]).map(([val, label]) => (
-                <option key={val} value={val}>{label}</option>
-              ))}
+              {(Object.entries(PROJECT_TYPE_LABELS) as [LeadProjectType, string][]).map(
+                ([val, label]) => (
+                  <option key={val} value={val}>
+                    {label}
+                  </option>
+                ),
+              )}
             </select>
           </div>
 
           {/* Budget + Timeline side by side */}
-          <div className={`grid gap-4 ${compact ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 md:grid-cols-2'}`}>
+          <div
+            className={`grid gap-4 ${compact ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 md:grid-cols-2'}`}
+          >
             <div>
-              <label htmlFor="lead-budget" className={labelClass}>Approximate Budget</label>
+              <label htmlFor="lead-budget" className={labelClass}>
+                Approximate Budget
+              </label>
               <select
                 id="lead-budget"
                 value={form.budgetIndex}
@@ -317,12 +381,16 @@ export function LeadForm({
               >
                 <option value="">Select a range…</option>
                 {BUDGET_RANGES.map((r, i) => (
-                  <option key={i} value={i}>{r.label}</option>
+                  <option key={i} value={i}>
+                    {r.label}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
-              <label htmlFor="lead-timeline" className={labelClass}>Timeline</label>
+              <label htmlFor="lead-timeline" className={labelClass}>
+                Timeline
+              </label>
               <select
                 id="lead-timeline"
                 value={form.timeline}
@@ -330,18 +398,26 @@ export function LeadForm({
                 className={selectClass}
               >
                 <option value="">When do you plan to start?</option>
-                {(Object.entries(TIMELINE_LABELS) as [LeadTimeline, string][]).map(([val, label]) => (
-                  <option key={val} value={val}>{label}</option>
-                ))}
+                {(Object.entries(TIMELINE_LABELS) as [LeadTimeline, string][]).map(
+                  ([val, label]) => (
+                    <option key={val} value={val}>
+                      {label}
+                    </option>
+                  ),
+                )}
               </select>
             </div>
           </div>
 
           {/* Optional Bengaluru Specific Fields */}
           {showBangaloreFields && (
-            <div className={`grid gap-4 ${compact ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 md:grid-cols-2'}`}>
+            <div
+              className={`grid gap-4 ${compact ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 md:grid-cols-2'}`}
+            >
               <div>
-                <label htmlFor="lead-bengaluru-loc" className={labelClass}>Property Location (Bengaluru)</label>
+                <label htmlFor="lead-bengaluru-loc" className={labelClass}>
+                  Property Location (Bengaluru)
+                </label>
                 <select
                   id="lead-bengaluru-loc"
                   value={form.propertyLocation}
@@ -350,12 +426,16 @@ export function LeadForm({
                 >
                   <option value="">Select area in Bengaluru…</option>
                   {BENGALURU_LOCALITIES.map((loc) => (
-                    <option key={loc} value={loc}>{loc}</option>
+                    <option key={loc} value={loc}>
+                      {loc}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label htmlFor="lead-consult-mode" className={labelClass}>Consultation Preference</label>
+                <label htmlFor="lead-consult-mode" className={labelClass}>
+                  Consultation Preference
+                </label>
                 <select
                   id="lead-consult-mode"
                   value={form.consultationMode}
@@ -364,7 +444,9 @@ export function LeadForm({
                 >
                   <option value="">Where should we meet?</option>
                   {CONSULTATION_MODES.map((mode) => (
-                    <option key={mode} value={mode}>{mode}</option>
+                    <option key={mode} value={mode}>
+                      {mode}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -380,17 +462,20 @@ export function LeadForm({
           type="checkbox"
           checked={form.consentGranted}
           onChange={(e) => set('consentGranted', e.target.checked)}
-          className="mt-0.5 flex-shrink-0 border-gray-300 text-black focus:ring-black w-4 h-4 cursor-pointer"
+          className="mt-0.5 h-4 w-4 flex-shrink-0 cursor-pointer border-gray-300 text-black focus:ring-black"
         />
-        <label htmlFor="lead-consent" className="text-xs text-gray-500 leading-relaxed cursor-pointer">
-          I agree to receive updates about my enquiry via WhatsApp, SMS, and Email. You may
-          withdraw consent at any time. (DPDP Act 2023 compliant)
+        <label
+          htmlFor="lead-consent"
+          className="cursor-pointer text-xs leading-relaxed text-gray-500"
+        >
+          I agree to receive updates about my enquiry via WhatsApp, SMS, and Email. You may withdraw
+          consent at any time. (DPDP Act 2023 compliant)
         </label>
       </div>
 
       {/* Error */}
       {submitState === 'error' && (
-        <p className="text-red-500 text-sm bg-red-50 border border-red-200 px-4 py-3">
+        <p className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-500">
           {errorMsg || 'Something went wrong. Please try again.'}
         </p>
       )}
@@ -399,19 +484,30 @@ export function LeadForm({
       <button
         type="submit"
         disabled={submitState === 'loading' || !form.name || !form.phone || !form.interestType}
-        className={`w-full py-4 text-xs sm:text-sm uppercase tracking-wider font-bold transition-all rounded-lg ${
+        className={`w-full rounded-lg py-4 text-xs font-bold uppercase tracking-wider transition-all sm:text-sm ${
           submitState === 'loading'
-            ? 'bg-gray-400 text-white cursor-not-allowed'
+            ? 'cursor-not-allowed bg-gray-400 text-white'
             : !form.name || !form.phone || !form.interestType
-            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            : 'bg-[#171717] hover:bg-black text-[#D4AF37] border border-[#D4AF37]/50 hover:border-[#D4AF37] active:scale-[0.98] shadow-lg hover:shadow-xl'
+              ? 'cursor-not-allowed bg-gray-200 text-gray-400'
+              : 'border border-[#D4AF37]/50 bg-[#171717] text-[#D4AF37] shadow-lg hover:border-[#D4AF37] hover:bg-black hover:shadow-xl active:scale-[0.98]'
         }`}
       >
         {submitState === 'loading' ? (
           <span className="flex items-center justify-center gap-2">
-            <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              ></path>
             </svg>
             Submitting Details…
           </span>
@@ -420,7 +516,7 @@ export function LeadForm({
         )}
       </button>
 
-      <p className="text-[11px] text-gray-500 text-center font-medium">
+      <p className="text-center text-[11px] font-medium text-gray-500">
         Senior Architect Connect Within 2 Hours · Free 3D Concept Layout · 100% Privacy Assured
       </p>
     </form>

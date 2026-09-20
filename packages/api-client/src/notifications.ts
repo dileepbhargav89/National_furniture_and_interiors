@@ -4,7 +4,14 @@ export type NotificationChannel = 'EMAIL' | 'SMS' | 'WHATSAPP' | 'IN_APP' | 'PUS
 
 export type NotificationType =
   | 'LEAD_ASSIGNED'
+  | 'LEAD_CUSTOMER_WELCOME'
+  | 'LEAD_CONCIERGE_ALERT'
+  | 'SWATCH_KIT_ORDERED'
+  | 'SITE_INSPECTION_LOGGED'
+  | 'SNAG_ALERT'
   | 'ORDER_CONFIRMED'
+  | 'ORDER_ADVANCE_CONFIRMED'
+  | 'MILESTONE_BALANCE_DUE'
   | 'PAYMENT_RECEIVED'
   | 'DESIGN_PROPOSAL_READY'
   | 'STUDIO_VISIT_SCHEDULED'
@@ -36,6 +43,18 @@ export interface Notification {
   sentAt?: string | undefined;
   expiresAt?: string | undefined;
   createdAt: string;
+}
+
+export interface NotificationToast {
+  id: string;
+  title: string;
+  message: string;
+  type?: NotificationType | string | undefined;
+  priority?: NotificationPriority | undefined;
+  actionUrl?: string | undefined;
+  actionLabel?: string | undefined;
+  createdAt: string;
+  duration: number;
 }
 
 export interface NotificationStats {
@@ -82,14 +101,18 @@ export const NotificationsService = {
    * Get personal in-app notifications for the logged-in customer/admin
    */
   getMyNotifications: async (limit: number = 20, offset: number = 0) => {
-    return apiClient.get<Notification[]>(`/api/v1/notifications/my?limit=${limit}&offset=${offset}`);
+    return apiClient.get<Notification[]>(
+      `/api/v1/notifications/my?limit=${limit}&offset=${offset}`,
+    );
   },
 
   /**
    * Get unread notifications count for live badge display
    */
   getUnreadCount: async () => {
-    return apiClient.get<{ success: boolean; count: number }>(`/api/v1/notifications/my/unread-count`);
+    return apiClient.get<{ success: boolean; count: number }>(
+      `/api/v1/notifications/my/unread-count`,
+    );
   },
 
   /**
@@ -103,7 +126,9 @@ export const NotificationsService = {
    * Mark all notifications as read for current user
    */
   markAllAsRead: async () => {
-    return apiClient.put<{ success: boolean; message: string; modified: number }>(`/api/v1/notifications/my/read-all`);
+    return apiClient.put<{ success: boolean; message: string; modified: number }>(
+      `/api/v1/notifications/my/read-all`,
+    );
   },
 
   /**
@@ -117,20 +142,38 @@ export const NotificationsService = {
    * Dispatch a test notification through Resend, WhatsApp, SMS, or In-App sandbox
    */
   testSend: async (params: TestSendParams) => {
-    return apiClient.post<{ success: boolean; message: string; data: unknown }>(`/api/v1/notifications/test-send`, params);
+    return apiClient.post<{ success: boolean; message: string; data: unknown }>(
+      `/api/v1/notifications/test-send`,
+      params,
+    );
   },
 
   /**
    * Publish a system-wide broadcast notification
    */
   broadcast: async (params: BroadcastParams) => {
-    return apiClient.post<{ success: boolean; message: string; data: unknown }>(`/api/v1/notifications/broadcast`, params);
+    return apiClient.post<{ success: boolean; message: string; data: unknown }>(
+      `/api/v1/notifications/broadcast`,
+      params,
+    );
   },
 
   /**
    * Preview a responsive luxury HTML email template live
    */
   previewTemplate: async (type: NotificationType, data?: Record<string, unknown> | undefined) => {
-    return apiClient.post<EmailPreviewResult>(`/api/v1/notifications/preview-template`, { type, data });
+    return apiClient.post<EmailPreviewResult>(`/api/v1/notifications/preview-template`, {
+      type,
+      data,
+    });
+  },
+
+  /**
+   * Build Server-Sent Events (SSE) live notification stream URL
+   */
+  getStreamUrl: (token?: string) => {
+    const base = apiClient.getBaseUrl() || '';
+    const url = `${base}/api/v1/notifications/stream`;
+    return token ? `${url}?token=${encodeURIComponent(token)}` : url;
   },
 };

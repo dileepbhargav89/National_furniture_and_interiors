@@ -1,17 +1,21 @@
-import { CustomerRepository, LeadActivityRepository, LeadStatusHistoryRepository, SalesRepresentativeRepository } from './ports';
-import { 
-  Customer, 
-  LeadActivity, 
-  LeadStatusTransition, 
-  PipelineDeal, 
-  PipelineStageId, 
-  PipelineStageInfo, 
-  CrmKpis, 
-  CustomerDossier, 
-  SalesRepresentative, 
+import {
+  CustomerRepository,
+  LeadActivityRepository,
+  LeadStatusHistoryRepository,
+  SalesRepresentativeRepository,
+} from './ports';
+import {
+  Customer,
+  LeadActivity,
+  LeadStatusTransition,
+  PipelineDeal,
+  PipelineStageId,
+  PipelineStageInfo,
+  CrmKpis,
+  CustomerDossier,
+  SalesRepresentative,
   LeadPriority,
-  ClientTier,
-  UpdateCustomerInput
+  UpdateCustomerInput,
 } from '../domain/crm.types';
 import { NotFoundError, ValidationError } from '../../../core/exceptions';
 
@@ -40,7 +44,7 @@ export class CrmUseCases {
     private readonly customerRepository: CustomerRepository,
     private readonly leadActivityRepository: LeadActivityRepository,
     private readonly leadStatusHistoryRepository: LeadStatusHistoryRepository,
-    private readonly salesRepresentativeRepository?: SalesRepresentativeRepository
+    private readonly salesRepresentativeRepository?: SalesRepresentativeRepository,
   ) {}
 
   // ---------------- Customer Profile & Core CRUD ----------------
@@ -61,7 +65,9 @@ export class CrmUseCases {
     return customer;
   }
 
-  async createCustomerProfile(input: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'version' | 'isDeleted' | 'deletedAt'>): Promise<Customer> {
+  async createCustomerProfile(
+    input: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'version' | 'isDeleted' | 'deletedAt'>,
+  ): Promise<Customer> {
     return this.customerRepository.save(input);
   }
 
@@ -81,17 +87,25 @@ export class CrmUseCases {
     const dealValue = c.estimatedDealValue || 0;
     const weightedVal = Math.round((dealValue * prob) / 100);
 
-    // Calculate priority based on value and age
+    const now = new Date().getTime();
+    const createdTime = new Date(c.createdAt || c.updatedAt).getTime();
+    const updatedTime = new Date(c.updatedAt || c.createdAt).getTime();
+    const isNewRecent = now - createdTime < 48 * 60 * 60 * 1000; // within 48h
+
+    // Calculate priority based on value, age, booked consultation, and swatch kit order
     let priority: LeadPriority = 'WARM';
-    if (dealValue >= 200000000) { // >= ₹20 Lakhs
+    if (
+      c.consultationBooking ||
+      c.swatchKitOrder ||
+      dealValue >= 200000000 ||
+      (stage === 'NEW_INQUIRY' && isNewRecent)
+    ) {
       priority = 'HOT';
-    } else if (dealValue < 50000000) { // < ₹5 Lakhs
+    } else if (dealValue < 50000000 && !isNewRecent) {
       priority = 'COLD';
     }
 
-    const now = new Date().getTime();
-    const updated = new Date(c.updatedAt || c.createdAt).getTime();
-    const daysInStage = Math.max(1, Math.floor((now - updated) / (1000 * 60 * 60 * 24)));
+    const daysInStage = Math.max(1, Math.floor((now - updatedTime) / (1000 * 60 * 60 * 24)));
 
     return {
       id: c.id,
@@ -108,10 +122,14 @@ export class CrmUseCases {
       probability: prob,
       clientTier: c.clientTier,
       priority,
+      ...(c.consultationBooking ? { consultationBooking: c.consultationBooking } : {}),
+      ...(c.swatchKitOrder ? { swatchKitOrder: c.swatchKitOrder } : {}),
       ...(c.assignedRepId ? { assignedRepId: c.assignedRepId } : {}),
       ...(c.assignedRepName ? { assignedRepName: c.assignedRepName } : {}),
       daysInStage,
       ...(c.notes ? { notes: c.notes } : {}),
+      createdAt: c.createdAt,
+      ...(c.acquisitionSource ? { acquisitionSource: c.acquisitionSource } : {}),
       updatedAt: c.updatedAt || new Date(),
     };
   }
@@ -130,6 +148,17 @@ export class CrmUseCases {
       groupedDeals.set(deal.stage, stageList);
     });
 
+    // Enforce reverse-chronological sorting within each stage (newest inquiries first)
+    STAGE_ORDER.forEach((stageId) => {
+      const list = groupedDeals.get(stageId) || [];
+      list.sort((a, b) => {
+        const timeA = new Date(a.createdAt || a.updatedAt).getTime();
+        const timeB = new Date(b.createdAt || b.updatedAt).getTime();
+        return timeB - timeA;
+      });
+      groupedDeals.set(stageId, list);
+    });
+
     return STAGE_ORDER.map((stageId) => {
       const deals = groupedDeals.get(stageId) || [];
       const totalValue = deals.reduce((acc, d) => acc + d.estimatedDealValue, 0);
@@ -145,10 +174,10 @@ export class CrmUseCases {
   }
 
   async updateLeadPipelineStage(
-    dealId: string, 
-    newStage: PipelineStageId, 
+    dealId: string,
+    newStage: PipelineStageId,
     reason?: string,
-    performedBy = 'Sales Manager'
+    performedBy = 'Sales Manager',
   ): Promise<Customer> {
     if (!STAGE_CONFIG[newStage]) {
       throw new ValidationError(`Invalid pipeline stage: ${newStage}`);
@@ -271,9 +300,9 @@ export class CrmUseCases {
   }
 
   async assignSalesRep(
-    dealId: string, 
-    repId: string, 
-    performedBy = 'Sales Manager'
+    dealId: string,
+    repId: string,
+    performedBy = 'Sales Manager',
   ): Promise<Customer> {
     const customer = await this.customerRepository.findById(dealId);
     if (!customer) {
@@ -291,7 +320,8 @@ export class CrmUseCases {
       }
     }
 
-    const assignedName = assignedRep?.name || (repId === 'AUTO' ? 'Design Concierge' : 'Assigned Consultant');
+    const assignedName =
+      assignedRep?.name || (repId === 'AUTO' ? 'Design Concierge' : 'Assigned Consultant');
     const finalRepId = assignedRep?.id || repId;
 
     const updated = await this.customerRepository.update(dealId, {
@@ -347,21 +377,30 @@ export class CrmUseCases {
           title: `${customer.propertyDetails?.community || 'Luxury Residence'} - ${customer.propertyDetails?.configuration || 'Full Home'}`,
           stage: '3D_CONCEPT_DESIGN',
           estimatedBudget: customer.estimatedDealValue || 185000000,
-        }
+        },
       ],
       orders: [],
     };
   }
 
   async convertDealToProject(
-    dealId: string, 
-    data: { projectName?: string | undefined; scope?: string | undefined; estimatedBudget?: number | undefined },
-    performedBy = 'Sales Consultant'
+    dealId: string,
+    data: {
+      projectName?: string | undefined;
+      scope?: string | undefined;
+      estimatedBudget?: number | undefined;
+    },
+    performedBy = 'Sales Consultant',
   ): Promise<{ projectId: string; dealId: string; message: string }> {
     const customer = await this.getCustomerProfile(dealId);
-    
+
     // Advance deal to CLOSED_WON if not already
-    await this.updateLeadPipelineStage(dealId, 'CLOSED_WON', 'Converted to Active Interior Design Project', performedBy);
+    await this.updateLeadPipelineStage(
+      dealId,
+      'CLOSED_WON',
+      'Converted to Active Interior Design Project',
+      performedBy,
+    );
 
     const projectId = `dp_${Date.now()}`;
     await this.leadActivityRepository.save({
@@ -379,14 +418,19 @@ export class CrmUseCases {
   }
 
   async convertDealToOrder(
-    dealId: string, 
+    dealId: string,
     data: { itemsDescription?: string | undefined; totalAmount?: number | undefined },
-    performedBy = 'Sales Consultant'
+    performedBy = 'Sales Consultant',
   ): Promise<{ orderId: string; orderNumber: string; dealId: string; message: string }> {
     const customer = await this.getCustomerProfile(dealId);
 
     // Advance deal to CLOSED_WON
-    await this.updateLeadPipelineStage(dealId, 'CLOSED_WON', 'Converted to Bespoke Furniture Order', performedBy);
+    await this.updateLeadPipelineStage(
+      dealId,
+      'CLOSED_WON',
+      'Converted to Bespoke Furniture Order',
+      performedBy,
+    );
 
     const orderNumber = `NFI-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
     const orderId = `ord_${Date.now()}`;
@@ -408,7 +452,9 @@ export class CrmUseCases {
 
   // ---------------- Lead Activities ----------------
 
-  async recordLeadActivity(activity: Omit<LeadActivity, 'id' | 'occurredAt'>): Promise<LeadActivity> {
+  async recordLeadActivity(
+    activity: Omit<LeadActivity, 'id' | 'occurredAt'>,
+  ): Promise<LeadActivity> {
     return this.leadActivityRepository.save(activity);
   }
 
@@ -416,7 +462,9 @@ export class CrmUseCases {
     return this.leadActivityRepository.findByLeadId(leadId);
   }
 
-  async trackLeadStatusTransition(transition: Omit<LeadStatusTransition, 'id' | 'changedAt'>): Promise<LeadStatusTransition> {
+  async trackLeadStatusTransition(
+    transition: Omit<LeadStatusTransition, 'id' | 'changedAt'>,
+  ): Promise<LeadStatusTransition> {
     return this.leadStatusHistoryRepository.save(transition);
   }
 
@@ -424,4 +472,3 @@ export class CrmUseCases {
     return this.leadStatusHistoryRepository.findByLeadId(leadId);
   }
 }
-

@@ -13,6 +13,39 @@ export type PipelineStageId =
 
 export type CrmDealPriority = 'HOT' | 'WARM' | 'COLD';
 
+export type ConsultationType = 'STUDIO_VISIT' | 'ON_SITE_SURVEY' | 'VIRTUAL_VIDEO_CALL';
+
+export interface ConsultationBooking {
+  consultationType: ConsultationType;
+  studioLocation?:
+    'INDIRANAGAR' | 'WHITEFIELD' | 'HSR_LAYOUT' | 'VIKAS_MARG' | 'ON_SITE' | 'VIRTUAL' | undefined;
+  scheduledDate: string; // ISO format: YYYY-MM-DD
+  timeSlot: string; // e.g. "11:00 AM - 12:30 PM"
+  propertyType?: string | undefined;
+  meetingNotes?: string | undefined;
+  calendarInviteSent?: boolean | undefined;
+}
+
+export type SwatchKitType =
+  'HARDWOOD_VENEERS' | 'FABRICS_LEATHER' | 'MODULAR_KITCHEN' | 'COMPLETE_MASTER_BOX';
+
+export interface SwatchKitAddress {
+  line1: string;
+  line2?: string | undefined;
+  city: string;
+  state: string;
+  pincode: string;
+}
+
+export interface SwatchKitOrder {
+  kitType: SwatchKitType;
+  deliveryAddress: SwatchKitAddress;
+  depositAmount: number; // in paise (e.g. 49900 = ₹499)
+  isDepositRefundable: boolean;
+  dispatchStatus: 'ORDERED' | 'PACKED' | 'DISPATCHED' | 'DELIVERED';
+  courierTrackingNumber?: string | undefined;
+}
+
 export interface CustomerProfile {
   id: string;
   _id?: string | undefined;
@@ -26,6 +59,8 @@ export interface CustomerProfile {
   tags: string[];
   clientTier?: ClientTier | undefined;
   preferredStudio?: PreferredStudio | undefined;
+  consultationBooking?: ConsultationBooking | undefined;
+  swatchKitOrder?: SwatchKitOrder | undefined;
   propertyDetails?:
     | {
         community?: string | undefined;
@@ -64,11 +99,15 @@ export interface PipelineDeal {
   probability: number;
   clientTier: ClientTier;
   priority: CrmDealPriority;
+  consultationBooking?: ConsultationBooking | undefined;
+  swatchKitOrder?: SwatchKitOrder | undefined;
   assignedRepId?: string | undefined;
   assignedRepName?: string | undefined;
   daysInStage: number;
   nextFollowUpAt?: string | undefined;
   notes?: string | undefined;
+  createdAt?: string | undefined;
+  acquisitionSource?: string | undefined;
   updatedAt: string;
 }
 

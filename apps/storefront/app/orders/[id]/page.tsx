@@ -595,7 +595,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
               </div>
               <div className="text-right">
                 <span className="rounded-full border border-stone-200 bg-[#FAF9F6] px-3 py-1 text-xs font-medium text-[#171717]">
-                  {order.fulfillmentStatus.replace(/_/g, ' ')}
+                  {(order.fulfillmentStatus || 'PROCESSING').replace(/_/g, ' ')}
                 </span>
               </div>
             </div>
@@ -763,7 +763,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                         <div>
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <span className="text-sm font-semibold tracking-wide text-[#171717]">
-                              {event.status.replace(/_/g, ' ')}
+                              {(event.status || '').replace(/_/g, ' ')}
                             </span>
                             <span className="text-xs text-[#A3A3A3]">
                               {formatDate(event.changedAt, true)}
@@ -863,16 +863,19 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                   </p>
                 </div>
 
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                {(order as any).reconciliationDetails?.utrNumber ? (
+                {(order as unknown as { reconciliationDetails?: { utrNumber?: string } })
+                  .reconciliationDetails?.utrNumber ? (
                   <div className="space-y-1 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
                     <div className="flex items-center gap-1.5 font-semibold">
                       <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                       <span>UTR Submitted for Verification</span>
                     </div>
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     <p className="font-mono text-[11px]">
-                      UTR: {(order as any).reconciliationDetails.utrNumber}
+                      UTR:{' '}
+                      {
+                        (order as unknown as { reconciliationDetails?: { utrNumber?: string } })
+                          .reconciliationDetails?.utrNumber
+                      }
                     </p>
                     <p className="text-[10px] text-emerald-700">
                       Finance Ops will reconcile and update within 2 hours.

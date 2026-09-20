@@ -28,7 +28,7 @@ const COMPACT_ROOM_CATEGORIES: CompactCategoryItem[] = [
     slug: 'living-room',
     count: 17,
     image:
-      'https://images.unsplash.com/photo-1595514535133-c28308d5f303?q=80&w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?q=80&w=800&auto=format&fit=crop',
   },
   {
     name: 'Dining & Tables',

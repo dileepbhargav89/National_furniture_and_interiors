@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { sendSuccess } from '../../../core/exceptions';
+import { sendSuccess, NotFoundError } from '../../../core/exceptions';
+import { BoqPdfGeneratorAdapter } from '../infrastructure/adapters/boq-pdf.adapter';
 import {
   CreateDesignProjectUseCase,
   AdvanceProjectStageUseCase,
@@ -7,14 +8,22 @@ import {
   ApproveQuotationUseCase,
   ListDesignProjectsUseCase,
   GetDesignProjectByIdUseCase,
-  GetDesignFunnelUseCase
+  GetDesignFunnelUseCase,
+  RecordSiteInspectionUseCase,
+  AddSitePhotoUseCase,
+  LogSnagItemUseCase,
+  UpdateSnagStatusUseCase,
 } from '../application/design-projects.use-cases';
 import {
   createDesignProjectSchema,
   advanceProjectStageSchema,
   addQuotationSchema,
   approveQuotationSchema,
-  listDesignProjectsQuerySchema
+  listDesignProjectsQuerySchema,
+  recordInspectionSchema,
+  addSitePhotoSchema,
+  logSnagSchema,
+  updateSnagStatusSchema,
 } from './design-projects.schemas';
 import {
   listPortfolioQuerySchema,
@@ -24,6 +33,7 @@ import {
 } from './portfolio.schemas';
 import { IPortfolioRepository, IPortfolioFilter } from '../domain/portfolio.types';
 import { DEFAULT_PORTFOLIO_PROJECTS } from '../domain/default-portfolio-data';
+import { CreateDesignProjectInput, DesignProjectStage } from '../domain/design-projects.types';
 
 export interface DesignProjectsControllerDeps {
   createDesignProject: CreateDesignProjectUseCase;
@@ -33,6 +43,10 @@ export interface DesignProjectsControllerDeps {
   listDesignProjects: ListDesignProjectsUseCase;
   getDesignProjectById: GetDesignProjectByIdUseCase;
   getFunnelMetrics: GetDesignFunnelUseCase;
+  recordSiteInspection?: RecordSiteInspectionUseCase | undefined;
+  addSitePhoto?: AddSitePhotoUseCase | undefined;
+  logSnagItem?: LogSnagItemUseCase | undefined;
+  updateSnagStatus?: UpdateSnagStatusUseCase | undefined;
   portfolioRepository?: IPortfolioRepository | undefined;
 }
 
@@ -43,17 +57,19 @@ export class DesignProjectsController {
     this.portfolioRepo = deps.portfolioRepository;
   }
 
-  public createDesignProject = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public createDesignProject = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const data = createDesignProjectSchema.parse({ body: req.body });
       const actorId = req.auth?.sub;
-      
-      const payload: any = {
+
+      const payload: CreateDesignProjectInput = {
         ...data.body,
-        actorId: actorId || 'system'
+        actorId: actorId || 'system',
       };
-      if (payload.leadId === undefined) delete payload.leadId;
-      if (payload.assignedDesignerId === undefined) delete payload.assignedDesignerId;
 
       const project = await this.deps.createDesignProject.execute(payload);
       sendSuccess(req, res, 201, project);
@@ -62,20 +78,22 @@ export class DesignProjectsController {
     }
   };
 
-  public advanceProjectStage = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public advanceProjectStage = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const data = advanceProjectStageSchema.parse({ params: req.params, body: req.body });
       const actorId = req.auth?.sub;
 
-      const payload: any = {
+      const payload = {
         projectId: data.params.id,
-        targetStage: data.body.targetStage,
+        targetStage: data.body.targetStage as DesignProjectStage,
         expectedVersion: data.body.expectedVersion,
-        actorId: actorId || 'system'
+        actorId: actorId || 'system',
+        ...(data.body.note !== undefined ? { note: data.body.note } : {}),
       };
-      if (data.body.note !== undefined) {
-        payload.note = data.body.note;
-      }
 
       const project = await this.deps.advanceProjectStage.execute(payload);
       sendSuccess(req, res, 200, project);
@@ -93,7 +111,11 @@ export class DesignProjectsController {
         projectId: data.params.id,
         boqItems: data.body.boqItems,
         expectedVersion: data.body.expectedVersion,
-        actorId: actorId || 'system'
+        actorId: actorId || 'system',
+        ...(data.body.financialBreakdown
+          ? { financialBreakdown: data.body.financialBreakdown }
+          : {}),
+        ...(data.body.milestoneSchedule ? { milestoneSchedule: data.body.milestoneSchedule } : {}),
       });
       sendSuccess(req, res, 201, project);
     } catch (error) {
@@ -101,7 +123,46 @@ export class DesignProjectsController {
     }
   };
 
-  public approveQuotation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public getQuotationPdf = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const projectId = req.params.id as string;
+      const qid = parseInt(req.params.qid as string, 10);
+      const project = await this.deps.getDesignProjectById.execute(projectId);
+      if (!project) {
+        throw new NotFoundError(`Design project ${projectId} not found`);
+      }
+
+      const quotation =
+        project.quotations.find((q) => q.version === qid) ||
+        project.quotations[project.quotations.length - 1];
+      if (!quotation) {
+        throw new NotFoundError(`Quotation version ${qid} not found for project ${projectId}`);
+      }
+
+      const pdfGenerator = new BoqPdfGeneratorAdapter();
+      const buffer = await pdfGenerator.generateBuffer(project, quotation);
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `inline; filename="NFI-Quotation-${project.projectCode}-v${quotation.version}.pdf"`,
+      );
+      res.setHeader('Content-Length', buffer.length);
+      res.send(buffer);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public approveQuotation = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const data = approveQuotationSchema.parse({ params: req.params, body: req.body });
       const actorId = req.auth?.sub;
@@ -111,7 +172,7 @@ export class DesignProjectsController {
         quotationVersion: parseInt(data.params.qid, 10),
         eSignatureRef: data.body.eSignatureRef,
         expectedVersion: data.body.expectedVersion,
-        actorId: actorId || 'system'
+        actorId: actorId || 'system',
       });
       sendSuccess(req, res, 200, project);
     } catch (error) {
@@ -119,23 +180,153 @@ export class DesignProjectsController {
     }
   };
 
-  public listDesignProjects = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public recordInspection = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const data = recordInspectionSchema.parse({ params: req.params, body: req.body });
+      const actorId = req.auth?.sub || 'system';
+
+      if (!this.deps.recordSiteInspection) {
+        throw new Error('RecordSiteInspectionUseCase not injected');
+      }
+
+      const updated = await this.deps.recordSiteInspection.execute({
+        projectId: data.params.id,
+        actorId,
+        ...data.body,
+      });
+
+      sendSuccess(req, res, 201, updated);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public listInspections = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const projectId = req.params.id as string;
+      const project = await this.deps.getDesignProjectById.execute(projectId);
+      if (!project) throw new NotFoundError(`Design project ${projectId} not found`);
+
+      sendSuccess(req, res, 200, project.siteInspections || []);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public addSitePhoto = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const data = addSitePhotoSchema.parse({ params: req.params, body: req.body });
+      const actorId = req.auth?.sub || 'system';
+
+      if (!this.deps.addSitePhoto) {
+        throw new Error('AddSitePhotoUseCase not injected');
+      }
+
+      const updated = await this.deps.addSitePhoto.execute({
+        projectId: data.params.id,
+        actorId,
+        ...data.body,
+      });
+
+      sendSuccess(req, res, 201, updated);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public listPhotos = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const projectId = req.params.id as string;
+      const clientOnly = req.query.clientOnly === 'true';
+      const project = await this.deps.getDesignProjectById.execute(projectId);
+      if (!project) throw new NotFoundError(`Design project ${projectId} not found`);
+
+      let photos = project.sitePhotos || [];
+      if (clientOnly) {
+        photos = photos.filter((p) => p.isClientVisible);
+      }
+
+      sendSuccess(req, res, 200, photos);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public logSnag = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const data = logSnagSchema.parse({ params: req.params, body: req.body });
+      const actorId = req.auth?.sub || 'system';
+
+      if (!this.deps.logSnagItem) {
+        throw new Error('LogSnagItemUseCase not injected');
+      }
+
+      const updated = await this.deps.logSnagItem.execute({
+        projectId: data.params.id,
+        actorId,
+        ...data.body,
+      });
+
+      sendSuccess(req, res, 201, updated);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public updateSnagStatus = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const data = updateSnagStatusSchema.parse({ params: req.params, body: req.body });
+      const actorId = req.auth?.sub || 'system';
+
+      if (!this.deps.updateSnagStatus) {
+        throw new Error('UpdateSnagStatusUseCase not injected');
+      }
+
+      const updated = await this.deps.updateSnagStatus.execute({
+        projectId: data.params.id,
+        snagId: data.params.snagId,
+        actorId,
+        ...data.body,
+      });
+
+      sendSuccess(req, res, 200, updated);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public listDesignProjects = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const query = listDesignProjectsQuerySchema.parse(req.query);
-      const actorId = req.auth?.sub;
-      
+
       // Temporarily bypass role checking since it's not strictly available in req.auth typing
       // In a real app we'd verify with rbacMiddleware and filter if necessary
       const assignedDesignerId = query.assignedDesignerId;
 
-      const filters: any = {};
+      const filters: Record<string, unknown> = {};
       if (query.stage !== undefined) filters.stage = query.stage;
       if (assignedDesignerId !== undefined) filters.assignedDesignerId = assignedDesignerId;
 
       const result = await this.deps.listDesignProjects.execute(
         Object.keys(filters).length > 0 ? filters : undefined,
         query.limit,
-        query.offset
+        query.offset,
       );
       sendSuccess(req, res, 200, result);
     } catch (error) {
@@ -143,7 +334,11 @@ export class DesignProjectsController {
     }
   };
 
-  public getDesignProjectById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public getDesignProjectById = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const project = await this.deps.getDesignProjectById.execute(req.params.id as string);
       sendSuccess(req, res, 200, project);
@@ -152,7 +347,11 @@ export class DesignProjectsController {
     }
   };
 
-  public getFunnelMetrics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public getFunnelMetrics = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       const startDate = typeof req.query.startDate === 'string' ? req.query.startDate : undefined;
       const endDate = typeof req.query.endDate === 'string' ? req.query.endDate : undefined;
@@ -168,12 +367,15 @@ export class DesignProjectsController {
   public listPortfolio = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!this.portfolioRepo) {
-        sendSuccess(req, res, 200, { items: DEFAULT_PORTFOLIO_PROJECTS, total: DEFAULT_PORTFOLIO_PROJECTS.length });
+        sendSuccess(req, res, 200, {
+          items: DEFAULT_PORTFOLIO_PROJECTS,
+          total: DEFAULT_PORTFOLIO_PROJECTS.length,
+        });
         return;
       }
 
       const query = listPortfolioQuerySchema.parse(req.query);
-      
+
       // Auto-seed if empty
       const count = await this.portfolioRepo.count();
       if (count === 0) {
@@ -192,10 +394,14 @@ export class DesignProjectsController {
     }
   };
 
-  public getPortfolioBySlug = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public getPortfolioBySlug = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       if (!this.portfolioRepo) {
-        const fallback = DEFAULT_PORTFOLIO_PROJECTS.find(p => p.slug === req.params.slug);
+        const fallback = DEFAULT_PORTFOLIO_PROJECTS.find((p) => p.slug === req.params.slug);
         sendSuccess(req, res, 200, fallback || null);
         return;
       }
@@ -207,10 +413,17 @@ export class DesignProjectsController {
     }
   };
 
-  public adminListPortfolio = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public adminListPortfolio = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       if (!this.portfolioRepo) {
-        sendSuccess(req, res, 200, { items: DEFAULT_PORTFOLIO_PROJECTS, total: DEFAULT_PORTFOLIO_PROJECTS.length });
+        sendSuccess(req, res, 200, {
+          items: DEFAULT_PORTFOLIO_PROJECTS,
+          total: DEFAULT_PORTFOLIO_PROJECTS.length,
+        });
         return;
       }
 
@@ -229,7 +442,11 @@ export class DesignProjectsController {
     }
   };
 
-  public adminCreatePortfolio = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public adminCreatePortfolio = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       if (!this.portfolioRepo) {
         throw new Error('Portfolio repository not initialized');
@@ -253,25 +470,32 @@ export class DesignProjectsController {
       const payload = {
         ...data.body,
         slug,
-        categoryLabel: data.body.categoryLabel || data.body.category.toUpperCase().replace('-', ' & '),
+        categoryLabel:
+          data.body.categoryLabel || data.body.category.toUpperCase().replace('-', ' & '),
         budgetString: data.body.budgetString || `₹${data.body.budgetInLakhs.toFixed(1)} Lakhs`,
       };
 
-      const project = await this.portfolioRepo.create(payload as any);
+      const project = await this.portfolioRepo.create(
+        payload as Parameters<typeof this.portfolioRepo.create>[0],
+      );
       sendSuccess(req, res, 201, project);
     } catch (error) {
       next(error);
     }
   };
 
-  public adminUpdatePortfolio = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public adminUpdatePortfolio = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       if (!this.portfolioRepo) {
         throw new Error('Portfolio repository not initialized');
       }
 
       const data = updatePortfolioSchema.parse({ params: req.params, body: req.body });
-      const updates: any = { ...data.body };
+      const updates = { ...data.body } as Parameters<typeof this.portfolioRepo.update>[1];
 
       if (updates.budgetInLakhs !== undefined && !updates.budgetString) {
         updates.budgetString = `₹${updates.budgetInLakhs.toFixed(1)} Lakhs`;
@@ -284,7 +508,11 @@ export class DesignProjectsController {
     }
   };
 
-  public adminDeletePortfolio = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public adminDeletePortfolio = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       if (!this.portfolioRepo) {
         throw new Error('Portfolio repository not initialized');
@@ -297,7 +525,11 @@ export class DesignProjectsController {
     }
   };
 
-  public adminSeedPortfolio = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public adminSeedPortfolio = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       if (!this.portfolioRepo) {
         throw new Error('Portfolio repository not initialized');

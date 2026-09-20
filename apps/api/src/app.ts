@@ -35,6 +35,7 @@ import { InvoicesController } from './modules/payments/presentation/invoices.con
 import { createPaymentsRouter } from './modules/payments/presentation/payments.routes';
 import { NotificationsController } from './modules/notifications/presentation/notifications.controller';
 import { createNotificationsRouter } from './modules/notifications/presentation/notifications.routes';
+import { NotificationEventHub } from './modules/notifications/infrastructure/services/notification-event-hub';
 
 // ---- Sprint 8: CMS -----------------------------------------------------------------
 import { CmsController } from './modules/cms/presentation/cms.controller';
@@ -220,6 +221,10 @@ export function createApp(mountBusinessRoutes = true): Express {
       listDesignProjects: ctx.designProjects.listDesignProjects,
       getDesignProjectById: ctx.designProjects.getDesignProjectById,
       getFunnelMetrics: ctx.designProjects.getFunnelMetrics,
+      recordSiteInspection: ctx.designProjects.recordSiteInspection,
+      addSitePhoto: ctx.designProjects.addSitePhoto,
+      logSnagItem: ctx.designProjects.logSnagItem,
+      updateSnagStatus: ctx.designProjects.updateSnagStatus,
       portfolioRepository: ctx.designProjects.portfolioRepository,
     });
     app.use(
@@ -281,6 +286,7 @@ export function createApp(mountBusinessRoutes = true): Express {
       ctx.notifications.markAllAsReadUseCase,
       ctx.notifications.sendTestNotificationUseCase,
       ctx.notifications.getDeliveryStatsUseCase,
+      NotificationEventHub.getInstance(),
     );
     app.use(
       '/api/v1/notifications',

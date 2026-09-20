@@ -23,6 +23,8 @@ import {
   Building2,
   Calendar,
 } from 'lucide-react';
+import { SwatchOrderModal } from '../../components/swatches/swatch-order-modal';
+import { ConsultationSchedulerModal } from '../../components/consultation/consultation-scheduler-modal';
 
 interface EnrichedCollection extends Omit<Partial<ProductCollection>, 'heroImage'> {
   id: string;
@@ -40,6 +42,8 @@ export default function CollectionsPage() {
   const [activeRoom, setActiveRoom] = useState('all');
   const [activeStyle, setActiveStyle] = useState('All Styles');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSwatchModal, setShowSwatchModal] = useState(false);
+  const [showConsultationModal, setShowConsultationModal] = useState(false);
 
   const searchInputId = useId();
   const styleSelectId = useId();
@@ -68,8 +72,11 @@ export default function CollectionsPage() {
               materials: ['Solid Teak Wood', 'Century Marine Plywood', 'Belgian Fabric'],
               bundleDiscountPercent: 12,
               popularInSocieties: ['Prestige Lakeside Habitat', 'Sobha Dream Acres'],
-              heroImage: col.heroImage?.url || 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?q=80&w=1200&auto=format&fit=crop',
-              designerQuote: 'Curated architectural proportions and premium finishes built for modern Bengaluru living.',
+              heroImage:
+                col.heroImage?.url ||
+                'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?q=80&w=1200&auto=format&fit=crop',
+              designerQuote:
+                'Curated architectural proportions and premium finishes built for modern Bengaluru living.',
             };
 
             return {
@@ -87,26 +94,30 @@ export default function CollectionsPage() {
           setCollections(enriched);
         } else {
           // Resilient fallback to Bengaluru Curated Suite if API returns empty
-          const staticEnriched: EnrichedCollection[] = Object.values(CURATED_COLLECTIONS_DATA).map((enr) => ({
+          const staticEnriched: EnrichedCollection[] = Object.values(CURATED_COLLECTIONS_DATA).map(
+            (enr) => ({
+              id: enr.slug,
+              title: enr.title,
+              slug: enr.slug,
+              shortDescription: enr.designerQuote,
+              heroImage: { url: enr.heroImage, altText: enr.title },
+              enrichment: enr,
+            }),
+          );
+          setCollections(staticEnriched);
+        }
+      } catch (err) {
+        console.error('Failed to fetch collections, activating curated fallback:', err);
+        const staticEnriched: EnrichedCollection[] = Object.values(CURATED_COLLECTIONS_DATA).map(
+          (enr) => ({
             id: enr.slug,
             title: enr.title,
             slug: enr.slug,
             shortDescription: enr.designerQuote,
             heroImage: { url: enr.heroImage, altText: enr.title },
             enrichment: enr,
-          }));
-          setCollections(staticEnriched);
-        }
-      } catch (err) {
-        console.error('Failed to fetch collections, activating curated fallback:', err);
-        const staticEnriched: EnrichedCollection[] = Object.values(CURATED_COLLECTIONS_DATA).map((enr) => ({
-          id: enr.slug,
-          title: enr.title,
-          slug: enr.slug,
-          shortDescription: enr.designerQuote,
-          heroImage: { url: enr.heroImage, altText: enr.title },
-          enrichment: enr,
-        }));
+          }),
+        );
         setCollections(staticEnriched);
       } finally {
         setLoading(false);
@@ -143,49 +154,51 @@ export default function CollectionsPage() {
   return (
     <div className="min-h-screen bg-[#FAF9F6] text-neutral-900 selection:bg-[#8C7355] selection:text-white">
       {/* ── 1. ARCHITECTURAL LUXURY HERO HEADER ──────────────────────────── */}
-      <section className="relative overflow-hidden bg-[#171717] text-white pt-24 pb-20 md:pt-32 md:pb-28">
-        <div className="absolute inset-0 opacity-15 pointer-events-none bg-[radial-gradient(#8C7355_1px,transparent_1px)] [background-size:24px_24px]"></div>
-        <div className="container mx-auto px-4 md:px-8 relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 text-[#D4AF37] text-xs font-semibold tracking-widest uppercase mb-6 backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
+      <section className="relative overflow-hidden bg-[#171717] pb-20 pt-24 text-white md:pb-28 md:pt-32">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#8C7355_1px,transparent_1px)] opacity-15 [background-size:24px_24px]"></div>
+        <div className="container relative z-10 mx-auto px-4 md:px-8">
+          <div className="mx-auto max-w-4xl text-center">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-widest text-[#D4AF37] backdrop-blur-md">
+              <Sparkles className="h-3.5 w-3.5 text-[#D4AF37]" />
               Bengaluru Architectural Suites · 2026 Collection
             </div>
-            <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-light tracking-tight leading-[1.1] mb-6 text-white">
+            <h1 className="mb-6 font-serif text-4xl font-light leading-[1.1] tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl">
               Curated Living Collections
             </h1>
-            <p className="text-neutral-300 text-base md:text-xl font-light max-w-2xl mx-auto leading-relaxed mb-10">
-              Harmonized furniture suites designed by our Bengaluru interior architects. Handcrafted in solid Burma teak, seasoned sheesham, and European linen — sized for modern Indian layouts.
+            <p className="mx-auto mb-10 max-w-2xl text-base font-light leading-relaxed text-neutral-300 md:text-xl">
+              Harmonized furniture suites designed by our Bengaluru interior architects. Handcrafted
+              in solid Burma teak, seasoned sheesham, and European linen — sized for modern Indian
+              layouts.
             </p>
 
             {/* Quick Trust Highlights Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto pt-6 border-t border-white/10 text-left">
+            <div className="mx-auto grid max-w-4xl grid-cols-2 gap-4 border-t border-white/10 pt-6 text-left sm:grid-cols-4">
               <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-[#D4AF37] shrink-0" />
+                <Clock className="h-5 w-5 shrink-0 text-[#D4AF37]" />
                 <div>
-                  <p className="text-xs text-neutral-400 font-medium">45-Day Delivery</p>
-                  <p className="text-xs text-white font-semibold">With SLA Guarantee</p>
+                  <p className="text-xs font-medium text-neutral-400">45-Day Delivery</p>
+                  <p className="text-xs font-semibold text-white">With SLA Guarantee</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <ShieldCheck className="w-5 h-5 text-[#D4AF37] shrink-0" />
+                <ShieldCheck className="h-5 w-5 shrink-0 text-[#D4AF37]" />
                 <div>
-                  <p className="text-xs text-neutral-400 font-medium">10-Year Warranty</p>
-                  <p className="text-xs text-white font-semibold">BWP Marine Grade</p>
+                  <p className="text-xs font-medium text-neutral-400">10-Year Warranty</p>
+                  <p className="text-xs font-semibold text-white">BWP Marine Grade</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Layers className="w-5 h-5 text-[#D4AF37] shrink-0" />
+                <Layers className="h-5 w-5 shrink-0 text-[#D4AF37]" />
                 <div>
-                  <p className="text-xs text-neutral-400 font-medium">100% Solid Wood</p>
-                  <p className="text-xs text-white font-semibold">Seasoned Teakwood</p>
+                  <p className="text-xs font-medium text-neutral-400">100% Solid Wood</p>
+                  <p className="text-xs font-semibold text-white">Seasoned Teakwood</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Truck className="w-5 h-5 text-[#D4AF37] shrink-0" />
+                <Truck className="h-5 w-5 shrink-0 text-[#D4AF37]" />
                 <div>
-                  <p className="text-xs text-neutral-400 font-medium">Bengaluru Setup</p>
-                  <p className="text-xs text-white font-semibold">Free White-Glove</p>
+                  <p className="text-xs font-medium text-neutral-400">Bengaluru Setup</p>
+                  <p className="text-xs font-semibold text-white">Free White-Glove</p>
                 </div>
               </div>
             </div>
@@ -194,16 +207,16 @@ export default function CollectionsPage() {
       </section>
 
       {/* ── 2. INTERACTIVE FILTER & SEARCH TOOLBAR ──────────────────────── */}
-      <section className="sticky top-16 z-30 bg-white/95 backdrop-blur-md border-b border-neutral-200 shadow-sm transition-all">
-        <div className="container mx-auto px-4 md:px-8 py-4">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <section className="sticky top-16 z-30 border-b border-neutral-200 bg-white/95 shadow-sm backdrop-blur-md transition-all">
+        <div className="container mx-auto px-4 py-4 md:px-8">
+          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
             {/* Room Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-2 lg:pb-0 scrollbar-none">
+            <div className="scrollbar-none flex items-center gap-1.5 overflow-x-auto pb-2 lg:pb-0">
               {ROOM_CATEGORIES.map((room) => (
                 <button
                   key={room.id}
                   onClick={() => setActiveRoom(room.id)}
-                  className={`px-4 py-2 rounded-full text-xs md:text-sm font-medium whitespace-nowrap transition-all duration-200 ${
+                  className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-medium transition-all duration-200 md:text-sm ${
                     activeRoom === room.id
                       ? 'bg-[#171717] text-white shadow-sm'
                       : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900'
@@ -218,26 +231,30 @@ export default function CollectionsPage() {
             <div className="flex items-center gap-3">
               {/* Search Bar */}
               <div className="relative flex-1 sm:w-64">
-                <label htmlFor={searchInputId} className="sr-only">Search collections</label>
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+                <label htmlFor={searchInputId} className="sr-only">
+                  Search collections
+                </label>
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
                 <input
                   id={searchInputId}
                   type="text"
                   placeholder="Search collections or materials..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-xs md:text-sm focus:outline-none focus:border-[#8C7355] focus:ring-1 focus:ring-[#8C7355] text-neutral-900"
+                  className="w-full rounded-lg border border-neutral-200 bg-neutral-50 py-1.5 pl-9 pr-3 text-xs text-neutral-900 focus:border-[#8C7355] focus:outline-none focus:ring-1 focus:ring-[#8C7355] md:text-sm"
                 />
               </div>
 
               {/* Style Dropdown */}
               <div className="relative">
-                <label htmlFor={styleSelectId} className="sr-only">Filter by aesthetic style</label>
+                <label htmlFor={styleSelectId} className="sr-only">
+                  Filter by aesthetic style
+                </label>
                 <select
                   id={styleSelectId}
                   value={activeStyle}
                   onChange={(e) => setActiveStyle(e.target.value)}
-                  className="appearance-none pl-3 pr-8 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-xs md:text-sm font-medium text-neutral-800 focus:outline-none focus:border-[#8C7355] cursor-pointer"
+                  className="cursor-pointer appearance-none rounded-lg border border-neutral-200 bg-neutral-50 py-1.5 pl-3 pr-8 text-xs font-medium text-neutral-800 focus:border-[#8C7355] focus:outline-none md:text-sm"
                 >
                   {AESTHETIC_STYLES.map((style) => (
                     <option key={style} value={style}>
@@ -245,7 +262,7 @@ export default function CollectionsPage() {
                     </option>
                   ))}
                 </select>
-                <SlidersHorizontal className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
+                <SlidersHorizontal className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-500" />
               </div>
             </div>
           </div>
@@ -253,16 +270,27 @@ export default function CollectionsPage() {
       </section>
 
       {/* ── 3. CURATED COLLECTIONS GRID ─────────────────────────────────── */}
-      <section className="container mx-auto px-4 md:px-8 py-14">
+      <section className="container mx-auto px-4 py-14 md:px-8">
         {/* Results Counter & Filter Feedback */}
-        <div className="flex items-center justify-between mb-8 pb-3 border-b border-neutral-200">
-          <p className="text-xs md:text-sm text-neutral-500 font-medium">
-            Showing <span className="font-semibold text-neutral-900">{filteredCollections.length}</span> curated design suites
+        <div className="mb-8 flex items-center justify-between border-b border-neutral-200 pb-3">
+          <p className="text-xs font-medium text-neutral-500 md:text-sm">
+            Showing{' '}
+            <span className="font-semibold text-neutral-900">{filteredCollections.length}</span>{' '}
+            curated design suites
             {activeRoom !== 'all' && (
-              <span> in <strong className="text-neutral-900">{ROOM_CATEGORIES.find((r) => r.id === activeRoom)?.label}</strong></span>
+              <span>
+                {' '}
+                in{' '}
+                <strong className="text-neutral-900">
+                  {ROOM_CATEGORIES.find((r) => r.id === activeRoom)?.label}
+                </strong>
+              </span>
             )}
             {activeStyle !== 'All Styles' && (
-              <span> · <strong className="text-neutral-900">{activeStyle}</strong></span>
+              <span>
+                {' '}
+                · <strong className="text-neutral-900">{activeStyle}</strong>
+              </span>
             )}
           </p>
           {(activeRoom !== 'all' || activeStyle !== 'All Styles' || searchQuery) && (
@@ -272,7 +300,7 @@ export default function CollectionsPage() {
                 setActiveStyle('All Styles');
                 setSearchQuery('');
               }}
-              className="text-xs text-[#8C7355] hover:text-[#705c43] font-semibold underline underline-offset-4"
+              className="text-xs font-semibold text-[#8C7355] underline underline-offset-4 hover:text-[#705c43]"
             >
               Reset Filters
             </button>
@@ -281,26 +309,32 @@ export default function CollectionsPage() {
 
         {/* Loading State Skeletons */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="animate-pulse bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm">
-                <div className="aspect-[16/10] bg-neutral-200 w-full"></div>
-                <div className="p-6 space-y-4">
-                  <div className="h-4 bg-neutral-200 w-1/3 rounded"></div>
-                  <div className="h-6 bg-neutral-200 w-3/4 rounded"></div>
-                  <div className="h-3 bg-neutral-200 w-full rounded"></div>
-                  <div className="h-10 bg-neutral-200 w-full rounded-lg mt-4"></div>
+              <div
+                key={i}
+                className="animate-pulse overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm"
+              >
+                <div className="aspect-[16/10] w-full bg-neutral-200"></div>
+                <div className="space-y-4 p-6">
+                  <div className="h-4 w-1/3 rounded bg-neutral-200"></div>
+                  <div className="h-6 w-3/4 rounded bg-neutral-200"></div>
+                  <div className="h-3 w-full rounded bg-neutral-200"></div>
+                  <div className="mt-4 h-10 w-full rounded-lg bg-neutral-200"></div>
                 </div>
               </div>
             ))}
           </div>
         ) : filteredCollections.length === 0 ? (
           /* Empty State */
-          <div className="text-center py-24 bg-white border border-dashed border-neutral-300 rounded-2xl p-8 max-w-xl mx-auto">
-            <Compass className="w-12 h-12 mx-auto text-neutral-400 mb-4" />
-            <h3 className="font-serif text-2xl font-light text-neutral-900 mb-2">No matching collections found</h3>
-            <p className="text-neutral-500 text-sm mb-6">
-              We couldn’t find any suites matching your filter criteria. Try resetting your search or room filter.
+          <div className="mx-auto max-w-xl rounded-2xl border border-dashed border-neutral-300 bg-white p-8 py-24 text-center">
+            <Compass className="mx-auto mb-4 h-12 w-12 text-neutral-400" />
+            <h3 className="mb-2 font-serif text-2xl font-light text-neutral-900">
+              No matching collections found
+            </h3>
+            <p className="mb-6 text-sm text-neutral-500">
+              We couldn’t find any suites matching your filter criteria. Try resetting your search
+              or room filter.
             </p>
             <button
               onClick={() => {
@@ -308,14 +342,14 @@ export default function CollectionsPage() {
                 setActiveStyle('All Styles');
                 setSearchQuery('');
               }}
-              className="px-6 py-2.5 bg-[#171717] text-white text-sm font-medium rounded-lg hover:bg-neutral-800 transition-colors"
+              className="rounded-lg bg-[#171717] px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
             >
               View All Collections
             </button>
           </div>
         ) : (
           /* Rich High-Density Collection Cards */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
             {filteredCollections.map((col, index) => {
               const enr = col.enrichment;
               const imgUrl = col.heroImage?.url || enr.heroImage;
@@ -323,10 +357,13 @@ export default function CollectionsPage() {
               return (
                 <div
                   key={col.id}
-                  className="group bg-white border border-neutral-200/90 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:border-[#8C7355]/40 transition-all duration-300 flex flex-col"
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-sm transition-all duration-300 hover:border-[#8C7355]/40 hover:shadow-xl"
                 >
                   {/* Card Visual Header */}
-                  <Link href={`/collections/${col.slug}`} className="relative block aspect-[16/10] overflow-hidden bg-neutral-900">
+                  <Link
+                    href={`/collections/${col.slug}`}
+                    className="relative block aspect-[16/10] overflow-hidden bg-neutral-900"
+                  >
                     <Image
                       src={imgUrl}
                       alt={col.title}
@@ -338,42 +375,42 @@ export default function CollectionsPage() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
 
                     {/* Top Floating Badges */}
-                    <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between gap-2">
-                      <span className="px-2.5 py-1 rounded-full bg-white/95 text-neutral-900 text-[11px] font-semibold tracking-wide shadow-sm backdrop-blur-md">
+                    <div className="absolute left-3.5 right-3.5 top-3.5 flex items-center justify-between gap-2">
+                      <span className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-neutral-900 shadow-sm backdrop-blur-md">
                         {enr.curatedBadge}
                       </span>
-                      <span className="px-2.5 py-1 rounded-full bg-black/70 border border-white/20 text-[#D4AF37] text-[11px] font-semibold backdrop-blur-md">
+                      <span className="rounded-full border border-white/20 bg-black/70 px-2.5 py-1 text-[11px] font-semibold text-[#D4AF37] backdrop-blur-md">
                         {enr.pieceCount} Coordinated Pieces
                       </span>
                     </div>
 
                     {/* Bottom Image Overlay Details */}
                     <div className="absolute bottom-3 left-3.5 right-3.5 text-white">
-                      <div className="flex items-center gap-2 text-[11px] font-medium text-neutral-300 mb-1">
+                      <div className="mb-1 flex items-center gap-2 text-[11px] font-medium text-neutral-300">
                         <span>{enr.roomLabel}</span>
                         <span>•</span>
                         <span>{enr.style}</span>
                       </div>
-                      <h2 className="font-serif text-xl sm:text-2xl font-light leading-tight text-white group-hover:text-[#D4AF37] transition-colors">
+                      <h2 className="font-serif text-xl font-light leading-tight text-white transition-colors group-hover:text-[#D4AF37] sm:text-2xl">
                         {col.title}
                       </h2>
                     </div>
                   </Link>
 
                   {/* Card Body Information */}
-                  <div className="p-5 flex-1 flex flex-col justify-between">
+                  <div className="flex flex-1 flex-col justify-between p-5">
                     <div>
                       {/* Short Description / Designer Philosophy */}
-                      <p className="text-neutral-600 text-xs sm:text-sm line-clamp-2 leading-relaxed mb-4">
+                      <p className="mb-4 line-clamp-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
                         {col.shortDescription || enr.designerQuote}
                       </p>
 
                       {/* Material Tags */}
-                      <div className="flex flex-wrap gap-1.5 mb-4">
+                      <div className="mb-4 flex flex-wrap gap-1.5">
                         {enr.materials.map((mat, i) => (
                           <span
                             key={i}
-                            className="px-2 py-0.5 rounded bg-neutral-100 text-neutral-600 text-[10px] font-medium"
+                            className="rounded bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-600"
                           >
                             {mat}
                           </span>
@@ -381,31 +418,36 @@ export default function CollectionsPage() {
                       </div>
 
                       {/* Popular In Bangalore Communities */}
-                      <div className="flex items-center gap-1.5 text-[11px] text-neutral-500 mb-4 bg-amber-50/70 border border-amber-100/60 p-2 rounded-lg">
-                        <Building2 className="w-3.5 h-3.5 text-[#8C7355] shrink-0" />
+                      <div className="mb-4 flex items-center gap-1.5 rounded-lg border border-amber-100/60 bg-amber-50/70 p-2 text-[11px] text-neutral-500">
+                        <Building2 className="h-3.5 w-3.5 shrink-0 text-[#8C7355]" />
                         <span className="truncate">
-                          Favored in: <strong className="text-neutral-800">{enr.popularInSocieties.join(', ')}</strong>
+                          Favored in:{' '}
+                          <strong className="text-neutral-800">
+                            {enr.popularInSocieties.join(', ')}
+                          </strong>
                         </span>
                       </div>
                     </div>
 
                     {/* Pricing, Discount & Action Footer */}
-                    <div className="pt-4 border-t border-neutral-100 mt-2">
-                      <div className="flex items-center justify-between mb-3">
+                    <div className="mt-2 border-t border-neutral-100 pt-4">
+                      <div className="mb-3 flex items-center justify-between">
                         <div>
-                          <p className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
                             Full Suite Package
                           </p>
-                          <p className="font-serif text-lg font-semibold text-neutral-900 flex items-center">
+                          <p className="flex items-center font-serif text-lg font-semibold text-neutral-900">
                             <span>₹{enr.startingPrice.toLocaleString('en-IN')}</span>
-                            <span className="text-[11px] font-normal text-neutral-500 ml-1.5">onwards</span>
+                            <span className="ml-1.5 text-[11px] font-normal text-neutral-500">
+                              onwards
+                            </span>
                           </p>
                         </div>
                         <div className="text-right">
-                          <span className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[11px] font-semibold rounded border border-emerald-200">
+                          <span className="inline-block rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
                             Save {enr.bundleDiscountPercent}% Bundle
                           </span>
-                          <p className="text-[11px] text-neutral-500 mt-0.5">
+                          <p className="mt-0.5 text-[11px] text-neutral-500">
                             EMI from ₹{enr.emiMonthly.toLocaleString('en-IN')}/mo
                           </p>
                         </div>
@@ -415,14 +457,14 @@ export default function CollectionsPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <Link
                           href={`/collections/${col.slug}`}
-                          className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg bg-[#171717] hover:bg-[#8C7355] text-white text-xs font-semibold tracking-wide transition-all shadow-sm group-hover:shadow"
+                          className="flex items-center justify-center gap-1.5 rounded-lg bg-[#171717] px-3 py-2.5 text-xs font-semibold tracking-wide text-white shadow-sm transition-all hover:bg-[#8C7355] group-hover:shadow"
                         >
                           <span>Explore Suite</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
+                          <ArrowRight className="h-3.5 w-3.5" />
                         </Link>
                         <Link
                           href="/design-services#lead-form"
-                          className="flex items-center justify-center py-2.5 px-3 rounded-lg border border-neutral-300 hover:border-neutral-900 text-neutral-800 text-xs font-medium transition-colors"
+                          className="flex items-center justify-center rounded-lg border border-neutral-300 px-3 py-2.5 text-xs font-medium text-neutral-800 transition-colors hover:border-neutral-900"
                         >
                           Book Styling
                         </Link>
@@ -437,23 +479,25 @@ export default function CollectionsPage() {
       </section>
 
       {/* ── 4. "SHOP THE LOOK" SPOTLIGHT SHOWCASE ────────────────────────── */}
-      <section className="bg-white py-20 border-y border-neutral-200">
+      <section className="border-y border-neutral-200 bg-white py-20">
         <div className="container mx-auto px-4 md:px-8">
-          <div className="max-w-3xl mb-12">
-            <span className="text-[#8C7355] text-xs font-semibold uppercase tracking-widest">
+          <div className="mb-12 max-w-3xl">
+            <span className="text-xs font-semibold uppercase tracking-widest text-[#8C7355]">
               Bengaluru Apartment Inspiration
             </span>
-            <h2 className="font-serif text-3xl md:text-4xl font-light text-neutral-900 mt-2 mb-4">
+            <h2 className="mb-4 mt-2 font-serif text-3xl font-light text-neutral-900 md:text-4xl">
               Shop The Look: The Indiranagar Penthouse Suite
             </h2>
-            <p className="text-neutral-600 text-sm md:text-base leading-relaxed">
-              Experience how our Mid-Century and Scandinavian pieces integrate seamlessly into double-height living spaces. Every piece is precision-crafted at our 40,000 sq.ft Bengaluru manufacturing facility.
+            <p className="text-sm leading-relaxed text-neutral-600 md:text-base">
+              Experience how our Mid-Century and Scandinavian pieces integrate seamlessly into
+              double-height living spaces. Every piece is precision-crafted at our 40,000 sq.ft
+              Bengaluru manufacturing facility.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12">
             {/* Visual Ambiance */}
-            <div className="lg:col-span-7 relative aspect-[16/10] rounded-2xl overflow-hidden shadow-lg border border-neutral-200">
+            <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-neutral-200 shadow-lg lg:col-span-7">
               <Image
                 src="https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?q=80&w=1200&auto=format&fit=crop"
                 alt="Penthouse Living Room Suite"
@@ -461,20 +505,20 @@ export default function CollectionsPage() {
                 sizes="(max-width: 1024px) 100vw, 60vw"
                 className="object-cover"
               />
-              <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-md text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-xs text-white backdrop-blur-md">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400"></span>
                 Installed at Kingfisher Towers
               </div>
             </div>
 
             {/* Curated Pieces in this Setup */}
-            <div className="lg:col-span-5 space-y-4">
-              <h3 className="font-serif text-xl font-medium text-neutral-900 mb-2">
+            <div className="space-y-4 lg:col-span-5">
+              <h3 className="mb-2 font-serif text-xl font-medium text-neutral-900">
                 Featured in this Room Setup
               </h3>
 
-              <div className="p-3.5 rounded-xl border border-neutral-200 bg-[#FAF9F6] flex items-center gap-4">
-                <div className="w-14 h-14 rounded-lg bg-neutral-200 relative overflow-hidden shrink-0">
+              <div className="flex items-center gap-4 rounded-xl border border-neutral-200 bg-[#FAF9F6] p-3.5">
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-neutral-200">
                   <Image
                     src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?q=80&w=200&auto=format&fit=crop"
                     alt="Solid Teak Sofa"
@@ -482,21 +526,23 @@ export default function CollectionsPage() {
                     className="object-cover"
                   />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-neutral-900 truncate">Venezia 3-Seater Teak Sofa</h4>
+                <div className="min-w-0 flex-1">
+                  <h4 className="truncate text-sm font-semibold text-neutral-900">
+                    Venezia 3-Seater Teak Sofa
+                  </h4>
                   <p className="text-xs text-neutral-500">Solid Teakwood · Belgian Bouclé</p>
-                  <p className="text-xs font-semibold text-neutral-900 mt-0.5">₹48,500</p>
+                  <p className="mt-0.5 text-xs font-semibold text-neutral-900">₹48,500</p>
                 </div>
                 <Link
                   href="/products"
-                  className="text-xs text-[#8C7355] font-semibold hover:underline shrink-0"
+                  className="shrink-0 text-xs font-semibold text-[#8C7355] hover:underline"
                 >
                   View Piece
                 </Link>
               </div>
 
-              <div className="p-3.5 rounded-xl border border-neutral-200 bg-[#FAF9F6] flex items-center gap-4">
-                <div className="w-14 h-14 rounded-lg bg-neutral-200 relative overflow-hidden shrink-0">
+              <div className="flex items-center gap-4 rounded-xl border border-neutral-200 bg-[#FAF9F6] p-3.5">
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-neutral-200">
                   <Image
                     src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?q=80&w=200&auto=format&fit=crop"
                     alt="Marble Top Coffee Table"
@@ -504,21 +550,23 @@ export default function CollectionsPage() {
                     className="object-cover"
                   />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-neutral-900 truncate">Aura Marble Fluted Coffee Table</h4>
+                <div className="min-w-0 flex-1">
+                  <h4 className="truncate text-sm font-semibold text-neutral-900">
+                    Aura Marble Fluted Coffee Table
+                  </h4>
                   <p className="text-xs text-neutral-500">Italian Marble · Brass Accent</p>
-                  <p className="text-xs font-semibold text-neutral-900 mt-0.5">₹24,900</p>
+                  <p className="mt-0.5 text-xs font-semibold text-neutral-900">₹24,900</p>
                 </div>
                 <Link
                   href="/products"
-                  className="text-xs text-[#8C7355] font-semibold hover:underline shrink-0"
+                  className="shrink-0 text-xs font-semibold text-[#8C7355] hover:underline"
                 >
                   View Piece
                 </Link>
               </div>
 
-              <div className="p-3.5 rounded-xl border border-neutral-200 bg-[#FAF9F6] flex items-center gap-4">
-                <div className="w-14 h-14 rounded-lg bg-neutral-200 relative overflow-hidden shrink-0">
+              <div className="flex items-center gap-4 rounded-xl border border-neutral-200 bg-[#FAF9F6] p-3.5">
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-neutral-200">
                   <Image
                     src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?q=80&w=200&auto=format&fit=crop"
                     alt="Media Console"
@@ -526,14 +574,16 @@ export default function CollectionsPage() {
                     className="object-cover"
                   />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-neutral-900 truncate">Koben Teak Media Credenza</h4>
+                <div className="min-w-0 flex-1">
+                  <h4 className="truncate text-sm font-semibold text-neutral-900">
+                    Koben Teak Media Credenza
+                  </h4>
                   <p className="text-xs text-neutral-500">Century 710 Plywood · Fluted Slats</p>
-                  <p className="text-xs font-semibold text-neutral-900 mt-0.5">₹34,000</p>
+                  <p className="mt-0.5 text-xs font-semibold text-neutral-900">₹34,000</p>
                 </div>
                 <Link
                   href="/products"
-                  className="text-xs text-[#8C7355] font-semibold hover:underline shrink-0"
+                  className="shrink-0 text-xs font-semibold text-[#8C7355] hover:underline"
                 >
                   View Piece
                 </Link>
@@ -542,10 +592,10 @@ export default function CollectionsPage() {
               <div className="pt-2">
                 <Link
                   href="/collections/mid-century-modern-living"
-                  className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#171717] hover:bg-[#8C7355] text-white text-xs md:text-sm font-semibold transition-colors"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#171717] px-4 py-3 text-xs font-semibold text-white transition-colors hover:bg-[#8C7355] md:text-sm"
                 >
                   <span>Shop Entire Penthouse Suite (Save ₹12,800)</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
             </div>
@@ -554,83 +604,122 @@ export default function CollectionsPage() {
       </section>
 
       {/* ── 5. CUSTOMER PERKS & BESPOKE TAILORING ────────────────────────── */}
-      <section className="container mx-auto px-4 md:px-8 py-20">
-        <div className="text-center max-w-2xl mx-auto mb-14">
-          <span className="text-[#8C7355] text-xs font-semibold uppercase tracking-widest">
+      <section className="container mx-auto px-4 py-20 md:px-8">
+        <div className="mx-auto mb-14 max-w-2xl text-center">
+          <span className="text-xs font-semibold uppercase tracking-widest text-[#8C7355]">
             White-Glove Customer Experience
           </span>
-          <h2 className="font-serif text-3xl md:text-4xl font-light text-neutral-900 mt-2 mb-4">
+          <h2 className="mb-4 mt-2 font-serif text-3xl font-light text-neutral-900 md:text-4xl">
             Why Furnish With National Interiors
           </h2>
-          <p className="text-neutral-600 text-sm md:text-base">
-            Every collection piece is precision-tailored to your exact home floor plan with our Bengaluru architectural guarantees.
+          <p className="text-sm text-neutral-600 md:text-base">
+            Every collection piece is precision-tailored to your exact home floor plan with our
+            Bengaluru architectural guarantees.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="p-6 rounded-2xl bg-white border border-neutral-200 shadow-sm hover:border-[#8C7355]/50 transition-all">
-            <div className="w-12 h-12 rounded-xl bg-[#FAF9F6] border border-neutral-200 flex items-center justify-center text-[#8C7355] mb-5">
-              <SlidersHorizontal className="w-6 h-6" />
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+          <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm transition-all hover:border-[#8C7355]/50">
+            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-neutral-200 bg-[#FAF9F6] text-[#8C7355]">
+              <SlidersHorizontal className="h-6 w-6" />
             </div>
-            <h3 className="font-serif text-lg font-medium text-neutral-900 mb-2">
+            <h3 className="mb-2 font-serif text-lg font-medium text-neutral-900">
               Custom Dimensions & Finishes
             </h3>
-            <p className="text-neutral-600 text-xs sm:text-sm leading-relaxed">
-              Love a collection but need a sofa 6 inches wider or a dining table in smoked oak instead of teak? Our 40,000 sq.ft factory customizes any piece to your dimensions.
+            <p className="text-xs leading-relaxed text-neutral-600 sm:text-sm">
+              Love a collection but need a sofa 6 inches wider or a dining table in smoked oak
+              instead of teak? Our 40,000 sq.ft factory customizes any piece to your dimensions.
             </p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-white border border-neutral-200 shadow-sm hover:border-[#8C7355]/50 transition-all">
-            <div className="w-12 h-12 rounded-xl bg-[#FAF9F6] border border-neutral-200 flex items-center justify-center text-[#8C7355] mb-5">
-              <Layers className="w-6 h-6" />
+          <div className="flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm transition-all hover:border-[#8C7355]/50">
+            <div>
+              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-neutral-200 bg-[#FAF9F6] text-[#8C7355]">
+                <Layers className="h-6 w-6" />
+              </div>
+              <div className="mb-2 flex items-center gap-2">
+                <h3 className="font-serif text-lg font-medium text-neutral-900">
+                  Doorstep Material Swatch Kits
+                </h3>
+                <span className="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                  ₹499 Refundable
+                </span>
+              </div>
+              <p className="mb-5 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+                Touch real solid Burma teak, walnut samples, and stain-resistant fabric swatches
+                under your home’s actual lighting before finalizing your order.
+              </p>
             </div>
-            <h3 className="font-serif text-lg font-medium text-neutral-900 mb-2">
-              Doorstep Material Swatch Kits
-            </h3>
-            <p className="text-neutral-600 text-xs sm:text-sm leading-relaxed">
-              Touch real solid Burma teak, walnut samples, and stain-resistant fabric swatches under your home’s actual lighting before finalizing your order.
-            </p>
+            <button
+              type="button"
+              onClick={() => setShowSwatchModal(true)}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#171717] px-4 py-2.5 text-xs font-semibold text-white shadow transition-colors hover:bg-neutral-800"
+            >
+              <span>Order Swatch Box (Bengaluru 48h)</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
           </div>
 
-          <div className="p-6 rounded-2xl bg-white border border-neutral-200 shadow-sm hover:border-[#8C7355]/50 transition-all">
-            <div className="w-12 h-12 rounded-xl bg-[#FAF9F6] border border-neutral-200 flex items-center justify-center text-[#8C7355] mb-5">
-              <Calendar className="w-6 h-6" />
+          <div className="flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm transition-all hover:border-[#8C7355]/50">
+            <div>
+              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-neutral-200 bg-[#FAF9F6] text-[#8C7355]">
+                <Calendar className="h-6 w-6" />
+              </div>
+              <h3 className="mb-2 font-serif text-lg font-medium text-neutral-900">
+                Experience Studios in Bengaluru
+              </h3>
+              <p className="mb-5 text-xs leading-relaxed text-neutral-600 sm:text-sm">
+                Visit our experiential flagship studios in Indiranagar, Whitefield, and HSR Layout.
+                Test seating ergonomics and consult with our principal designers.
+              </p>
             </div>
-            <h3 className="font-serif text-lg font-medium text-neutral-900 mb-2">
-              Experience Studios in Bengaluru
-            </h3>
-            <p className="text-neutral-600 text-xs sm:text-sm leading-relaxed">
-              Visit our experiential flagship studios in Indiranagar, Whitefield, and HSR Layout. Test seating ergonomics and consult with our principal designers.
-            </p>
+            <button
+              type="button"
+              onClick={() => setShowConsultationModal(true)}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-xs font-semibold text-neutral-800 transition-colors hover:bg-neutral-50"
+            >
+              <span>Book Studio Visit</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
       </section>
 
       {/* ── 6. LEAD GENERATION & ARCHITECTURAL CONSULTATION CTA ───────────── */}
-      <section className="bg-[#171717] text-white py-16">
+      <section className="bg-[#171717] py-16 text-white">
         <div className="container mx-auto px-4 md:px-8">
-          <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 bg-neutral-900 border border-neutral-800 p-8 md:p-12 rounded-2xl">
+          <div className="mx-auto flex max-w-4xl flex-col items-center justify-between gap-8 rounded-2xl border border-neutral-800 bg-neutral-900 p-8 md:flex-row md:p-12">
             <div>
-              <span className="text-[#D4AF37] text-xs font-semibold uppercase tracking-widest">
+              <span className="text-xs font-semibold uppercase tracking-widest text-[#D4AF37]">
                 Full Home Furnishing & Turnkey Interiors
               </span>
-              <h3 className="font-serif text-2xl md:text-3xl font-light text-white mt-2 mb-3">
+              <h3 className="mb-3 mt-2 font-serif text-2xl font-light text-white md:text-3xl">
                 Need a Whole-Home Furniture Package?
               </h3>
-              <p className="text-neutral-400 text-sm max-w-xl leading-relaxed">
-                Save up to 18% when furnishing an entire 2BHK, 3BHK, or luxury villa in Bengaluru. Includes free 3D spatial layout and white-glove setup.
+              <p className="max-w-xl text-sm leading-relaxed text-neutral-400">
+                Save up to 18% when furnishing an entire 2BHK, 3BHK, or luxury villa in Bengaluru.
+                Includes free 3D spatial layout and white-glove setup.
               </p>
             </div>
             <Link
               href="/design-services#cost-estimator"
-              className="whitespace-nowrap px-6 py-3.5 bg-[#8C7355] hover:bg-[#705c43] text-white text-xs md:text-sm font-semibold rounded-xl shadow-md transition-all flex items-center gap-2 shrink-0"
+              className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl bg-[#8C7355] px-6 py-3.5 text-xs font-semibold text-white shadow-md transition-all hover:bg-[#705c43] md:text-sm"
             >
               <span>Calculate Room Budget</span>
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
       </section>
+
+      {/* ── 7. SWATCH BOX ORDER MODAL & CONSULTATION MODAL ────────────────── */}
+      <SwatchOrderModal isOpen={showSwatchModal} onClose={() => setShowSwatchModal(false)} />
+
+      <ConsultationSchedulerModal
+        isOpen={showConsultationModal}
+        onClose={() => setShowConsultationModal(false)}
+        defaultMode="STUDIO_VISIT"
+      />
     </div>
   );
 }

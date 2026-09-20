@@ -1,5 +1,10 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { Customer, LeadActivity, LeadStatusTransition, SalesRepresentative } from '../domain/crm.types';
+import {
+  Customer,
+  LeadActivity,
+  LeadStatusTransition,
+  SalesRepresentative,
+} from '../domain/crm.types';
 
 // ---------------- Customer Schema ----------------
 
@@ -14,14 +19,50 @@ const customerSchema = new Schema<ICustomerDocument>({
   email: { type: String, required: true },
   phone: { type: String, required: true },
   tags: { type: [String], default: [] },
-  clientTier: { 
-    type: String, 
-    enum: ['VIP_PLATINUM', 'HIGH_NET_WORTH', 'COMMERCIAL', 'RETAIL', 'PROSPECT'], 
-    default: 'PROSPECT' 
+  clientTier: {
+    type: String,
+    enum: ['VIP_PLATINUM', 'HIGH_NET_WORTH', 'COMMERCIAL', 'RETAIL', 'PROSPECT'],
+    default: 'PROSPECT',
   },
-  preferredStudio: { 
-    type: String, 
-    enum: ['INDIRANAGAR', 'WHITEFIELD', 'HSR_LAYOUT', 'VIRTUAL'] 
+  preferredStudio: {
+    type: String,
+    enum: ['INDIRANAGAR', 'WHITEFIELD', 'HSR_LAYOUT', 'VIRTUAL'],
+  },
+  consultationBooking: {
+    consultationType: {
+      type: String,
+      enum: ['STUDIO_VISIT', 'ON_SITE_SURVEY', 'VIRTUAL_VIDEO_CALL'],
+    },
+    studioLocation: {
+      type: String,
+      enum: ['INDIRANAGAR', 'WHITEFIELD', 'HSR_LAYOUT', 'VIKAS_MARG', 'ON_SITE', 'VIRTUAL'],
+    },
+    scheduledDate: { type: String },
+    timeSlot: { type: String },
+    propertyType: { type: String },
+    meetingNotes: { type: String },
+    calendarInviteSent: { type: Boolean, default: false },
+  },
+  swatchKitOrder: {
+    kitType: {
+      type: String,
+      enum: ['HARDWOOD_VENEERS', 'FABRICS_LEATHER', 'MODULAR_KITCHEN', 'COMPLETE_MASTER_BOX'],
+    },
+    deliveryAddress: {
+      line1: { type: String },
+      line2: { type: String },
+      city: { type: String },
+      state: { type: String },
+      pincode: { type: String },
+    },
+    depositAmount: { type: Number, default: 49900 },
+    isDepositRefundable: { type: Boolean, default: true },
+    dispatchStatus: {
+      type: String,
+      enum: ['ORDERED', 'PACKED', 'DISPATCHED', 'DELIVERED'],
+      default: 'ORDERED',
+    },
+    courierTrackingNumber: { type: String },
   },
   propertyDetails: {
     community: { type: String },
@@ -30,9 +71,9 @@ const customerSchema = new Schema<ICustomerDocument>({
     possessionDate: { type: String },
   },
   estimatedDealValue: { type: Number, default: 0 },
-  currentPipelineStage: { 
-    type: String, 
-    default: 'NEW_INQUIRY' 
+  currentPipelineStage: {
+    type: String,
+    default: 'NEW_INQUIRY',
   },
   assignedRepId: { type: String },
   assignedRepName: { type: String },
@@ -50,17 +91,24 @@ const customerSchema = new Schema<ICustomerDocument>({
   updatedBy: { type: String },
   isDeleted: { type: Boolean, default: false },
   deletedAt: { type: Date },
-  version: { type: Number, default: 0 }
+  version: { type: Number, default: 0 },
 });
 
-customerSchema.index({ customerCode: 1 }, { unique: true, partialFilterExpression: { isDeleted: false } });
+customerSchema.index(
+  { customerCode: 1 },
+  { unique: true, partialFilterExpression: { isDeleted: false } },
+);
 customerSchema.index({ userId: 1 }, { unique: true, sparse: true });
 customerSchema.index({ email: 1 });
 customerSchema.index({ phone: 1 });
 customerSchema.index({ currentPipelineStage: 1 });
 customerSchema.index({ assignedRepId: 1 });
 
-export const CustomerModel = mongoose.model<ICustomerDocument>('Customer', customerSchema, 'customers');
+export const CustomerModel = mongoose.model<ICustomerDocument>(
+  'Customer',
+  customerSchema,
+  'customers',
+);
 
 // Drop legacy non-sparse userId index if it exists in MongoDB
 if (process.env.NODE_ENV !== 'test') {
@@ -77,10 +125,10 @@ const salesRepresentativeSchema = new Schema<ISalesRepresentativeDocument>({
   email: { type: String, required: true },
   phone: { type: String, required: true },
   avatarUrl: { type: String },
-  specialization: { 
-    type: String, 
+  specialization: {
+    type: String,
     enum: ['LUXURY_RESIDENTIAL', 'COMMERCIAL_OFFICE', 'MODULAR_KITCHEN', 'BESPOKE_FURNITURE'],
-    default: 'LUXURY_RESIDENTIAL'
+    default: 'LUXURY_RESIDENTIAL',
   },
   monthlyTarget: { type: Number, default: 350000000 }, // in paise (e.g. ₹35,00,000)
   achievedRevenue: { type: Number, default: 0 },
@@ -90,7 +138,7 @@ const salesRepresentativeSchema = new Schema<ISalesRepresentativeDocument>({
   conversionRate: { type: Number, default: 0 },
   status: { type: String, enum: ['ACTIVE', 'ON_LEAVE', 'INACTIVE'], default: 'ACTIVE' },
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
 });
 
 salesRepresentativeSchema.index({ status: 1 });
@@ -99,12 +147,13 @@ salesRepresentativeSchema.index({ email: 1 }, { unique: true });
 export const SalesRepresentativeModel = mongoose.model<ISalesRepresentativeDocument>(
   'SalesRepresentative',
   salesRepresentativeSchema,
-  'sales_representatives'
+  'sales_representatives',
 );
 
 // ---------------- Lead Status History Schema ----------------
 
-export interface ILeadStatusTransitionDocument extends Omit<LeadStatusTransition, 'id' | 'leadId'>, Document {
+export interface ILeadStatusTransitionDocument
+  extends Omit<LeadStatusTransition, 'id' | 'leadId'>, Document {
   leadId: Types.ObjectId;
 }
 
@@ -114,10 +163,14 @@ const leadStatusHistorySchema = new Schema<ILeadStatusTransitionDocument>({
   toStatus: { type: String, required: true },
   changedBy: { type: String, required: true },
   reason: { type: String },
-  changedAt: { type: Date, default: Date.now }
+  changedAt: { type: Date, default: Date.now },
 });
 
-export const LeadStatusHistoryModel = mongoose.model<ILeadStatusTransitionDocument>('LeadStatusHistory', leadStatusHistorySchema, 'lead_status_history');
+export const LeadStatusHistoryModel = mongoose.model<ILeadStatusTransitionDocument>(
+  'LeadStatusHistory',
+  leadStatusHistorySchema,
+  'lead_status_history',
+);
 
 // ---------------- Lead Activity Schema ----------------
 
@@ -135,9 +188,13 @@ const leadActivitySchema = new Schema<ILeadActivityDocument>({
   occurredAt: { type: Date, default: Date.now },
   scheduledFollowUpAt: { type: Date },
   isFollowUpCompleted: { type: Boolean, default: false },
-  metadata: { type: Schema.Types.Mixed }
+  metadata: { type: Schema.Types.Mixed },
 });
 
 leadActivitySchema.index({ leadId: 1, occurredAt: -1 });
 
-export const LeadActivityModel = mongoose.model<ILeadActivityDocument>('LeadActivity', leadActivitySchema, 'lead_activities');
+export const LeadActivityModel = mongoose.model<ILeadActivityDocument>(
+  'LeadActivity',
+  leadActivitySchema,
+  'lead_activities',
+);

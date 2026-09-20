@@ -2,21 +2,70 @@ import { z } from 'zod';
 
 export const submitLeadSchema = z.object({
   source: z.enum(['WEBSITE_FORM', 'WHATSAPP', 'CALL', 'WALK_IN', 'REFERRAL', 'CAMPAIGN']),
-  sourceDetail: z.object({
-    utmSource: z.string().optional(),
-    utmMedium: z.string().optional(),
-    utmCampaign: z.string().optional(),
-  }).optional(),
+  sourceDetail: z
+    .object({
+      utmSource: z.string().optional(),
+      utmMedium: z.string().optional(),
+      utmCampaign: z.string().optional(),
+    })
+    .optional(),
   name: z.string().min(2).max(100),
   email: z.string().email().optional(),
   phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Must be a valid E.164 phone number'),
   interestType: z.enum(['INTERIOR_DESIGN', 'FURNITURE_PURCHASE', 'BOTH']),
-  projectType: z.enum(['RESIDENTIAL', 'COMMERCIAL', 'MODULAR_KITCHEN', 'BEDROOM', 'LIVING_ROOM', 'HOTEL', 'RESTAURANT', 'INSTITUTION']).optional(),
-  budgetRange: z.object({
-    min: z.number().min(0),
-    max: z.number().min(0),
-  }).optional(),
+  projectType: z
+    .enum([
+      'RESIDENTIAL',
+      'COMMERCIAL',
+      'MODULAR_KITCHEN',
+      'BEDROOM',
+      'LIVING_ROOM',
+      'HOTEL',
+      'RESTAURANT',
+      'INSTITUTION',
+    ])
+    .optional(),
+  budgetRange: z
+    .object({
+      min: z.number().min(0),
+      max: z.number().min(0),
+    })
+    .optional(),
   timeline: z.enum(['IMMEDIATE', '1_3_MONTHS', '3_6_MONTHS', 'EXPLORING']).optional(),
+  consultationBooking: z
+    .object({
+      consultationType: z.enum(['STUDIO_VISIT', 'ON_SITE_SURVEY', 'VIRTUAL_VIDEO_CALL']),
+      studioLocation: z
+        .enum(['INDIRANAGAR', 'WHITEFIELD', 'HSR_LAYOUT', 'VIKAS_MARG', 'ON_SITE', 'VIRTUAL'])
+        .optional(),
+      scheduledDate: z.string(),
+      timeSlot: z.string(),
+      propertyType: z.string().optional(),
+      meetingNotes: z.string().optional(),
+      calendarInviteSent: z.boolean().optional(),
+    })
+    .optional(),
+  swatchKitOrder: z
+    .object({
+      kitType: z.enum([
+        'HARDWOOD_VENEERS',
+        'FABRICS_LEATHER',
+        'MODULAR_KITCHEN',
+        'COMPLETE_MASTER_BOX',
+      ]),
+      deliveryAddress: z.object({
+        line1: z.string().min(1, 'Address line 1 is required'),
+        line2: z.string().optional(),
+        city: z.string().min(1, 'City is required'),
+        state: z.string().min(1, 'State is required'),
+        pincode: z.string().min(4, 'Pincode is required'),
+      }),
+      depositAmount: z.number().default(49900),
+      isDepositRefundable: z.boolean().default(true),
+      dispatchStatus: z.enum(['ORDERED', 'PACKED', 'DISPATCHED', 'DELIVERED']).default('ORDERED'),
+      courierTrackingNumber: z.string().optional(),
+    })
+    .optional(),
   marketingConsent: z.object({
     granted: z.boolean(),
     source: z.string().optional(),
@@ -26,7 +75,17 @@ export const submitLeadSchema = z.object({
 });
 
 export const listLeadsQuerySchema = z.object({
-  status: z.enum(['NEW', 'QUALIFIED', 'CONTACTED', 'CONSULTATION_SCHEDULED', 'CONVERTED', 'DISQUALIFIED', 'LOST']).optional(),
+  status: z
+    .enum([
+      'NEW',
+      'QUALIFIED',
+      'CONTACTED',
+      'CONSULTATION_SCHEDULED',
+      'CONVERTED',
+      'DISQUALIFIED',
+      'LOST',
+    ])
+    .optional(),
   priority: z.enum(['HOT', 'WARM', 'COLD']).optional(),
   assignedToId: z.string().optional(),
   limit: z.coerce.number().min(1).max(100).default(20),
@@ -39,6 +98,14 @@ export const assignLeadSchema = z.object({
 });
 
 export const updateLeadStatusSchema = z.object({
-  status: z.enum(['NEW', 'QUALIFIED', 'CONTACTED', 'CONSULTATION_SCHEDULED', 'CONVERTED', 'DISQUALIFIED', 'LOST']),
+  status: z.enum([
+    'NEW',
+    'QUALIFIED',
+    'CONTACTED',
+    'CONSULTATION_SCHEDULED',
+    'CONVERTED',
+    'DISQUALIFIED',
+    'LOST',
+  ]),
   expectedVersion: z.number().int().min(0),
 });

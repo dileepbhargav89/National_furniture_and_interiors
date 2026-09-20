@@ -119,7 +119,7 @@ beforeAll(async () => {
   app.use(errorHandlerMiddleware);
 
   await new Promise<void>((resolve) => {
-    server = app.listen(0, () => resolve());
+    server = app.listen(0, '127.0.0.1', () => resolve());
   });
 
   const address = server.address();

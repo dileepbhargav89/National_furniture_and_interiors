@@ -1,7 +1,35 @@
 import { Types } from 'mongoose';
-import { CustomerRepository, LeadActivityRepository, LeadStatusHistoryRepository, SalesRepresentativeRepository } from '../application/ports';
-import { Customer, LeadActivity, LeadActivityDirection, LeadActivityOutcome, LeadActivityType, LeadStatusTransition, PipelineStageId, PreferredStudio, SalesRepresentative, SalesRepSpecialization, SalesRepStatus, UpdateCustomerInput } from '../domain/crm.types';
-import { CustomerModel, ICustomerDocument, LeadActivityModel, ILeadActivityDocument, LeadStatusHistoryModel, ILeadStatusTransitionDocument, SalesRepresentativeModel, ISalesRepresentativeDocument } from './crm.schemas';
+import {
+  CustomerRepository,
+  LeadActivityRepository,
+  LeadStatusHistoryRepository,
+  SalesRepresentativeRepository,
+} from '../application/ports';
+import {
+  Customer,
+  ClientTier,
+  LeadActivity,
+  LeadActivityDirection,
+  LeadActivityOutcome,
+  LeadActivityType,
+  LeadStatusTransition,
+  PipelineStageId,
+  PreferredStudio,
+  SalesRepresentative,
+  SalesRepSpecialization,
+  SalesRepStatus,
+  UpdateCustomerInput,
+} from '../domain/crm.types';
+import {
+  CustomerModel,
+  ICustomerDocument,
+  LeadActivityModel,
+  ILeadActivityDocument,
+  LeadStatusHistoryModel,
+  ILeadStatusTransitionDocument,
+  SalesRepresentativeModel,
+  ISalesRepresentativeDocument,
+} from './crm.schemas';
 
 export class MongoCustomerRepository implements CustomerRepository {
   private mapToDomain(doc: ICustomerDocument): Customer {
@@ -13,16 +41,69 @@ export class MongoCustomerRepository implements CustomerRepository {
       email: doc.email || '',
       phone: doc.phone || '',
       tags: doc.tags || [],
-      clientTier: (doc.clientTier as any) || 'PROSPECT',
+      clientTier: (doc.clientTier as ClientTier) || 'PROSPECT',
       ...(doc.preferredStudio ? { preferredStudio: doc.preferredStudio as PreferredStudio } : {}),
-      ...(doc.propertyDetails ? { 
-        propertyDetails: {
-          ...(doc.propertyDetails.community ? { community: doc.propertyDetails.community } : {}),
-          ...(doc.propertyDetails.configuration ? { configuration: doc.propertyDetails.configuration } : {}),
-          ...(doc.propertyDetails.estimatedAreaSqFt !== undefined ? { estimatedAreaSqFt: doc.propertyDetails.estimatedAreaSqFt } : {}),
-          ...(doc.propertyDetails.possessionDate ? { possessionDate: doc.propertyDetails.possessionDate } : {}),
-        }
-      } : {}),
+      ...(doc.consultationBooking
+        ? {
+            consultationBooking: {
+              consultationType: doc.consultationBooking.consultationType,
+              ...(doc.consultationBooking.studioLocation
+                ? { studioLocation: doc.consultationBooking.studioLocation }
+                : {}),
+              scheduledDate: doc.consultationBooking.scheduledDate,
+              timeSlot: doc.consultationBooking.timeSlot,
+              ...(doc.consultationBooking.propertyType
+                ? { propertyType: doc.consultationBooking.propertyType }
+                : {}),
+              ...(doc.consultationBooking.meetingNotes
+                ? { meetingNotes: doc.consultationBooking.meetingNotes }
+                : {}),
+              ...(doc.consultationBooking.calendarInviteSent !== undefined
+                ? { calendarInviteSent: doc.consultationBooking.calendarInviteSent }
+                : {}),
+            },
+          }
+        : {}),
+      ...(doc.swatchKitOrder
+        ? {
+            swatchKitOrder: {
+              kitType: doc.swatchKitOrder.kitType,
+              deliveryAddress: {
+                line1: doc.swatchKitOrder.deliveryAddress.line1,
+                ...(doc.swatchKitOrder.deliveryAddress.line2
+                  ? { line2: doc.swatchKitOrder.deliveryAddress.line2 }
+                  : {}),
+                city: doc.swatchKitOrder.deliveryAddress.city,
+                state: doc.swatchKitOrder.deliveryAddress.state,
+                pincode: doc.swatchKitOrder.deliveryAddress.pincode,
+              },
+              depositAmount: doc.swatchKitOrder.depositAmount,
+              isDepositRefundable: doc.swatchKitOrder.isDepositRefundable,
+              dispatchStatus: doc.swatchKitOrder.dispatchStatus,
+              ...(doc.swatchKitOrder.courierTrackingNumber
+                ? { courierTrackingNumber: doc.swatchKitOrder.courierTrackingNumber }
+                : {}),
+            },
+          }
+        : {}),
+      ...(doc.propertyDetails
+        ? {
+            propertyDetails: {
+              ...(doc.propertyDetails.community
+                ? { community: doc.propertyDetails.community }
+                : {}),
+              ...(doc.propertyDetails.configuration
+                ? { configuration: doc.propertyDetails.configuration }
+                : {}),
+              ...(doc.propertyDetails.estimatedAreaSqFt !== undefined
+                ? { estimatedAreaSqFt: doc.propertyDetails.estimatedAreaSqFt }
+                : {}),
+              ...(doc.propertyDetails.possessionDate
+                ? { possessionDate: doc.propertyDetails.possessionDate }
+                : {}),
+            },
+          }
+        : {}),
       estimatedDealValue: doc.estimatedDealValue || 0,
       currentPipelineStage: (doc.currentPipelineStage as PipelineStageId) || 'NEW_INQUIRY',
       ...(doc.assignedRepId ? { assignedRepId: doc.assignedRepId } : {}),
@@ -30,7 +111,9 @@ export class MongoCustomerRepository implements CustomerRepository {
       lifetimeValue: doc.lifetimeValue || 0,
       totalOrders: doc.totalOrders || 0,
       totalDesignProjects: doc.totalDesignProjects || 0,
-      ...(doc.preferredContactChannel ? { preferredContactChannel: doc.preferredContactChannel } : {}),
+      ...(doc.preferredContactChannel
+        ? { preferredContactChannel: doc.preferredContactChannel }
+        : {}),
       ...(doc.acquisitionSource ? { acquisitionSource: doc.acquisitionSource } : {}),
       ...(doc.notes ? { notes: doc.notes } : {}),
       createdAt: doc.createdAt,
@@ -50,7 +133,9 @@ export class MongoCustomerRepository implements CustomerRepository {
   }
 
   async findByUserId(userId: string): Promise<Customer | null> {
-    const query = Types.ObjectId.isValid(userId) ? { userId: new Types.ObjectId(userId) } : { userId };
+    const query = Types.ObjectId.isValid(userId)
+      ? { userId: new Types.ObjectId(userId) }
+      : { userId };
     const doc = await CustomerModel.findOne({ ...query, isDeleted: false });
     return doc ? this.mapToDomain(doc) : null;
   }
@@ -81,10 +166,16 @@ export class MongoCustomerRepository implements CustomerRepository {
     return CustomerModel.countDocuments({ isDeleted: false });
   }
 
-  async save(customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'version' | 'isDeleted' | 'deletedAt'>): Promise<Customer> {
-    const validUserId = customer.userId && Types.ObjectId.isValid(customer.userId)
-      ? new Types.ObjectId(customer.userId)
-      : undefined;
+  async save(
+    customer: Omit<
+      Customer,
+      'id' | 'createdAt' | 'updatedAt' | 'version' | 'isDeleted' | 'deletedAt'
+    >,
+  ): Promise<Customer> {
+    const validUserId =
+      customer.userId && Types.ObjectId.isValid(customer.userId)
+        ? new Types.ObjectId(customer.userId)
+        : undefined;
     const doc = new CustomerModel({
       ...customer,
       ...(validUserId ? { userId: validUserId } : {}),
@@ -99,7 +190,7 @@ export class MongoCustomerRepository implements CustomerRepository {
     const doc = await CustomerModel.findOneAndUpdate(
       { _id: id, isDeleted: false },
       { $set: updates, $inc: { version: 1 }, updatedAt: new Date() },
-      { new: true }
+      { new: true },
     );
     return doc ? this.mapToDomain(doc) : null;
   }
@@ -147,18 +238,23 @@ export class MongoSalesRepresentativeRepository implements SalesRepresentativeRe
     return doc ? this.mapToDomain(doc) : null;
   }
 
-  async save(rep: Omit<SalesRepresentative, 'id' | 'createdAt' | 'updatedAt'>): Promise<SalesRepresentative> {
+  async save(
+    rep: Omit<SalesRepresentative, 'id' | 'createdAt' | 'updatedAt'>,
+  ): Promise<SalesRepresentative> {
     const doc = new SalesRepresentativeModel(rep);
     const saved = await doc.save();
     return this.mapToDomain(saved);
   }
 
-  async update(id: string, updates: Partial<SalesRepresentative>): Promise<SalesRepresentative | null> {
+  async update(
+    id: string,
+    updates: Partial<SalesRepresentative>,
+  ): Promise<SalesRepresentative | null> {
     if (!Types.ObjectId.isValid(id)) return null;
     const doc = await SalesRepresentativeModel.findByIdAndUpdate(
       id,
       { $set: updates, updatedAt: new Date() },
-      { new: true }
+      { new: true },
     );
     return doc ? this.mapToDomain(doc) : null;
   }
@@ -172,13 +268,17 @@ export class MongoSalesRepresentativeRepository implements SalesRepresentativeRe
     const doc = await SalesRepresentativeModel.findOne(query).sort({ activeLeadsCount: 1 });
     if (!doc && specialization) {
       // Fallback to any active rep if no specialist found
-      const fallback = await SalesRepresentativeModel.findOne({ status: 'ACTIVE' }).sort({ activeLeadsCount: 1 });
+      const fallback = await SalesRepresentativeModel.findOne({ status: 'ACTIVE' }).sort({
+        activeLeadsCount: 1,
+      });
       return fallback ? this.mapToDomain(fallback) : null;
     }
     return doc ? this.mapToDomain(doc) : null;
   }
 
-  async seedIfEmpty(defaults: Array<Omit<SalesRepresentative, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void> {
+  async seedIfEmpty(
+    defaults: Array<Omit<SalesRepresentative, 'id' | 'createdAt' | 'updatedAt'>>,
+  ): Promise<void> {
     const count = await SalesRepresentativeModel.countDocuments();
     if (count === 0) {
       await SalesRepresentativeModel.insertMany(defaults);
@@ -198,14 +298,18 @@ export class MongoLeadActivityRepository implements LeadActivityRepository {
       performedBy: doc.performedBy,
       occurredAt: doc.occurredAt,
       ...(doc.scheduledFollowUpAt ? { scheduledFollowUpAt: doc.scheduledFollowUpAt } : {}),
-      ...(doc.isFollowUpCompleted !== undefined ? { isFollowUpCompleted: doc.isFollowUpCompleted } : {}),
+      ...(doc.isFollowUpCompleted !== undefined
+        ? { isFollowUpCompleted: doc.isFollowUpCompleted }
+        : {}),
       ...(doc.metadata ? { metadata: doc.metadata as Record<string, unknown> } : {}),
     };
   }
 
   async findByLeadId(leadId: string): Promise<LeadActivity[]> {
     if (!Types.ObjectId.isValid(leadId)) return [];
-    const docs = await LeadActivityModel.find({ leadId: new Types.ObjectId(leadId) }).sort({ occurredAt: -1 });
+    const docs = await LeadActivityModel.find({ leadId: new Types.ObjectId(leadId) }).sort({
+      occurredAt: -1,
+    });
     return docs.map((doc) => this.mapToDomain(doc));
   }
 
@@ -242,11 +346,15 @@ export class MongoLeadStatusHistoryRepository implements LeadStatusHistoryReposi
 
   async findByLeadId(leadId: string): Promise<LeadStatusTransition[]> {
     if (!Types.ObjectId.isValid(leadId)) return [];
-    const docs = await LeadStatusHistoryModel.find({ leadId: new Types.ObjectId(leadId) }).sort({ changedAt: -1 });
+    const docs = await LeadStatusHistoryModel.find({ leadId: new Types.ObjectId(leadId) }).sort({
+      changedAt: -1,
+    });
     return docs.map((doc) => this.mapToDomain(doc));
   }
 
-  async save(transition: Omit<LeadStatusTransition, 'id' | 'changedAt'>): Promise<LeadStatusTransition> {
+  async save(
+    transition: Omit<LeadStatusTransition, 'id' | 'changedAt'>,
+  ): Promise<LeadStatusTransition> {
     const validLeadId = Types.ObjectId.isValid(transition.leadId)
       ? new Types.ObjectId(transition.leadId)
       : new Types.ObjectId();
@@ -258,4 +366,3 @@ export class MongoLeadStatusHistoryRepository implements LeadStatusHistoryReposi
     return this.mapToDomain(saved);
   }
 }
-

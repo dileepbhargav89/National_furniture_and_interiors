@@ -31,7 +31,8 @@ const FALLBACK_ADMIN_ORDERS: Order[] = [
         unitPrice: 6800000,
         quantity: 1,
         lineTotal: 6800000,
-        image: 'https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?q=80&w=600&auto=format&fit=crop',
+        image:
+          'https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?q=80&w=600&auto=format&fit=crop',
       },
       {
         productId: 'prod-boucle-chair',
@@ -40,7 +41,8 @@ const FALLBACK_ADMIN_ORDERS: Order[] = [
         unitPrice: 1200000,
         quantity: 6,
         lineTotal: 7200000,
-        image: 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?q=80&w=600&auto=format&fit=crop',
+        image:
+          'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?q=80&w=600&auto=format&fit=crop',
       },
     ],
     shippingAddress: {
@@ -96,7 +98,8 @@ const FALLBACK_ADMIN_ORDERS: Order[] = [
         unitPrice: 8999900,
         quantity: 1,
         lineTotal: 8999900,
-        image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?q=80&w=600&auto=format&fit=crop',
+        image:
+          'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?q=80&w=600&auto=format&fit=crop',
       },
     ],
     shippingAddress: {
@@ -152,7 +155,8 @@ const FALLBACK_ADMIN_ORDERS: Order[] = [
         unitPrice: 5400000,
         quantity: 1,
         lineTotal: 5400000,
-        image: 'https://images.unsplash.com/photo-1595428774223-ef52624120d2?q=80&w=600&auto=format&fit=crop',
+        image:
+          'https://images.unsplash.com/photo-1595428774223-ef52624120d2?q=80&w=600&auto=format&fit=crop',
       },
     ],
     shippingAddress: {
@@ -214,7 +218,7 @@ export default function AdminOrdersPage() {
       // Handle array or paginated response format
       const fetched: Order[] = Array.isArray(response?.data)
         ? response.data
-        : (response?.data?.data || (response?.data as unknown as { orders: Order[] })?.orders || []);
+        : response?.data?.data || (response?.data as unknown as { orders: Order[] })?.orders || [];
 
       let localOrders: Order[] = [];
       if (typeof window !== 'undefined') {
@@ -270,35 +274,39 @@ export default function AdminOrdersPage() {
 
   // KPI Calculations
   const totalRevenue = useMemo(
-    () => orders.reduce((sum, o) => sum + (o.paymentStatus === PaymentStatus.PAID ? o.pricing.total : 0), 0),
-    [orders]
+    () =>
+      orders.reduce(
+        (sum, o) => sum + (o.paymentStatus === PaymentStatus.PAID ? o.pricing.total : 0),
+        0,
+      ),
+    [orders],
   );
   const inProductionCount = useMemo(
     () =>
       orders.filter(
         (o) =>
           o.fulfillmentStatus === FulfillmentStatus.CONFIRMED ||
-          o.fulfillmentStatus === FulfillmentStatus.PACKED
+          o.fulfillmentStatus === FulfillmentStatus.PACKED,
       ).length,
-    [orders]
+    [orders],
   );
   const inTransitCount = useMemo(
     () =>
       orders.filter(
         (o) =>
           o.fulfillmentStatus === FulfillmentStatus.SHIPPED ||
-          o.fulfillmentStatus === FulfillmentStatus.OUT_FOR_DELIVERY
+          o.fulfillmentStatus === FulfillmentStatus.OUT_FOR_DELIVERY,
       ).length,
-    [orders]
+    [orders],
   );
   const pendingActionCount = useMemo(
     () =>
       orders.filter(
         (o) =>
           o.paymentStatus === PaymentStatus.PENDING ||
-          o.fulfillmentStatus === FulfillmentStatus.PENDING
+          o.fulfillmentStatus === FulfillmentStatus.PENDING,
       ).length,
-    [orders]
+    [orders],
   );
 
   // Filtered Orders
@@ -356,7 +364,15 @@ export default function AdminOrdersPage() {
   }, [orders, selectedTab, paymentFilter, searchQuery]);
 
   const exportCSV = () => {
-    const headers = ['Order Number', 'Date', 'Customer', 'City', 'Status', 'Payment', 'Total (INR)'];
+    const headers = [
+      'Order Number',
+      'Date',
+      'Customer',
+      'City',
+      'Status',
+      'Payment',
+      'Total (INR)',
+    ];
     const rows = filteredOrders.map((o) => [
       o.orderNumber,
       formatDate(o.createdAt),
@@ -388,12 +404,17 @@ export default function AdminOrdersPage() {
         breadcrumbs={[{ label: 'Operations' }, { label: 'Orders Hub' }]}
         action={
           <div className="flex items-center gap-2.5">
-            <NfiButton variant="secondary" size="sm" onClick={exportCSV} disabled={filteredOrders.length === 0}>
-              <Download className="w-3.5 h-3.5 mr-1" />
+            <NfiButton
+              variant="secondary"
+              size="sm"
+              onClick={exportCSV}
+              disabled={filteredOrders.length === 0}
+            >
+              <Download className="mr-1 h-3.5 w-3.5" />
               Export CSV
             </NfiButton>
             <NfiButton variant="secondary" size="sm" onClick={fetchOrders} disabled={loading}>
-              <RefreshCw className={`w-3.5 h-3.5 mr-1 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`mr-1 h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
               Sync Orders
             </NfiButton>
           </div>
@@ -401,64 +422,76 @@ export default function AdminOrdersPage() {
       />
 
       {error && (
-        <div className="p-4 rounded-xl text-sm border bg-red-50 text-red-700 border-red-200">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {error}
         </div>
       )}
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Total Orders */}
-        <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-sm flex items-center justify-between">
+        <div className="flex items-center justify-between rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-stone-500">Total Commissions</p>
-            <h3 className="text-2xl font-serif font-bold text-stone-900 mt-1">{orders.length}</h3>
-            <p className="text-xs text-stone-400 mt-1">Bespoke luxury pieces</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-stone-500">
+              Total Commissions
+            </p>
+            <h3 className="mt-1 font-serif text-2xl font-bold text-stone-900">{orders.length}</h3>
+            <p className="mt-1 text-xs text-stone-400">Bespoke luxury pieces</p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-stone-100 flex items-center justify-center text-stone-700">
-            <Package className="w-5 h-5" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-stone-100 text-stone-700">
+            <Package className="h-5 w-5" />
           </div>
         </div>
 
         {/* Total Revenue */}
-        <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-sm flex items-center justify-between">
+        <div className="flex items-center justify-between rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-stone-500">Gross Commission Revenue</p>
-            <h3 className="text-2xl font-serif font-bold text-stone-900 mt-1">{formatPrice(totalRevenue)}</h3>
-            <p className="text-xs text-emerald-700 font-medium mt-1">Karnataka GST included</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-stone-500">
+              Gross Commission Revenue
+            </p>
+            <h3 className="mt-1 font-serif text-2xl font-bold text-stone-900">
+              {formatPrice(totalRevenue)}
+            </h3>
+            <p className="mt-1 text-xs font-medium text-emerald-700">Karnataka GST included</p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center text-amber-700">
-            <TrendingUp className="w-5 h-5" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+            <TrendingUp className="h-5 w-5" />
           </div>
         </div>
 
         {/* In Production */}
-        <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-sm flex items-center justify-between">
+        <div className="flex items-center justify-between rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-stone-500">In Workshop Production</p>
-            <h3 className="text-2xl font-serif font-bold text-stone-900 mt-1">{inProductionCount}</h3>
-            <p className="text-xs text-[#8C7355] mt-1">Kiln seasoning &amp; joinery</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-stone-500">
+              In Workshop Production
+            </p>
+            <h3 className="mt-1 font-serif text-2xl font-bold text-stone-900">
+              {inProductionCount}
+            </h3>
+            <p className="mt-1 text-xs text-[#8C7355]">Kiln seasoning &amp; joinery</p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center text-blue-700">
-            <Layers className="w-5 h-5" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+            <Layers className="h-5 w-5" />
           </div>
         </div>
 
         {/* In Transit */}
-        <div className="bg-white p-5 rounded-xl border border-stone-200 shadow-sm flex items-center justify-between">
+        <div className="flex items-center justify-between rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-stone-500">White-Glove In Transit</p>
-            <h3 className="text-2xl font-serif font-bold text-stone-900 mt-1">{inTransitCount}</h3>
-            <p className="text-xs text-emerald-700 mt-1">Air-suspension trucks</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-stone-500">
+              White-Glove In Transit
+            </p>
+            <h3 className="mt-1 font-serif text-2xl font-bold text-stone-900">{inTransitCount}</h3>
+            <p className="mt-1 text-xs text-emerald-700">Air-suspension trucks</p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-700">
-            <Truck className="w-5 h-5" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+            <Truck className="h-5 w-5" />
           </div>
         </div>
       </div>
 
       {/* Filter and Tab Section */}
-      <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 space-y-4">
+      <div className="space-y-4 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
         {/* Status Tabs */}
         <div className="flex flex-wrap items-center gap-2 border-b border-stone-100 pb-3">
           {[
@@ -469,18 +502,20 @@ export default function AdminOrdersPage() {
             {
               id: 'DELIVERED',
               label: 'Delivered',
-              count: orders.filter((o) => o.fulfillmentStatus === FulfillmentStatus.DELIVERED).length,
+              count: orders.filter((o) => o.fulfillmentStatus === FulfillmentStatus.DELIVERED)
+                .length,
             },
             {
               id: 'CANCELLED',
               label: 'Cancelled',
-              count: orders.filter((o) => o.fulfillmentStatus === FulfillmentStatus.CANCELLED).length,
+              count: orders.filter((o) => o.fulfillmentStatus === FulfillmentStatus.CANCELLED)
+                .length,
             },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setSelectedTab(tab.id as TabType)}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-medium transition-colors ${
                 selectedTab === tab.id
                   ? 'bg-stone-900 text-white'
                   : 'bg-stone-50 text-stone-600 hover:bg-stone-100'
@@ -488,7 +523,7 @@ export default function AdminOrdersPage() {
             >
               <span>{tab.label}</span>
               <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                className={`py-0.2 rounded-full px-1.5 text-[10px] ${
                   selectedTab === tab.id ? 'bg-white/20 text-white' : 'bg-stone-200 text-stone-700'
                 }`}
               >
@@ -499,23 +534,23 @@ export default function AdminOrdersPage() {
         </div>
 
         {/* Search and Secondary Filters */}
-        <div className="flex flex-col sm:flex-row items-center gap-3">
-          <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        <div className="flex flex-col items-center gap-3 sm:flex-row">
+          <div className="relative w-full flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
             <input
               type="text"
               placeholder="Search by order #, client name, locality (Indiranagar, Whitefield), or item..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-xs rounded-lg border border-stone-200 focus:outline-none focus:ring-1 focus:ring-stone-400 bg-stone-50/50"
+              className="w-full rounded-lg border border-stone-200 bg-stone-50/50 py-2 pl-9 pr-4 text-xs focus:outline-none focus:ring-1 focus:ring-stone-400"
             />
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex w-full items-center gap-2 sm:w-auto">
             <select
               value={paymentFilter}
               onChange={(e) => setPaymentFilter(e.target.value)}
-              className="text-xs px-3 py-2 rounded-lg border border-stone-200 bg-white text-stone-700 focus:outline-none"
+              className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs text-stone-700 focus:outline-none"
             >
               <option value="ALL">Payment: All</option>
               <option value={PaymentStatus.PAID}>Paid</option>
@@ -527,30 +562,30 @@ export default function AdminOrdersPage() {
       </div>
 
       {/* Orders Table */}
-      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-stone-200 text-xs">
             <thead className="bg-stone-50/80">
               <tr>
-                <th className="px-5 py-3.5 text-left font-semibold text-stone-600 uppercase tracking-wider">
+                <th className="px-5 py-3.5 text-left font-semibold uppercase tracking-wider text-stone-600">
                   Order &amp; Date
                 </th>
-                <th className="px-5 py-3.5 text-left font-semibold text-stone-600 uppercase tracking-wider">
+                <th className="px-5 py-3.5 text-left font-semibold uppercase tracking-wider text-stone-600">
                   Client &amp; Destination
                 </th>
-                <th className="px-5 py-3.5 text-left font-semibold text-stone-600 uppercase tracking-wider">
+                <th className="px-5 py-3.5 text-left font-semibold uppercase tracking-wider text-stone-600">
                   Pieces Commissioned
                 </th>
-                <th className="px-5 py-3.5 text-left font-semibold text-stone-600 uppercase tracking-wider">
+                <th className="px-5 py-3.5 text-left font-semibold uppercase tracking-wider text-stone-600">
                   Payment
                 </th>
-                <th className="px-5 py-3.5 text-left font-semibold text-stone-600 uppercase tracking-wider">
+                <th className="px-5 py-3.5 text-left font-semibold uppercase tracking-wider text-stone-600">
                   Workshop Stage
                 </th>
-                <th className="px-5 py-3.5 text-right font-semibold text-stone-600 uppercase tracking-wider">
+                <th className="px-5 py-3.5 text-right font-semibold uppercase tracking-wider text-stone-600">
                   Amount
                 </th>
-                <th className="px-5 py-3.5 text-right font-semibold text-stone-600 uppercase tracking-wider">
+                <th className="px-5 py-3.5 text-right font-semibold uppercase tracking-wider text-stone-600">
                   Action
                 </th>
               </tr>
@@ -561,7 +596,7 @@ export default function AdminOrdersPage() {
                 <tr>
                   <td colSpan={7} className="px-5 py-12 text-center text-stone-500">
                     <div className="flex flex-col items-center justify-center gap-2">
-                      <div className="w-6 h-6 border-2 border-stone-800 border-t-transparent rounded-full animate-spin" />
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-stone-800 border-t-transparent" />
                       <span>Loading workshop orders…</span>
                     </div>
                   </td>
@@ -569,9 +604,11 @@ export default function AdminOrdersPage() {
               ) : filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-5 py-12 text-center text-stone-500">
-                    <Package className="w-8 h-8 text-stone-300 mx-auto mb-2" />
+                    <Package className="mx-auto mb-2 h-8 w-8 text-stone-300" />
                     <p className="font-medium text-stone-800">No matching orders found</p>
-                    <p className="text-[11px] text-stone-400 mt-1">Try adjusting your search criteria or tab filters.</p>
+                    <p className="mt-1 text-[11px] text-stone-400">
+                      Try adjusting your search criteria or tab filters.
+                    </p>
                   </td>
                 </tr>
               ) : (
@@ -580,46 +617,56 @@ export default function AdminOrdersPage() {
                   const firstItem = order.items[0];
 
                   return (
-                    <tr key={order.id} className="hover:bg-stone-50/70 transition-colors">
+                    <tr key={order.id} className="transition-colors hover:bg-stone-50/70">
                       {/* Order Number & Placed Date */}
                       <td className="px-5 py-4">
                         <Link
                           href={`/orders/${order.id}`}
-                          className="font-mono font-semibold text-stone-900 hover:text-[#8C7355] block transition-colors"
+                          className="block font-mono font-semibold text-stone-900 transition-colors hover:text-[#8C7355]"
                         >
                           {order.orderNumber}
                         </Link>
-                        <span className="text-[11px] text-stone-400 mt-0.5 block">
+                        <span className="mt-0.5 block text-[11px] text-stone-400">
                           {formatDate(order.createdAt)}
                         </span>
                       </td>
 
                       {/* Client & Destination */}
-                      <td className="px-5 py-4 max-w-[200px]">
-                        <span className="font-medium text-stone-900 block truncate" title={order.userId}>
+                      <td className="max-w-[200px] px-5 py-4">
+                        <span
+                          className="block truncate font-medium text-stone-900"
+                          title={order.userId}
+                        >
                           {order.userId}
                         </span>
-                        <span className="text-[11px] text-stone-500 flex items-center gap-1 mt-0.5 truncate">
-                          <MapPin className="w-3 h-3 text-[#8C7355] shrink-0" />
-                          {order.shippingAddress?.city || 'Bengaluru'}, {order.shippingAddress?.pincode || ''}
+                        <span className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-stone-500">
+                          <MapPin className="h-3 w-3 shrink-0 text-[#8C7355]" />
+                          {order.shippingAddress?.city || 'Bengaluru'},{' '}
+                          {order.shippingAddress?.pincode || ''}
                         </span>
                       </td>
 
                       {/* Pieces */}
-                      <td className="px-5 py-4 max-w-[220px]">
+                      <td className="max-w-[220px] px-5 py-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-9 h-9 rounded-lg bg-stone-100 border border-stone-200 overflow-hidden shrink-0">
+                          <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg border border-stone-200 bg-stone-100">
                             {firstItem?.image ? (
-                              /* eslint-disable-next-line @next/next/no-img-element */
-                              <img src={firstItem.image} alt={firstItem.name} className="w-full h-full object-cover" />
+                              <img
+                                src={firstItem.image}
+                                alt={firstItem.name}
+                                className="h-full w-full object-cover"
+                              />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-stone-400">
-                                <Package className="w-4 h-4" />
+                              <div className="flex h-full w-full items-center justify-center text-stone-400">
+                                <Package className="h-4 w-4" />
                               </div>
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-stone-800 font-medium truncate" title={firstItem?.name}>
+                            <p
+                              className="truncate font-medium text-stone-800"
+                              title={firstItem?.name}
+                            >
                               {firstItem?.name || 'Custom Commission'}
                             </p>
                             <span className="text-[10px] text-stone-400">
@@ -632,10 +679,10 @@ export default function AdminOrdersPage() {
                       {/* Payment */}
                       <td className="px-5 py-4">
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
                             order.paymentStatus === PaymentStatus.PAID
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                              : 'bg-amber-50 text-amber-800 border-amber-200'
+                              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                              : 'border-amber-200 bg-amber-50 text-amber-800'
                           }`}
                         >
                           {order.paymentStatus}
@@ -649,14 +696,14 @@ export default function AdminOrdersPage() {
                             order.fulfillmentStatus === FulfillmentStatus.DELIVERED
                               ? 'completed'
                               : order.fulfillmentStatus === FulfillmentStatus.SHIPPED
-                              ? 'processing'
-                              : order.fulfillmentStatus === FulfillmentStatus.CONFIRMED
-                              ? 'active'
-                              : order.fulfillmentStatus === FulfillmentStatus.CANCELLED
-                              ? 'cancelled'
-                              : 'pending'
+                                ? 'processing'
+                                : order.fulfillmentStatus === FulfillmentStatus.CONFIRMED
+                                  ? 'active'
+                                  : order.fulfillmentStatus === FulfillmentStatus.CANCELLED
+                                    ? 'cancelled'
+                                    : 'pending'
                           }
-                          label={order.fulfillmentStatus.replace(/_/g, ' ')}
+                          label={(order.fulfillmentStatus || 'PENDING').replace(/_/g, ' ')}
                         />
                       </td>
 
@@ -669,9 +716,9 @@ export default function AdminOrdersPage() {
                       <td className="px-5 py-4 text-right">
                         <Link
                           href={`/orders/${order.id}`}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-[11px] font-medium transition-colors"
+                          className="inline-flex items-center gap-1 rounded-lg bg-stone-900 px-3 py-1.5 text-[11px] font-medium text-white transition-colors hover:bg-stone-800"
                         >
-                          <Eye className="w-3 h-3" />
+                          <Eye className="h-3 w-3" />
                           <span>Manage</span>
                         </Link>
                       </td>
@@ -684,9 +731,10 @@ export default function AdminOrdersPage() {
         </div>
 
         {/* Footer Summary */}
-        <div className="px-5 py-3 border-t border-stone-200 bg-stone-50 flex items-center justify-between text-xs text-stone-500">
+        <div className="flex items-center justify-between border-t border-stone-200 bg-stone-50 px-5 py-3 text-xs text-stone-500">
           <span>
-            Showing <strong>{filteredOrders.length}</strong> of <strong>{orders.length}</strong> orders
+            Showing <strong>{filteredOrders.length}</strong> of <strong>{orders.length}</strong>{' '}
+            orders
           </span>
           <span className="text-[11px] text-stone-400">
             Automated sync with National Furniture &amp; Interiors Workshop ERP

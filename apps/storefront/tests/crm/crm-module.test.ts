@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { 
-  PipelineStageId, 
-  SalesRepresentative, 
-  ClientTier 
-} from '@nfi/api-client';
+import type { PipelineStageId, SalesRepresentative, ClientTier } from '@nfi/api-client';
 
 const STAGE_CONFIG: Record<PipelineStageId, { label: string; probability: number }> = {
   NEW_INQUIRY: { label: 'New Inquiry', probability: 10 },
@@ -42,7 +38,12 @@ function generateWhatsAppConciergeTemplate(deal: {
   assignedRepName?: string;
 }): string {
   const cleanPhone = deal.phone.replace(/[^0-9]/g, '');
-  const phoneWithCountry = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+  const phoneWithCountry =
+    cleanPhone.length === 10
+      ? `91${cleanPhone}`
+      : cleanPhone.startsWith('91')
+        ? cleanPhone
+        : `91${cleanPhone}`;
   const repName = deal.assignedRepName || 'Design Consultant';
 
   const message = `Hello ${deal.clientName},\n\nThank you for consulting National Furniture & Interiors regarding your ${deal.configuration} at ${deal.community}.\n\nOur senior design lead, ${repName}, has prepared your bespoke woodwork concept proposal and 3D specifications. Would you like to review the renders this week?\n\nWarm regards,\nNational Furniture & Interiors Concierge\nBengaluru Experience Studios (Indiranagar · Whitefield · HSR Layout)`;
@@ -205,6 +206,117 @@ describe('Enterprise Customer CRM & Sales Operations Hub', () => {
 
       expect(quotaPercent).toBe(86);
       expect(remainingPaise).toBe(55000000); // ₹5.5 Lakhs gap to monthly target
+    });
+  });
+
+  describe('Consultation Scheduling & Concierge Engine', () => {
+    it('generates appointment-specific WhatsApp confirmation with studio location and date/time', () => {
+      const dealWithConsultation = {
+        clientName: 'Sanjay Kapoor',
+        phone: '9845099887',
+        community: 'Prestige Golfshire',
+        configuration: '4BHK Villa Interiors',
+        assignedRepName: 'Priya Sharma',
+        consultationBooking: {
+          consultationType: 'STUDIO_VISIT' as const,
+          studioLocation: 'INDIRANAGAR' as const,
+          scheduledDate: '2026-09-24',
+          timeSlot: '02:30 PM - 04:00 PM',
+        },
+      };
+
+      const cleanPhone = dealWithConsultation.phone.replace(/[^0-9]/g, '');
+      const phoneWithCountry = `91${cleanPhone}`;
+      const b = dealWithConsultation.consultationBooking;
+      const venueStr = `${b.studioLocation} Experience Studio`;
+      const expectedMsg = `Hello ${dealWithConsultation.clientName},\n\nYour design consultation at National Furniture & Interiors is confirmed for:\n🏛️ Location: ${venueStr}\n📅 Date: ${b.scheduledDate}\n⏰ Time Window: ${b.timeSlot}\n\nOur Senior Interior Architect, ${dealWithConsultation.assignedRepName}, has reserved this slot exclusively for your ${dealWithConsultation.configuration} at ${dealWithConsultation.community} to walk through material finishes and 3D concept plans.\n\nLooking forward to welcoming you!\n\nWarm regards,\nNational Furniture & Interiors Concierge\nBengaluru Flagship: 100ft Rd, Indiranagar · Whitefield · HSR Layout`;
+
+      const generatedUrl = `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(expectedMsg)}`;
+      expect(generatedUrl).toContain('https://wa.me/919845099887');
+      expect(generatedUrl).toContain(encodeURIComponent(b.scheduledDate));
+      expect(generatedUrl).toContain(encodeURIComponent(b.timeSlot));
+      expect(generatedUrl).toContain(encodeURIComponent('INDIRANAGAR Experience Studio'));
+    });
+
+    it('validates RFC 5545 calendar event formatting for .ics invitations', () => {
+      const scheduledDate = '2026-09-24';
+      const cleanDate = scheduledDate.replace(/-/g, '');
+      const ics = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//National Furniture and Interiors//Design Consultation//EN',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+        'BEGIN:VEVENT',
+        `DTSTART:${cleanDate}T110000`,
+        `DTEND:${cleanDate}T123000`,
+        'SUMMARY:National Furniture & Interiors — Design Consultation (Indiranagar)',
+        'STATUS:CONFIRMED',
+        'END:VEVENT',
+        'END:VCALENDAR',
+      ].join('\r\n');
+
+      expect(ics).toContain('BEGIN:VCALENDAR');
+      expect(ics).toContain('DTSTART:20260924T110000');
+      expect(ics).toContain('STATUS:CONFIRMED');
+      expect(ics).toContain('END:VCALENDAR');
+    });
+  });
+
+  describe('Module 2: Physical Luxury Material Swatch Kit Ordering & Mechanics', () => {
+    it('validates ₹499 refundable advance token deposit in paise', () => {
+      const depositRupees = 499;
+      const depositPaise = depositRupees * 100;
+      expect(depositPaise).toBe(49900);
+    });
+
+    it('validates 4 curated swatch kit collections metadata', () => {
+      const swatchKits = [
+        {
+          id: 'HARDWOOD_VENEERS',
+          name: 'The Atelier Hardwood & Veneer Box',
+          sla: '48 Hours in Bengaluru',
+        },
+        {
+          id: 'FABRICS_LEATHER',
+          name: 'The Haute Living Fabrics & Leather Box',
+          sla: '48 Hours in Bengaluru',
+        },
+        {
+          id: 'MODULAR_KITCHEN',
+          name: 'The Modular Kitchen & Cabinetry Box',
+          sla: '48 Hours in Bengaluru',
+        },
+        {
+          id: 'COMPLETE_MASTER_BOX',
+          name: 'The Complete Master Experience Box',
+          sla: '48 Hours in Bengaluru',
+        },
+      ];
+
+      expect(swatchKits).toHaveLength(4);
+      expect(swatchKits.map((k) => k.id)).toEqual([
+        'HARDWOOD_VENEERS',
+        'FABRICS_LEATHER',
+        'MODULAR_KITCHEN',
+        'COMPLETE_MASTER_BOX',
+      ]);
+    });
+
+    it('generates WhatsApp Material Concierge tracking link', () => {
+      const order = {
+        orderCode: 'NFI-SWATCH-991245',
+        kitName: 'The Atelier Hardwood & Veneer Box',
+        city: 'Bengaluru',
+        clientName: 'Vikramaditya Hegde',
+      };
+
+      const text = `Hello National Furniture & Interiors Concierge,\n\nI have placed an order for ${order.kitName} (Ref: ${order.orderCode}) for delivery in ${order.city}.\n\nPlease share the courier dispatch tracking updates once dispatched.\n\nWarm regards,\n${order.clientName}`;
+      const url = `https://wa.me/919880123456?text=${encodeURIComponent(text)}`;
+
+      expect(url).toContain('wa.me/919880123456');
+      expect(url).toContain(encodeURIComponent(order.orderCode));
+      expect(url).toContain(encodeURIComponent(order.kitName));
     });
   });
 });

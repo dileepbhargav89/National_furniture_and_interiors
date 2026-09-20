@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import type { ConsultationBooking, SwatchKitOrder } from './crm';
 
 // ── Domain Types ─────────────────────────────────────────────────────────────
 
@@ -39,6 +40,8 @@ export interface SubmitLeadRequest {
   projectType?: LeadProjectType;
   budgetRange?: { min: number; max: number };
   timeline?: LeadTimeline;
+  consultationBooking?: ConsultationBooking | undefined;
+  swatchKitOrder?: SwatchKitOrder | undefined;
   marketingConsent: {
     granted: boolean;
     source?: string;
@@ -57,6 +60,8 @@ export interface LeadResponse {
   projectType?: LeadProjectType;
   budgetRange?: { min: number; max: number };
   timeline?: LeadTimeline;
+  consultationBooking?: ConsultationBooking | undefined;
+  swatchKitOrder?: SwatchKitOrder | undefined;
   score: number;
   priority: LeadPriority;
   status: LeadStatus;
@@ -74,15 +79,26 @@ export const LeadService = {
     return apiClient.post<LeadResponse>('/api/v1/leads', data);
   },
 
-  listLeads: async (params?: { limit?: number; offset?: number; status?: string; priority?: string; assignedToId?: string }) => {
-    return apiClient.get<{ items: LeadResponse[]; total: number }>('/api/v1/leads', { ...(params ? { params: params as Record<string, unknown> } : {}) });
+  listLeads: async (params?: {
+    limit?: number;
+    offset?: number;
+    status?: string;
+    priority?: string;
+    assignedToId?: string;
+  }) => {
+    return apiClient.get<{ items: LeadResponse[]; total: number }>('/api/v1/leads', {
+      ...(params ? { params: params as Record<string, unknown> } : {}),
+    });
   },
 
   assignLead: async (id: string, assignedToId: string, expectedVersion: number) => {
-    return apiClient.patch<LeadResponse>(`/api/v1/leads/${id}/assign`, { assignedToId, expectedVersion });
+    return apiClient.patch<LeadResponse>(`/api/v1/leads/${id}/assign`, {
+      assignedToId,
+      expectedVersion,
+    });
   },
 
   updateLeadStatus: async (id: string, status: string, expectedVersion: number) => {
     return apiClient.patch<LeadResponse>(`/api/v1/leads/${id}/status`, { status, expectedVersion });
-  }
+  },
 };
