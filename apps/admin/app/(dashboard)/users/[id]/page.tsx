@@ -24,6 +24,8 @@ import {
   Lock,
   ExternalLink,
 } from 'lucide-react';
+import { useAuthStore } from '@/features/auth/store/auth.store';
+import { canManageUserCredentials, canChangeUserStatus } from '@/lib/rbac-hierarchy';
 
 interface UserAddress {
   _id?: string;
@@ -51,6 +53,8 @@ export default function UserDetailsDossierPage({ params }: { params: Promise<{ i
     'profile',
   );
 
+  const currentActor = useAuthStore((s) => s.user);
+
   // Password Reset Modal
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
@@ -76,6 +80,13 @@ export default function UserDetailsDossierPage({ params }: { params: Promise<{ i
   // Handle Resend Onboarding Invite
   const handleResendInvite = async () => {
     if (!user) return;
+    if (!canManageUserCredentials(currentActor, user)) {
+      setNotice({
+        type: 'error',
+        message: 'Access Denied: Only a Super Administrator can manage onboarding for this tier.',
+      });
+      return;
+    }
     try {
       setNotice({ type: 'success', message: `Sending onboarding invitation to ${user.email}…` });
       const res = await AdminService.resendOnboarding(id);
@@ -95,6 +106,14 @@ export default function UserDetailsDossierPage({ params }: { params: Promise<{ i
   // Handle Toggle Account Status
   const handleToggleStatus = async () => {
     if (!user) return;
+    if (!canChangeUserStatus(currentActor, user)) {
+      setNotice({
+        type: 'error',
+        message:
+          'Access Denied: You do not have authorization to alter the status of this account.',
+      });
+      return;
+    }
     const isSuspended = user.status === 'SUSPENDED' || user.status === 'BANNED';
     const nextStatus: 'ACTIVE' | 'SUSPENDED' = isCurrentlySuspended(user.status)
       ? 'ACTIVE'
@@ -307,45 +326,76 @@ export default function UserDetailsDossierPage({ params }: { params: Promise<{ i
 
           {/* Action Toolbar */}
           <div className="flex flex-wrap items-center gap-2.5 border-t border-stone-100 pt-4 lg:border-t-0 lg:pt-0">
-            <button
-              type="button"
-              onClick={() => setIsResetModalOpen(true)}
-              className="shadow-2xs inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-xs font-bold text-stone-800 transition-colors hover:bg-stone-50"
-            >
-              <KeyRound className="h-3.5 w-3.5 text-amber-600" />
-              Reset Password
-            </button>
+            {canManageUserCredentials(currentActor, user) ? (
+              <button
+                type="button"
+                onClick={() => setIsResetModalOpen(true)}
+                className="shadow-2xs inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-xs font-bold text-stone-800 transition-colors hover:bg-stone-50"
+              >
+                <KeyRound className="h-3.5 w-3.5 text-amber-600" />
+                Reset Password
+              </button>
+            ) : (
+              <div
+                title="Protected Account: Super Administrator credentials can only be reset by a Super Administrator"
+                className="shadow-2xs inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-stone-200 bg-stone-50 px-3.5 py-2 text-xs font-bold text-stone-400"
+              >
+                <Lock className="h-3.5 w-3.5 text-stone-400" />
+                Reset Protected
+              </div>
+            )}
 
-            <button
-              type="button"
-              onClick={handleResendInvite}
-              className="shadow-2xs inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-xs font-bold text-stone-800 transition-colors hover:bg-stone-50"
-            >
-              <Mail className="h-3.5 w-3.5 text-indigo-600" />
-              Resend Invite
-            </button>
-
-            <button
-              type="button"
-              onClick={handleToggleStatus}
-              className={`shadow-2xs inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-bold transition-colors ${
-                isSuspended
-                  ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                  : 'border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100'
-              }`}
-            >
-              {isSuspended ? (
-                <>
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                  Re-activate
-                </>
+            {user.onboardingStatus === 'INVITED' &&
+              (canManageUserCredentials(currentActor, user) ? (
+                <button
+                  type="button"
+                  onClick={handleResendInvite}
+                  className="shadow-2xs inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-xs font-bold text-stone-800 transition-colors hover:bg-stone-50"
+                >
+                  <Mail className="h-3.5 w-3.5 text-indigo-600" />
+                  Resend Invite
+                </button>
               ) : (
-                <>
-                  <ShieldAlert className="h-3.5 w-3.5 text-rose-600" />
-                  Suspend Account
-                </>
-              )}
-            </button>
+                <div
+                  title="Protected Account: Super Administrator onboarding can only be managed by a Super Administrator"
+                  className="shadow-2xs inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-stone-200 bg-stone-50 px-3.5 py-2 text-xs font-bold text-stone-400"
+                >
+                  <Lock className="h-3.5 w-3.5 text-stone-400" />
+                  Invite Protected
+                </div>
+              ))}
+
+            {canChangeUserStatus(currentActor, user) ? (
+              <button
+                type="button"
+                onClick={handleToggleStatus}
+                className={`shadow-2xs inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-bold transition-colors ${
+                  isSuspended
+                    ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                    : 'border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100'
+                }`}
+              >
+                {isSuspended ? (
+                  <>
+                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                    Re-activate
+                  </>
+                ) : (
+                  <>
+                    <ShieldAlert className="h-3.5 w-3.5 text-rose-600" />
+                    Suspend Account
+                  </>
+                )}
+              </button>
+            ) : (
+              <div
+                title="Protected Account: Account status cannot be modified"
+                className="shadow-2xs inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-stone-200 bg-stone-50 px-3.5 py-2 text-xs font-bold text-stone-400"
+              >
+                <Lock className="h-3.5 w-3.5 text-stone-400" />
+                Status Protected
+              </div>
+            )}
           </div>
         </div>
       </div>

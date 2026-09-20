@@ -28,9 +28,14 @@ import {
   Filter,
   CheckCircle2,
   AlertTriangle,
+  Lock,
 } from 'lucide-react';
+import { useAuthStore } from '@/features/auth/store/auth.store';
+import { canManageUserCredentials, canChangeUserStatus } from '@/lib/rbac-hierarchy';
 
 export default function UsersManagementPage() {
+  const currentActor = useAuthStore((s) => s.user);
+
   // Main Navigation Tab
   const [activeTab, setActiveTab] = useState<'registered' | 'leads'>('registered');
 
@@ -131,6 +136,13 @@ export default function UsersManagementPage() {
   // Handle Quick Action: Resend Onboarding Invite
   const handleResendInvite = async (targetUser: User) => {
     const userId = targetUser._id || targetUser.id;
+    if (!canManageUserCredentials(currentActor, targetUser)) {
+      setBannerNotice({
+        type: 'error',
+        message: 'Access Denied: Only a Super Administrator can manage onboarding for this tier.',
+      });
+      return;
+    }
     try {
       setBannerNotice({
         type: 'info',
@@ -153,6 +165,13 @@ export default function UsersManagementPage() {
   // Handle Quick Action: Toggle User Suspension / Activation
   const handleToggleStatus = async (targetUser: User) => {
     const userId = targetUser._id || targetUser.id;
+    if (!canChangeUserStatus(currentActor, targetUser)) {
+      setBannerNotice({
+        type: 'error',
+        message: 'Access Denied: You do not have permission to alter the status of this account.',
+      });
+      return;
+    }
     const isCurrentlySuspended =
       targetUser.status === 'SUSPENDED' || targetUser.status === 'BANNED';
     const nextStatus: 'ACTIVE' | 'SUSPENDED' = isCurrentlySuspended ? 'ACTIVE' : 'SUSPENDED';
@@ -262,8 +281,7 @@ export default function UsersManagementPage() {
                 setIsOnboardModalOpen(true);
               }}
             >
-              <UserPlus className="mr-1.5 h-4 w-4" />
-              Onboard Patron
+              <UserPlus className="mr-1.5 h-4 w-4" />+ Add User
             </NfiButton>
           </div>
         }
@@ -641,65 +659,101 @@ export default function UsersManagementPage() {
                             className="whitespace-nowrap px-5 py-3.5 text-right"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <div className="inline-flex items-center gap-1">
-                              {/* Quick View */}
-                              <button
-                                type="button"
-                                onClick={() => setQuickViewUser(user)}
-                                title="Quick View Drawer"
-                                className="rounded p-1.5 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </button>
+                            {(() => {
+                              const canManageThisUser = canManageUserCredentials(
+                                currentActor,
+                                user,
+                              );
+                              const canToggleThisUserStatus = canChangeUserStatus(
+                                currentActor,
+                                user,
+                              );
+                              return (
+                                <div className="inline-flex items-center gap-1">
+                                  {/* Quick View */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setQuickViewUser(user)}
+                                    title="Quick View Drawer"
+                                    className="rounded p-1.5 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </button>
 
-                              {/* Reset Password */}
-                              <button
-                                type="button"
-                                onClick={() => setPasswordResetUser(user)}
-                                title="Admin Password Reset"
-                                className="rounded p-1.5 text-stone-500 transition-colors hover:bg-amber-50 hover:text-amber-700"
-                              >
-                                <KeyRound className="h-4 w-4" />
-                              </button>
+                                  {/* Reset Password */}
+                                  {canManageThisUser ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setPasswordResetUser(user)}
+                                      title="Admin Password Reset"
+                                      className="rounded p-1.5 text-stone-500 transition-colors hover:bg-amber-50 hover:text-amber-700"
+                                    >
+                                      <KeyRound className="h-4 w-4" />
+                                    </button>
+                                  ) : (
+                                    <span
+                                      title="Protected Account: Super Administrator credentials can only be reset by a Super Administrator"
+                                      className="inline-flex cursor-not-allowed items-center justify-center rounded p-1.5 text-stone-300 opacity-40"
+                                    >
+                                      <Lock className="h-4 w-4" />
+                                    </span>
+                                  )}
 
-                              {/* Resend Onboarding */}
-                              <button
-                                type="button"
-                                onClick={() => handleResendInvite(user)}
-                                title="Resend Onboarding Invitation"
-                                className="rounded p-1.5 text-stone-500 transition-colors hover:bg-indigo-50 hover:text-indigo-700"
-                              >
-                                <Mail className="h-4 w-4" />
-                              </button>
+                                  {/* Resend Onboarding */}
+                                  {user.onboardingStatus === 'INVITED' && canManageThisUser && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleResendInvite(user)}
+                                      title="Resend Onboarding Invitation"
+                                      className="rounded p-1.5 text-stone-500 transition-colors hover:bg-indigo-50 hover:text-indigo-700"
+                                    >
+                                      <Mail className="h-4 w-4" />
+                                    </button>
+                                  )}
 
-                              {/* Toggle Status */}
-                              <button
-                                type="button"
-                                onClick={() => handleToggleStatus(user)}
-                                title={isSuspended ? 'Re-activate Patron' : 'Suspend Account'}
-                                className={`rounded p-1.5 transition-colors ${
-                                  isSuspended
-                                    ? 'text-emerald-600 hover:bg-emerald-50'
-                                    : 'text-stone-400 hover:bg-rose-50 hover:text-rose-600'
-                                }`}
-                              >
-                                {isSuspended ? (
-                                  <ShieldCheck className="h-4 w-4" />
-                                ) : (
-                                  <ShieldAlert className="h-4 w-4" />
-                                )}
-                              </button>
+                                  {/* Toggle Status */}
+                                  {canToggleThisUserStatus ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleStatus(user)}
+                                      title={
+                                        isSuspended
+                                          ? 'Re-activate Account'
+                                          : 'Deactivate / Suspend Account'
+                                      }
+                                      className={`rounded p-1.5 transition-colors ${
+                                        isSuspended
+                                          ? 'text-emerald-600 hover:bg-emerald-50'
+                                          : 'text-stone-400 hover:bg-rose-50 hover:text-rose-600'
+                                      }`}
+                                    >
+                                      {isSuspended ? (
+                                        <ShieldCheck className="h-4 w-4" />
+                                      ) : (
+                                        <ShieldAlert className="h-4 w-4" />
+                                      )}
+                                    </button>
+                                  ) : (
+                                    <span
+                                      title="Protected Account: Account status cannot be modified"
+                                      className="inline-flex cursor-not-allowed items-center justify-center rounded p-1.5 text-stone-300 opacity-40"
+                                    >
+                                      <Lock className="h-4 w-4" />
+                                    </span>
+                                  )}
 
-                              {/* Deep Link to Full Dossier */}
-                              <Link
-                                href={`/users/${userId}`}
-                                title="Open Full Dossier"
-                                className="shadow-2xs ml-1 inline-flex items-center gap-1 rounded border border-[#F5A060]/50 bg-[#FEF2E8] px-2.5 py-1 text-[11px] font-bold text-[#3D1A08] transition-all hover:bg-[#F5A060] hover:text-white"
-                              >
-                                Dossier
-                                <ArrowRight className="h-3 w-3" />
-                              </Link>
-                            </div>
+                                  {/* Deep Link to Full Dossier */}
+                                  <Link
+                                    href={`/users/${userId}`}
+                                    title="Open Full Dossier"
+                                    className="shadow-2xs ml-1 inline-flex items-center gap-1 rounded border border-[#F5A060]/50 bg-[#FEF2E8] px-2.5 py-1 text-[11px] font-bold text-[#3D1A08] transition-all hover:bg-[#F5A060] hover:text-white"
+                                  >
+                                    Dossier
+                                    <ArrowRight className="h-3 w-3" />
+                                  </Link>
+                                </div>
+                              );
+                            })()}
                           </td>
                         </tr>
                       );
@@ -973,7 +1027,7 @@ export default function UsersManagementPage() {
         onSuccess={(newUser) => {
           setBannerNotice({
             type: 'success',
-            message: `Patron account successfully provisioned for ${newUser.fullName} (${newUser.email})!`,
+            message: `Account successfully provisioned for ${newUser.fullName} (${newUser.email})!`,
           });
           fetchRegisteredUsers();
           fetchNonRegisteredLeads();

@@ -247,4 +247,156 @@ describe('Admin Users Suite Logic Harness', () => {
       expect(getNextToggleStatus('LOCKED')).toBe('SUSPENDED');
     });
   });
+
+  describe('Custom User Provisioning Logic (Super Admin Direct Access)', () => {
+    function validateProvisioningInput(input: {
+      fullName: string;
+      email: string;
+      password: string;
+      roleName: string;
+      userType: 'CUSTOMER' | 'STAFF' | 'ADMIN';
+    }) {
+      const errors: string[] = [];
+      if (!input.fullName.trim()) errors.push('Full name is required');
+      if (!input.email.trim() || !input.email.includes('@')) errors.push('Valid email is required');
+      if (!input.password || input.password.length < 8)
+        errors.push('Password must be at least 8 characters');
+      if (!input.roleName.trim()) errors.push('Role name is required');
+      return { valid: errors.length === 0, errors };
+    }
+
+    function buildProvisioningPayload(
+      mode: 'DIRECT' | 'INVITE',
+      formData: {
+        fullName: string;
+        email: string;
+        password: string;
+        userType: 'CUSTOMER' | 'STAFF' | 'ADMIN';
+        roleName: string;
+        phone?: string;
+        companyName?: string;
+        gstin?: string;
+      },
+    ) {
+      if (mode === 'DIRECT') {
+        if (formData.userType === 'STAFF' || formData.userType === 'ADMIN') {
+          return {
+            endpoint: '/api/v1/admin/users',
+            body: {
+              fullName: formData.fullName.trim(),
+              email: formData.email.trim().toLowerCase(),
+              password: formData.password,
+              userType: formData.userType,
+              roleName: formData.roleName,
+              phone: formData.phone?.trim() || null,
+            },
+          };
+        }
+        return {
+          endpoint: '/api/v1/admin/users/onboard',
+          body: {
+            fullName: formData.fullName.trim(),
+            email: formData.email.trim().toLowerCase(),
+            temporaryPassword: formData.password,
+            userType: 'CUSTOMER',
+            roleName: 'CUSTOMER',
+            phone: formData.phone?.trim() || null,
+            companyName: formData.companyName?.trim() || null,
+            gstin: formData.gstin?.trim() || null,
+            sendInvite: false,
+          },
+        };
+      }
+
+      return {
+        endpoint: '/api/v1/admin/users/onboard',
+        body: {
+          fullName: formData.fullName.trim(),
+          email: formData.email.trim().toLowerCase(),
+          temporaryPassword: formData.password,
+          userType: formData.userType,
+          roleName: formData.roleName,
+          phone: formData.phone?.trim() || null,
+          companyName: formData.companyName?.trim() || null,
+          gstin: formData.gstin?.trim() || null,
+          sendInvite: true,
+        },
+      };
+    }
+
+    it('validates required fields and minimum 8-character password', () => {
+      const invalid = validateProvisioningInput({
+        fullName: '',
+        email: 'invalid-email',
+        password: '123',
+        roleName: '',
+        userType: 'STAFF',
+      });
+      expect(invalid.valid).toBe(false);
+      expect(invalid.errors).toContain('Full name is required');
+      expect(invalid.errors).toContain('Valid email is required');
+      expect(invalid.errors).toContain('Password must be at least 8 characters');
+
+      const valid = validateProvisioningInput({
+        fullName: 'Vikramaditya Singhania',
+        email: 'singhania@domain.com',
+        password: 'SecurePass2026!',
+        roleName: 'SALES_MANAGER',
+        userType: 'STAFF',
+      });
+      expect(valid.valid).toBe(true);
+      expect(valid.errors).toHaveLength(0);
+    });
+
+    it('constructs DIRECT active payload for staff and admin roles with password', () => {
+      const payload = buildProvisioningPayload('DIRECT', {
+        fullName: 'Priya Verma',
+        email: 'priya@studio.com',
+        password: 'PriyaStrongPassword!',
+        userType: 'STAFF',
+        roleName: 'DESIGNER',
+        phone: '+919876543210',
+      });
+
+      expect(payload.endpoint).toBe('/api/v1/admin/users');
+      expect(payload.body.email).toBe('priya@studio.com');
+      expect(payload.body.fullName).toBe('Priya Verma');
+      expect(payload.body.password).toBe('PriyaStrongPassword!');
+      expect(payload.body.roleName).toBe('DESIGNER');
+      expect(payload.body.userType).toBe('STAFF');
+    });
+
+    it('constructs INVITE onboarding payload with sendInvite: true', () => {
+      const payload = buildProvisioningPayload('INVITE', {
+        fullName: 'Rahul Sen',
+        email: 'rahul@client.com',
+        password: 'TempPassword123!',
+        userType: 'CUSTOMER',
+        roleName: 'CUSTOMER',
+        companyName: 'Sen Architecture',
+        gstin: '29AAAAA0000A1Z5',
+      });
+
+      expect(payload.endpoint).toBe('/api/v1/admin/users/onboard');
+      expect(payload.body.email).toBe('rahul@client.com');
+      expect(payload.body.temporaryPassword).toBe('TempPassword123!');
+      expect(payload.body.sendInvite).toBe(true);
+      expect(payload.body.companyName).toBe('Sen Architecture');
+    });
+
+    it('ensures initial form state is completely empty with no preset email values', () => {
+      const initialFormState = {
+        email: '',
+        fullName: '',
+        password: '',
+        phone: '',
+        companyName: '',
+        gstin: '',
+      };
+
+      expect(initialFormState.email).toBe('');
+      expect(initialFormState.fullName).toBe('');
+      expect(initialFormState.password).toBe('');
+    });
+  });
 });

@@ -518,7 +518,7 @@ export function AdminSidebar() {
                 className="mt-0.5 truncate text-[10px] leading-tight"
                 style={{ color: 'var(--nfi-sidebar-muted)' }}
               >
-                {user?.email || 'admin@nationalinteriors.com'}
+                {user?.email || '—'}
               </p>
               <div className="mt-1">
                 {user?.roleName === 'SUPER_ADMIN' ? (

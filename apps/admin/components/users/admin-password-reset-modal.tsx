@@ -4,6 +4,9 @@ import React, { useState } from 'react';
 import { AdminService, User } from '@nfi/api-client';
 import { FormField, inputClassName, inputStyle } from '@/components/ui/form-field';
 import { NfiButton } from '@/components/ui/nfi-button';
+import { ShieldAlert } from 'lucide-react';
+import { useAuthStore } from '@/features/auth/store/auth.store';
+import { canManageUserCredentials } from '@/lib/rbac-hierarchy';
 
 interface AdminPasswordResetModalProps {
   user: User | null;
@@ -18,6 +21,9 @@ export function AdminPasswordResetModal({
   onClose,
   onSuccess,
 }: AdminPasswordResetModalProps) {
+  const currentActor = useAuthStore((s) => s.user);
+  const isAuthorized = canManageUserCredentials(currentActor, user);
+
   const [resetMode, setResetMode] = useState<'LINK' | 'TEMPORARY'>('LINK');
   const [customPassword, setCustomPassword] = useState('');
   const [mustChangePassword, setMustChangePassword] = useState(true);
@@ -33,6 +39,10 @@ export function AdminPasswordResetModal({
 
   const handleExecuteReset = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAuthorized) {
+      setError('Access Denied: Only a Super Administrator can reset passwords for this account.');
+      return;
+    }
     setSubmitting(true);
     setError('');
 
@@ -115,7 +125,27 @@ export function AdminPasswordResetModal({
             </div>
           )}
 
-          {successInfo ? (
+          {!isAuthorized ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-4 text-xs">
+                <div className="flex items-center gap-2 font-bold text-rose-800">
+                  <ShieldAlert className="h-4 w-4 text-rose-600" />
+                  <span>Protected Account Hierarchy</span>
+                </div>
+                <p className="mt-2 leading-relaxed text-stone-700">
+                  The account for <strong>{user.fullName}</strong> is configured with the{' '}
+                  <span className="font-semibold text-stone-900">{user.userType}</span> role.
+                  Platform security policy restricts credential recovery and password resets for
+                  this tier exclusively to authorized <strong>Super Administrators</strong>.
+                </p>
+              </div>
+              <div className="flex justify-end pt-2">
+                <NfiButton variant="secondary" size="sm" onClick={onClose}>
+                  Dismiss
+                </NfiButton>
+              </div>
+            </div>
+          ) : successInfo ? (
             <div className="space-y-4">
               <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
                 <div className="flex items-center gap-2 text-sm font-bold text-emerald-800">

@@ -3,17 +3,22 @@ import { UnregisteredLead, User } from './users';
 
 export interface Role {
   _id: string;
+  id?: string;
   name: string;
   description?: string;
+  permissionIds?: string[];
   isSystem: boolean;
-  createdAt: string;
+  isSystemRole?: boolean;
+  createdAt?: string;
 }
 
 export interface Permission {
   _id: string;
+  id?: string;
   key: string;
   description: string;
-  group: string;
+  group?: string;
+  module?: string;
 }
 
 export interface AuditLog {
@@ -69,12 +74,13 @@ export const AdminService = {
 
   createUser: async (data: {
     email: string;
-    userType: string;
-    roleId?: string | undefined;
-    fullName?: string | undefined;
-    password?: string | undefined;
+    userType: 'STAFF' | 'ADMIN' | 'CUSTOMER';
+    roleName: string;
+    fullName: string;
+    password: string;
+    phone?: string | null | undefined;
   }) => {
-    return apiClient.post<{ user: User }>('/api/v1/admin/users', data);
+    return apiClient.post<User>('/api/v1/admin/users', data);
   },
 
   onboardUser: async (data: {
@@ -154,6 +160,36 @@ export const AdminService = {
 
   listPermissions: async () => {
     return apiClient.get<{ items: Permission[] }>('/api/v1/admin/permissions');
+  },
+
+  /** Convenience: list users filtered by userType (for staff roster on RBAC page). */
+  listUsersByRole: async (
+    userType: 'ADMIN' | 'STAFF' | 'CUSTOMER' | 'SUPER_ADMIN',
+    params?: {
+      page?: number;
+      limit?: number;
+      status?: string;
+    },
+  ) => {
+    return apiClient.get<{ items: User[]; total: number }>('/api/v1/admin/users', {
+      params: { userType, ...params } as Record<string, unknown>,
+    });
+  },
+
+  /** Convenience: onboard a new admin or staff member (invite-first flow). */
+  inviteStaffMember: async (data: {
+    fullName: string;
+    email: string;
+    phone?: string | null;
+    userType: 'ADMIN' | 'STAFF';
+    roleName: string;
+    sendInvite?: boolean;
+    temporaryPassword?: string;
+  }) => {
+    return apiClient.post<User>('/api/v1/admin/users/onboard', {
+      ...data,
+      sendInvite: data.sendInvite ?? true,
+    });
   },
 
   // Audit

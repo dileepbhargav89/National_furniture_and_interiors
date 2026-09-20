@@ -1,5 +1,10 @@
 import { Router, type RequestHandler } from 'express';
-import { NotFoundError, sendSuccess, UnauthorizedError } from '../../../core/exceptions';
+import {
+  ForbiddenError,
+  NotFoundError,
+  sendSuccess,
+  UnauthorizedError,
+} from '../../../core/exceptions';
 import { createRateLimiter, requirePermissions, requireStaffOrAdmin } from '../../../core/security';
 import type {
   AdminCreateUser,
@@ -45,6 +50,7 @@ export interface UsersRoutesDeps {
       }
     | undefined;
   resolveRoleIdByName: (name: string) => Promise<string | null>;
+  resolveRoleNameById?: ((id: string) => Promise<string | null>) | undefined;
   recordAudit: (input: {
     actorId: string | null;
     actorRole: string | null;
@@ -206,6 +212,12 @@ export function createUsersRoutes(deps: UsersRoutesDeps, authMiddleware: Request
         try {
           const body = adminCreateUserSchema.parse(req.body);
 
+          if (body.roleName === 'SUPER_ADMIN' && req.auth?.roleName !== 'SUPER_ADMIN') {
+            throw new ForbiddenError(
+              'Access Denied: Only a Super Administrator can provision Super Administrator accounts.',
+            );
+          }
+
           const roleId = await deps.resolveRoleIdByName(body.roleName);
           if (!roleId) {
             throw new NotFoundError(`Role ${body.roleName} not found`);
@@ -249,6 +261,12 @@ export function createUsersRoutes(deps: UsersRoutesDeps, authMiddleware: Request
       void (async () => {
         try {
           const body = adminOnboardUserSchema.parse(req.body);
+
+          if (body.roleName === 'SUPER_ADMIN' && req.auth?.roleName !== 'SUPER_ADMIN') {
+            throw new ForbiddenError(
+              'Access Denied: Only a Super Administrator can provision Super Administrator accounts.',
+            );
+          }
 
           let roleId = await deps.resolveRoleIdByName(body.roleName);
           if (!roleId) {
@@ -367,6 +385,22 @@ export function createUsersRoutes(deps: UsersRoutesDeps, authMiddleware: Request
       void (async () => {
         try {
           const userId = req.params['id'] as string;
+
+          const targetUser = await deps.adminGetUserDetail.execute(userId);
+          const targetRoleName =
+            targetUser.roleId && deps.resolveRoleNameById
+              ? await deps.resolveRoleNameById(targetUser.roleId)
+              : null;
+          const isTargetSuperAdmin =
+            targetRoleName === 'SUPER_ADMIN' || targetUser.userType === 'SUPER_ADMIN';
+          const isActorSuperAdmin = req.auth?.roleName === 'SUPER_ADMIN';
+
+          if (isTargetSuperAdmin && !isActorSuperAdmin) {
+            throw new ForbiddenError(
+              'Access Denied: Only a Super Administrator can resend onboarding for Super Administrator accounts.',
+            );
+          }
+
           const result = await deps.adminResendOnboarding.execute(userId);
 
           await deps.recordAudit({
@@ -397,6 +431,31 @@ export function createUsersRoutes(deps: UsersRoutesDeps, authMiddleware: Request
       void (async () => {
         try {
           const userId = req.params['id'] as string;
+
+          const targetUser = await deps.adminGetUserDetail.execute(userId);
+          const targetRoleName =
+            targetUser.roleId && deps.resolveRoleNameById
+              ? await deps.resolveRoleNameById(targetUser.roleId)
+              : null;
+          const isTargetSuperAdmin =
+            targetRoleName === 'SUPER_ADMIN' || targetUser.userType === 'SUPER_ADMIN';
+          const isActorSuperAdmin = req.auth?.roleName === 'SUPER_ADMIN';
+
+          // Hierarchy Rule 1: Only a Super Admin can reset a Super Admin's password!
+          if (isTargetSuperAdmin && !isActorSuperAdmin) {
+            throw new ForbiddenError(
+              'Access Denied: Only a Super Administrator can reset passwords for Super Administrator accounts.',
+            );
+          }
+
+          // Hierarchy Rule 2: An Admin cannot reset another Admin's password unless they are Super Admin or self
+          const isTargetAdmin = targetRoleName === 'ADMIN' || targetUser.userType === 'ADMIN';
+          if (isTargetAdmin && !isActorSuperAdmin && req.auth?.sub !== userId) {
+            throw new ForbiddenError(
+              'Access Denied: Only a Super Administrator can reset credentials for Administrator accounts.',
+            );
+          }
+
           const body = adminResetPasswordSchema.parse(req.body);
           const newPassword =
             body.newPassword ||
@@ -444,6 +503,38 @@ export function createUsersRoutes(deps: UsersRoutesDeps, authMiddleware: Request
         try {
           const userId = req.params['id'] as string;
           const body = adminUpdateStatusSchema.parse(req.body);
+
+          const targetUser = await deps.adminGetUserDetail.execute(userId);
+          const targetRoleName =
+            targetUser.roleId && deps.resolveRoleNameById
+              ? await deps.resolveRoleNameById(targetUser.roleId)
+              : null;
+          const isTargetSuperAdmin =
+            targetRoleName === 'SUPER_ADMIN' || targetUser.userType === 'SUPER_ADMIN';
+          const isTargetAdmin = targetRoleName === 'ADMIN' || targetUser.userType === 'ADMIN';
+          const isActorSuperAdmin = req.auth?.roleName === 'SUPER_ADMIN';
+
+          // Hierarchy Rule 1: A Super Admin cannot be suspended by a non-Super Admin
+          if (isTargetSuperAdmin && !isActorSuperAdmin) {
+            throw new ForbiddenError(
+              'Access Denied: Super Administrator accounts cannot be modified or suspended by non-Super Administrators.',
+            );
+          }
+
+          // Hierarchy Rule 2: Super Admin accounts are permanent and cannot be suspended or deactivated
+          if (isTargetSuperAdmin && body.status !== 'ACTIVE') {
+            throw new ForbiddenError(
+              'Access Denied: Super Administrator accounts are permanent and cannot be deactivated or suspended.',
+            );
+          }
+
+          // Hierarchy Rule 3: Only a Super Administrator can alter the status of an Administrator account
+          if (isTargetAdmin && !isActorSuperAdmin) {
+            throw new ForbiddenError(
+              'Access Denied: Only a Super Administrator can alter the status of an Administrator account.',
+            );
+          }
+
           const updated = await deps.adminUpdateUserStatus.execute(userId, body.status);
 
           await deps.recordAudit({

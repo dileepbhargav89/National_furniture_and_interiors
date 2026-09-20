@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { User } from '@nfi/api-client';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { NfiButton } from '@/components/ui/nfi-button';
+import { Lock } from 'lucide-react';
+import { useAuthStore } from '@/features/auth/store/auth.store';
+import { canManageUserCredentials, canChangeUserStatus } from '@/lib/rbac-hierarchy';
 
 interface UserQuickViewDrawerProps {
   user: User | null;
@@ -23,9 +26,13 @@ export function UserQuickViewDrawer({
   onResendOnboarding,
   onToggleStatus,
 }: UserQuickViewDrawerProps) {
+  const currentActor = useAuthStore((s) => s.user);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   if (!open || !user) return null;
+
+  const canManage = canManageUserCredentials(currentActor, user);
+  const canToggle = canChangeUserStatus(currentActor, user);
 
   const handleCopy = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -186,59 +193,89 @@ export function UserQuickViewDrawer({
                 Administrative Actions
               </span>
               <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => onResetPassword(user)}
-                  className="shadow-2xs flex items-center justify-center gap-1.5 rounded-md border border-stone-300 bg-white px-3 py-2 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900"
-                >
-                  <svg
-                    className="h-4 w-4 text-amber-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                {canManage ? (
+                  <button
+                    type="button"
+                    onClick={() => onResetPassword(user)}
+                    className="shadow-2xs flex items-center justify-center gap-1.5 rounded-md border border-stone-300 bg-white px-3 py-2 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
-                    />
-                  </svg>
-                  Reset Password
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => onResendOnboarding(user)}
-                  className="shadow-2xs flex items-center justify-center gap-1.5 rounded-md border border-stone-300 bg-white px-3 py-2 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900"
-                >
-                  <svg
-                    className="h-4 w-4 text-indigo-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                    <svg
+                      className="h-4 w-4 text-amber-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+                      />
+                    </svg>
+                    Reset Password
+                  </button>
+                ) : (
+                  <div
+                    title="Protected Account: Super Administrator credentials can only be reset by a Super Administrator"
+                    className="shadow-2xs flex cursor-not-allowed items-center justify-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-medium text-stone-400"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                    />
-                  </svg>
-                  Resend Invite
-                </button>
+                    <Lock className="h-3.5 w-3.5 text-stone-400" />
+                    Reset Protected
+                  </div>
+                )}
 
-                <button
-                  type="button"
-                  onClick={() => onToggleStatus(user)}
-                  className={`shadow-2xs col-span-2 flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors ${
-                    isSuspended
-                      ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                      : 'border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100'
-                  }`}
-                >
-                  {isSuspended ? '✓ Re-activate Account' : '⚠ Suspend Account'}
-                </button>
+                {canManage ? (
+                  <button
+                    type="button"
+                    onClick={() => onResendOnboarding(user)}
+                    className="shadow-2xs flex items-center justify-center gap-1.5 rounded-md border border-stone-300 bg-white px-3 py-2 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-50 hover:text-stone-900"
+                  >
+                    <svg
+                      className="h-4 w-4 text-indigo-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                      />
+                    </svg>
+                    Resend Invite
+                  </button>
+                ) : (
+                  <div
+                    title="Protected Account: Super Administrator credentials can only be managed by a Super Administrator"
+                    className="shadow-2xs flex cursor-not-allowed items-center justify-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-medium text-stone-400"
+                  >
+                    <Lock className="h-3.5 w-3.5 text-stone-400" />
+                    Invite Protected
+                  </div>
+                )}
+
+                {canToggle ? (
+                  <button
+                    type="button"
+                    onClick={() => onToggleStatus(user)}
+                    className={`shadow-2xs col-span-2 flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors ${
+                      isSuspended
+                        ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                        : 'border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100'
+                    }`}
+                  >
+                    {isSuspended ? '✓ Re-activate Access' : '⚠ Deactivate / Suspend Access'}
+                  </button>
+                ) : (
+                  <div
+                    title="Protected Account: Account status cannot be modified"
+                    className="shadow-2xs col-span-2 flex cursor-not-allowed items-center justify-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-medium text-stone-400"
+                  >
+                    <Lock className="h-3.5 w-3.5 text-stone-400" />
+                    Status Protected (Immutable)
+                  </div>
+                )}
               </div>
             </div>
 

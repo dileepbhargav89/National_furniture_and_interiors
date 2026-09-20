@@ -138,6 +138,8 @@ export function createApp(mountBusinessRoutes = true): Express {
           hashPassword: (plaintext) => ctx.auth.passwordHasher.hash(plaintext),
           resolveRoleIdByName: async (name) =>
             (await ctx.admin.roleRepository.findByName(name))?.id ?? null,
+          resolveRoleNameById: async (id) =>
+            (await ctx.admin.roleRepository.findById(id))?.name ?? null,
           recordAudit: (input) => ctx.admin.auditLogger.record(input),
         },
         authMiddleware,

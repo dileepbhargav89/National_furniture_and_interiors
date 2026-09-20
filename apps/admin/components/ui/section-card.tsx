@@ -1,30 +1,40 @@
 import React from 'react';
 
 interface SectionCardProps {
-  title?: string;
+  title?: React.ReactNode;
   description?: string;
   children: React.ReactNode;
   className?: string;
   action?: React.ReactNode;
 }
 
-export function SectionCard({ title, description, children, className = '', action }: SectionCardProps) {
+export function SectionCard({
+  title,
+  description,
+  children,
+  className = '',
+  action,
+}: SectionCardProps) {
   return (
     <div
-      className={`bg-white rounded-lg border ${className}`}
+      className={`rounded-lg border bg-white ${className}`}
       style={{ borderColor: 'var(--nfi-border)' }}
     >
       {(title || action) && (
         <div
-          className="px-6 py-4 border-b flex items-center justify-between"
+          className="flex items-center justify-between border-b px-6 py-4"
           style={{ borderColor: 'var(--nfi-border)' }}
         >
           <div>
-            <h2 className="text-base font-semibold" style={{ color: 'var(--nfi-text)' }}>
-              {title}
-            </h2>
+            {typeof title === 'string' ? (
+              <h2 className="text-base font-semibold" style={{ color: 'var(--nfi-text)' }}>
+                {title}
+              </h2>
+            ) : (
+              title
+            )}
             {description && (
-              <p className="text-xs mt-0.5" style={{ color: 'var(--nfi-text-secondary)' }}>
+              <p className="mt-0.5 text-xs" style={{ color: 'var(--nfi-text-secondary)' }}>
                 {description}
               </p>
             )}

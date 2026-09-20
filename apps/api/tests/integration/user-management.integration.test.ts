@@ -42,11 +42,12 @@ beforeAll(async () => {
 
   // Test auth middleware injecting admin credentials with users.read and users.write
   const testAuthMiddleware: RequestHandler = (req, _res, next) => {
+    const roleName = (req.headers['x-test-role'] as string) || 'ADMIN';
     req.auth = {
-      sub: 'admin_super_user',
+      sub: (req.headers['x-test-sub'] as string) || 'admin_super_user',
       userType: 'ADMIN',
       roleId: 'role-admin',
-      roleName: 'ADMIN',
+      roleName,
       permissions: ['users.read', 'users.write', 'users.read_self', '*'],
     };
     next();
@@ -66,7 +67,36 @@ beforeAll(async () => {
       execute: vi.fn(async () => ({ items: [mockUser], total: 1 })),
     } as unknown as UsersRoutesDeps['adminListUsersWithFilters'],
     adminGetUserDetail: {
-      execute: vi.fn(async (id: string) => (id === 'usr_patron_100' ? mockDossier : null)),
+      execute: vi.fn(async (id: string) => {
+        if (id === 'usr_super_admin') {
+          return {
+            ...mockDossier,
+            id: 'usr_super_admin',
+            roleId: 'role_super_admin',
+            userType: 'ADMIN',
+          };
+        }
+        if (id === 'usr_admin_standard') {
+          return {
+            ...mockDossier,
+            id: 'usr_admin_standard',
+            roleId: 'role_admin',
+            userType: 'ADMIN',
+          };
+        }
+        if (id === 'usr_staff_designer') {
+          return {
+            ...mockDossier,
+            id: 'usr_staff_designer',
+            roleId: 'role_designer',
+            userType: 'STAFF',
+          };
+        }
+        if (id === 'usr_patron_100') {
+          return mockDossier;
+        }
+        return null;
+      }),
     } as unknown as UsersRoutesDeps['adminGetUserDetail'],
     adminCreateUser: {
       execute: vi.fn(async () => mockUser),
@@ -111,6 +141,12 @@ beforeAll(async () => {
       })),
     },
     resolveRoleIdByName: vi.fn(async () => '6aa05745ad65cf3101da30f0'),
+    resolveRoleNameById: vi.fn(async (id: string) => {
+      if (id === 'role_super_admin') return 'SUPER_ADMIN';
+      if (id === 'role_admin') return 'ADMIN';
+      if (id === 'role_designer') return 'DESIGNER';
+      return 'CUSTOMER';
+    }),
     recordAudit: vi.fn(async () => {}),
   };
 
@@ -268,6 +304,26 @@ describe('User Management End-to-End API Integration Suite', () => {
       expect(json.success).toBe(true);
       expect(json.data.temporaryPassword).toBeDefined();
     });
+
+    it('blocks non-super-admin from resetting a SUPER_ADMIN password with 403 Forbidden', async () => {
+      const payload = {
+        mustChangePassword: true,
+        sendEmailLink: false,
+      };
+
+      const response = await fetch(`${baseUrl}/admin/users/usr_super_admin/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      expect(response.status).toBe(403);
+      const json = await response.json();
+      expect(json.success).toBe(false);
+      expect(json.error.message).toContain(
+        'Only a Super Administrator can reset passwords for Super Administrator accounts',
+      );
+    });
   });
 
   describe('PATCH /api/v1/admin/users/:id/status', () => {
@@ -284,6 +340,137 @@ describe('User Management End-to-End API Integration Suite', () => {
       const json = await response.json();
       expect(json.success).toBe(true);
       expect(json.data.status).toBe('SUSPENDED');
+    });
+
+    it('allows super-admin to deactivate a staff member with 200 OK', async () => {
+      const payload = { status: 'SUSPENDED' };
+
+      const response = await fetch(`${baseUrl}/admin/users/usr_staff_designer/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-test-role': 'SUPER_ADMIN',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      expect(response.status).toBe(200);
+      const json = await response.json();
+      expect(json.success).toBe(true);
+      expect(json.data.status).toBe('SUSPENDED');
+    });
+
+    it('allows super-admin to re-activate a staff member with 200 OK', async () => {
+      const payload = { status: 'ACTIVE' };
+
+      const response = await fetch(`${baseUrl}/admin/users/usr_staff_designer/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-test-role': 'SUPER_ADMIN',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      expect(response.status).toBe(200);
+      const json = await response.json();
+      expect(json.success).toBe(true);
+      expect(json.data.status).toBe('ACTIVE');
+    });
+
+    it('blocks non-super-admin from altering SUPER_ADMIN account status with 403 Forbidden', async () => {
+      const payload = { status: 'SUSPENDED' };
+
+      const response = await fetch(`${baseUrl}/admin/users/usr_super_admin/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      expect(response.status).toBe(403);
+      const json = await response.json();
+      expect(json.success).toBe(false);
+      expect(json.error.message).toContain(
+        'Super Administrator accounts cannot be modified or suspended by non-Super Administrators',
+      );
+    });
+
+    it('blocks deactivating a SUPER_ADMIN account even by another Super Admin with 403 Forbidden', async () => {
+      const payload = { status: 'SUSPENDED' };
+
+      const response = await fetch(`${baseUrl}/admin/users/usr_super_admin/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-test-role': 'SUPER_ADMIN',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      expect(response.status).toBe(403);
+      const json = await response.json();
+      expect(json.success).toBe(false);
+      expect(json.error.message).toContain(
+        'Super Administrator accounts are permanent and cannot be deactivated or suspended',
+      );
+    });
+
+    it('blocks non-super-admin from altering ADMIN account status with 403 Forbidden', async () => {
+      const payload = { status: 'SUSPENDED' };
+
+      const response = await fetch(`${baseUrl}/admin/users/usr_admin_standard/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-test-role': 'ADMIN',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      expect(response.status).toBe(403);
+      const json = await response.json();
+      expect(json.success).toBe(false);
+      expect(json.error.message).toContain(
+        'Only a Super Administrator can alter the status of an Administrator account',
+      );
+    });
+  });
+
+  describe('RBAC Privilege Escalation Prevention', () => {
+    it('blocks non-super-admin from provisioning a SUPER_ADMIN account with 403 Forbidden', async () => {
+      const payload = {
+        fullName: 'Rogue Admin',
+        email: 'rogue@nationalinteriors.com',
+        password: 'Password123!',
+        userType: 'ADMIN',
+        roleName: 'SUPER_ADMIN',
+      };
+
+      const response = await fetch(`${baseUrl}/admin/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      expect(response.status).toBe(403);
+      const json = await response.json();
+      expect(json.success).toBe(false);
+      expect(json.error.message).toContain(
+        'Only a Super Administrator can provision Super Administrator accounts',
+      );
+    });
+
+    it('blocks non-super-admin from re-issuing onboarding tokens for SUPER_ADMIN with 403 Forbidden', async () => {
+      const response = await fetch(`${baseUrl}/admin/users/usr_super_admin/resend-onboarding`, {
+        method: 'POST',
+      });
+
+      expect(response.status).toBe(403);
+      const json = await response.json();
+      expect(json.success).toBe(false);
+      expect(json.error.message).toContain(
+        'Only a Super Administrator can resend onboarding for Super Administrator accounts',
+      );
     });
   });
 });
