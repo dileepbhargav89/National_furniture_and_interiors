@@ -42,5 +42,10 @@
     "@commitlint/config-conventional": "^19.5.0",
     "eslint": "^9.13.0",
     "@nfi/eslint-config": "workspace:*"
+  },
+  "pnpm": {
+    "overrides": {
+      "qs": ">=6.16.0"
+    }
   }
 }

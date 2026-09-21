@@ -66,3 +66,20 @@ export interface RazorpayWebhookEvent {
 export interface IFileUploaderPort {
   uploadPdf(buffer: Buffer, filename: string): Promise<string>;
 }
+
+/** Port for creating payment intents with the payment gateway. */
+export interface IPaymentIntentGateway {
+  createPaymentIntent(
+    orderId: string,
+    amount: number,
+    currency: string,
+  ): Promise<{ gatewayOrderId: string; status: string }>;
+}
+
+/** Function type for verifying webhook cryptographic signatures. */
+export type RazorpaySignatureVerifierFn = (
+  orderId: string,
+  paymentId: string,
+  signature: string,
+  secret: string,
+) => boolean;

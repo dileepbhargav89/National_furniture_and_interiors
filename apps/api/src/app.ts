@@ -33,6 +33,7 @@ import { createOrdersRouter } from './modules/orders/presentation/orders.routes'
 import { PaymentsController } from './modules/payments/presentation/payments.controller';
 import { InvoicesController } from './modules/payments/presentation/invoices.controller';
 import { createPaymentsRouter } from './modules/payments/presentation/payments.routes';
+import { verifyRazorpaySignature } from './modules/payments/infrastructure/razorpay-signature.verifier';
 import { NotificationsController } from './modules/notifications/presentation/notifications.controller';
 import { createNotificationsRouter } from './modules/notifications/presentation/notifications.routes';
 import { NotificationEventHub } from './modules/notifications/infrastructure/services/notification-event-hub';
@@ -265,6 +266,7 @@ export function createApp(mountBusinessRoutes = true): Express {
       ctx.payments.getPaymentById,
       ctx.payments.getPaymentMetrics,
       ctx.payments.razorpayAdapter,
+      verifyRazorpaySignature,
     );
     // InvoicesController is now imported at the top of the file
     const invoicesController = new InvoicesController(

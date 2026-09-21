@@ -18,7 +18,6 @@ import {
   GetPaymentByIdUseCase,
   GetPaymentMetricsUseCase,
 } from '../application/payments.use-cases';
-import { verifyRazorpaySignature } from '../infrastructure/razorpay-signature.verifier';
 import {
   webhookPayloadSchema,
   adminListPaymentsQuerySchema,
@@ -27,8 +26,11 @@ import {
   recordRefundSchema,
   createPaymentIntentSchema,
 } from './payments.schemas';
-import { RazorpayWebhookEvent } from '../application/ports';
-import { RazorpayPaymentAdapter } from '../infrastructure/adapters/razorpay.adapter';
+import {
+  RazorpayWebhookEvent,
+  IPaymentIntentGateway,
+  RazorpaySignatureVerifierFn,
+} from '../application/ports';
 import { env } from '../../../core/config/env';
 
 export class PaymentsController {
@@ -41,7 +43,8 @@ export class PaymentsController {
     private readonly refundPaymentUseCase?: RefundPaymentUseCase,
     private readonly getPaymentByIdUseCase?: GetPaymentByIdUseCase,
     private readonly getPaymentMetricsUseCase?: GetPaymentMetricsUseCase,
-    private readonly razorpayAdapter?: RazorpayPaymentAdapter
+    private readonly razorpayAdapter?: IPaymentIntentGateway,
+    private readonly signatureVerifier?: RazorpaySignatureVerifierFn,
   ) {}
 
   /**
@@ -57,7 +60,12 @@ export class PaymentsController {
       const signature = req.headers['x-razorpay-signature'];
 
       if (!signature || typeof signature !== 'string') {
-        res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Missing Razorpay signature' } });
+        res
+          .status(401)
+          .json({
+            success: false,
+            error: { code: 'UNAUTHORIZED', message: 'Missing Razorpay signature' },
+          });
         return;
       }
 
@@ -68,7 +76,9 @@ export class PaymentsController {
       try {
         parsed = JSON.parse(bodyStr);
       } catch {
-        res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid JSON body' } });
+        res
+          .status(400)
+          .json({ success: false, error: { code: 'BAD_REQUEST', message: 'Invalid JSON body' } });
         return;
       }
 
@@ -80,18 +90,25 @@ export class PaymentsController {
         return;
       }
 
-      const { event, payload: { payment: { entity } } } = payload.data;
+      const {
+        event,
+        payload: {
+          payment: { entity },
+        },
+      } = payload.data;
 
       // Verify signature using entity fields (docs/09 §4.5)
-      const isValid = verifyRazorpaySignature(
-        entity.order_id,
-        entity.id,
-        signature,
-        this.razorpaySecret
-      );
+      const isValid = this.signatureVerifier
+        ? this.signatureVerifier(entity.order_id, entity.id, signature, this.razorpaySecret)
+        : false;
 
       if (!isValid) {
-        res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Invalid Razorpay signature' } });
+        res
+          .status(401)
+          .json({
+            success: false,
+            error: { code: 'UNAUTHORIZED', message: 'Invalid Razorpay signature' },
+          });
         return;
       }
 
@@ -164,7 +181,8 @@ export class PaymentsController {
         const all = await this.listPaymentsUseCase.execute(100, 0);
         sendSuccess(req, res, 200, {
           totalRevenue: all.reduce((acc, p) => acc + (p.status === 'CAPTURED' ? p.amount : 0), 0),
-          pendingCount: all.filter((p) => p.status === 'CREATED' || p.status === 'AUTHORIZED').length,
+          pendingCount: all.filter((p) => p.status === 'CREATED' || p.status === 'AUTHORIZED')
+            .length,
           capturedCount: all.filter((p) => p.status === 'CAPTURED').length,
           failedCount: all.filter((p) => p.status === 'FAILED').length,
           refundedCount: all.filter((p) => p.status === 'REFUNDED').length,
@@ -190,7 +208,9 @@ export class PaymentsController {
         const all = await this.listPaymentsUseCase.execute(100, 0);
         const found = all.find((p) => p.id === id);
         if (!found) {
-          res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Payment not found' } });
+          res
+            .status(404)
+            .json({ success: false, error: { code: 'NOT_FOUND', message: 'Payment not found' } });
           return;
         }
         sendSuccess(req, res, 200, found);
@@ -265,7 +285,7 @@ export class PaymentsController {
         const result = await this.razorpayAdapter.createPaymentIntent(
           data.orderId,
           data.amount,
-          data.currency
+          data.currency,
         );
 
         sendSuccess(req, res, 201, {
@@ -288,4 +308,3 @@ export class PaymentsController {
     }
   };
 }
-
