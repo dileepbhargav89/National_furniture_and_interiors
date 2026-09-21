@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Service Synchronizing | National Furniture & Interiors</title>
+  <style>
+    :root {
+      --bg-primary: #171717;
+      --bg-surface: #201A15;
+      --text-primary: #FAF9F6;
+      --text-muted: #DDD0BE;
+      --accent-gold: #C5A059;
+      --border-color: rgba(197, 160, 89, 0.25);
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: radial-gradient(circle at 50% 30%, #2A1D15 0%, #171717 100%);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: rgba(32, 26, 21, 0.85);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 48px 40px;
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(197, 160, 89, 0.1);
+      backdrop-filter: blur(16px);
+    }
+    .brand-pill {
+      display: inline-block;
+      border: 1px solid var(--border-color);
+      color: var(--accent-gold);
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      margin-bottom: 24px;
+      background: rgba(197, 160, 89, 0.08);
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+      color: var(--text-primary);
+    }
+    p {
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+    .btn {
+      background: linear-gradient(135deg, #C5A059 0%, #A07D38 100%);
+      color: #171717;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+    .btn:hover {
+      opacity: 0.92;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(197, 160, 89, 0.3);
+    }
+    .footer-note {
+      margin-top: 36px;
+      font-size: 11px;
+      color: rgba(221, 208, 190, 0.5);
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand-pill">National Furniture &amp; Interiors</div>
+    <h1>Atelier Service Synchronizing</h1>
+    <p>Our architectural systems and master catalog are momentarily synchronizing high-availability nodes. Service will automatically resume momentarily.</p>
+    <div class="actions">
+      <button class="btn" onclick="window.location.reload()">Retry Connection</button>
+    </div>
+    <div class="footer-note">
+      Bengaluru &middot; Indiranagar &middot; Whitefield &middot; HSR Layout
+    </div>
+  </div>
+</body>
+</html>

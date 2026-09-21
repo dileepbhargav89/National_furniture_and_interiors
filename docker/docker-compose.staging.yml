@@ -1,2 +1,139 @@
-# Placeholder — staging-scoped Compose definition, if used.
-# Production is orchestrator-managed, not Compose (docs/02_enterprise_architecture.md §8.2, docs/10 §3).
+# Staging & Production Multi-Replica Load-Balanced Topology
+# docs/02_enterprise_architecture.md §8.1-8.2, docs/10_devops_architecture.md §4, §10.2
+
+name: nfi-staging
+
+services:
+  # ---- Data Layer: MongoDB & Redis (docs/02 §8.1) ----
+  mongodb:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongodb_staging_data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_staging_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---- Stateless Application Layer: Dual Horizontally-Scaled API Replicas ----
+  api-1:
+    build:
+      context: ..
+      dockerfile: docker/apps/Dockerfile.api
+    restart: unless-stopped
+    env_file:
+      - ../apps/api/.env
+    environment:
+      INSTANCE_ID: api-node-1
+      MONGODB_URI: mongodb://mongodb:27017/nfi_staging
+      REDIS_URL: redis://redis:6379
+      PORT: '4000'
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  api-2:
+    build:
+      context: ..
+      dockerfile: docker/apps/Dockerfile.api
+    restart: unless-stopped
+    env_file:
+      - ../apps/api/.env
+    environment:
+      INSTANCE_ID: api-node-2
+      MONGODB_URI: mongodb://mongodb:27017/nfi_staging
+      REDIS_URL: redis://redis:6379
+      PORT: '4000'
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ---- Asynchronous Worker (docs/02 §8.1) ----
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/apps/Dockerfile.worker
+    restart: unless-stopped
+    env_file:
+      - ../apps/api/.env
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/nfi_staging
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ---- Storefront Application ----
+  storefront:
+    build:
+      context: ..
+      dockerfile: docker/apps/Dockerfile.storefront
+    restart: unless-stopped
+    env_file:
+      - ../apps/storefront/.env.local
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://api:4000
+    depends_on:
+      api-1:
+        condition: service_healthy
+      api-2:
+        condition: service_healthy
+
+  # ---- Admin Command Portal ----
+  admin:
+    build:
+      context: ..
+      dockerfile: docker/apps/Dockerfile.admin
+    restart: unless-stopped
+    env_file:
+      - ../apps/admin/.env.local
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://api:4000
+      PORT: '3001'
+    depends_on:
+      api-1:
+        condition: service_healthy
+      api-2:
+        condition: service_healthy
+
+  # ---- Production Load Balancer / Reverse Proxy (docs/02 §8.1, docs/10 §10.2) ----
+  nginx:
+    build:
+      context: ..
+      dockerfile: docker/nginx/Dockerfile.nginx
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '8080:80' # Convenient non-root staging port
+    depends_on:
+      api-1:
+        condition: service_healthy
+      api-2:
+        condition: service_healthy
+      storefront:
+        condition: service_started
+      admin:
+        condition: service_started
+
+volumes:
+  mongodb_staging_data:
+  redis_staging_data:

@@ -1,0 +1,22 @@
+# Production Nginx Reverse Proxy & Load Balancer — docs/02 §8, docs/10 §9
+FROM nginx:1.27-alpine
+
+# Remove default boilerplate configs
+RUN rm -rf /etc/nginx/conf.d/* /usr/share/nginx/html/*
+
+# Copy production configuration & virtual hosts
+COPY docker/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY docker/nginx/conf.d/ /etc/nginx/conf.d/
+COPY docker/nginx/errors/ /usr/share/nginx/html/errors/
+
+# Ensure log directory and PID permissions
+RUN mkdir -p /var/log/nginx /usr/share/nginx/html/errors && \
+    chmod -R 755 /usr/share/nginx/html/errors
+
+# Healthcheck testing HTTP gateway liveness
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget -q --spider http://127.0.0.1/health || exit 1
+
+EXPOSE 80 443
+
+CMD ["nginx", "-g", "daemon off;"]

@@ -1,0 +1,8 @@
+{
+  "success": false,
+  "error": {
+    "code": "SERVICE_UNAVAILABLE",
+    "message": "The luxury atelier service is momentarily synchronizing. Please retry shortly.",
+    "timestamp": "2026-09-22T00:00:00.000Z"
+  }
+}
