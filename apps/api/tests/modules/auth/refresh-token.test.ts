@@ -213,4 +213,19 @@ describe('LogoutUser', () => {
     expect(refreshTokens.findByHash).toHaveBeenCalledWith('hash(presented-token)');
     expect(refreshTokens.revoke).not.toHaveBeenCalled();
   });
+
+  it('adds the access token jti to the deny list cache with TTL on logout', async () => {
+    const { refreshTokens, tokens } = build({});
+    const mockCache = {
+      get: vi.fn(),
+      set: vi.fn().mockResolvedValue(undefined),
+      del: vi.fn(),
+      getOrSet: vi.fn(),
+    };
+    const useCase = new LogoutUser(refreshTokens, tokens, mockCache);
+
+    await useCase.execute('presented-token', 'jwt-id-123');
+
+    expect(mockCache.set).toHaveBeenCalledWith('auth:v1:deny:jwt-id-123', '1', 15 * 60);
+  });
 });

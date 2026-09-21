@@ -1,11 +1,19 @@
 import { Metadata } from 'next';
 import CategoryClientPage from './client';
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+export const revalidate = 300;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
   const resolvedParams = await params;
   try {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const res = await fetch(`${baseUrl}/api/v1/categories/${resolvedParams.slug}`);
+    const res = await fetch(`${baseUrl}/api/v1/categories/${resolvedParams.slug}`, {
+      next: { revalidate: 300 },
+    });
     if (res.ok) {
       const data = await res.json();
       const cat = data.data?.category;

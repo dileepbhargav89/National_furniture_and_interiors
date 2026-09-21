@@ -33,7 +33,12 @@ export const CACHE_KEYS = {
   catalog: {
     productList: (page: number, filters: string) => `catalog:v1:list:${page}:${filters}`,
     productDetail: (idOrSlug: string) => `catalog:v1:product:${idOrSlug}`,
+    categoryDetail: (idOrSlug: string) => `catalog:v1:category:${idOrSlug}`,
+    categoryList: (isActive?: boolean) => `catalog:v1:categories:${isActive ?? 'all'}`,
     categoryTree: () => `catalog:v1:categories`,
+    collectionDetail: (idOrSlug: string) => `catalog:v1:collection:${idOrSlug}`,
+    collectionList: (status?: string, featured?: boolean) =>
+      `catalog:v1:collections:${status ?? 'all'}:${featured ?? 'all'}`,
   },
   cart: {
     session: (sessionId: string) => `cart:v1:session:${sessionId}`,

@@ -216,6 +216,17 @@ function toCollection(doc: Record<string, unknown>): ProductCollection {
   };
 }
 
+function reviveCollection(c: ProductCollection): ProductCollection {
+  return {
+    ...c,
+    startDate: c.startDate ? new Date(c.startDate) : undefined,
+    endDate: c.endDate ? new Date(c.endDate) : undefined,
+    publishedAt: c.publishedAt ? new Date(c.publishedAt) : undefined,
+    createdAt: new Date(c.createdAt),
+    updatedAt: new Date(c.updatedAt),
+  };
+}
+
 // ---- CategoryRepository ---------------------------------------------------------------------
 
 export class MongoCategoryRepository implements ICategoryRepository {
@@ -223,23 +234,37 @@ export class MongoCategoryRepository implements ICategoryRepository {
 
   async findById(id: string): Promise<Category | null> {
     if (!OID.test(id)) return null;
+    const cacheKey = CACHE_KEYS.catalog.categoryDetail(id);
+    const cached = await this.cache.get<Category>(cacheKey);
+    if (cached) return reviveCategory(cached);
+
     const doc = await CategoryModel.findOne({ _id: id, isDeleted: false }).lean<Record<
       string,
       unknown
     > | null>();
-    return doc ? toCategory(doc) : null;
+    if (!doc) return null;
+    const category = toCategory(doc);
+    await this.cache.set(cacheKey, category, CACHE_TTL.CATALOG_DETAIL);
+    return category;
   }
 
   async findBySlug(slug: string): Promise<Category | null> {
+    const cacheKey = CACHE_KEYS.catalog.categoryDetail(`slug:${slug}`);
+    const cached = await this.cache.get<Category>(cacheKey);
+    if (cached) return reviveCategory(cached);
+
     const doc = await CategoryModel.findOne({ slug, isDeleted: false }).lean<Record<
       string,
       unknown
     > | null>();
-    return doc ? toCategory(doc) : null;
+    if (!doc) return null;
+    const category = toCategory(doc);
+    await this.cache.set(cacheKey, category, CACHE_TTL.CATALOG_DETAIL);
+    return category;
   }
 
   async findAll(filter: { isActive?: boolean }): Promise<Category[]> {
-    const cacheKey = `catalog:v1:categories:${filter.isActive ?? 'all'}`;
+    const cacheKey = CACHE_KEYS.catalog.categoryList(filter.isActive);
     const cached = await this.cache.get<Category[]>(cacheKey);
     if (cached) return cached.map(reviveCategory);
 
@@ -281,9 +306,9 @@ export class MongoCategoryRepository implements ICategoryRepository {
       level,
     });
     await this.cache.del(
-      'catalog:v1:categories:all',
-      'catalog:v1:categories:true',
-      'catalog:v1:categories:false',
+      CACHE_KEYS.catalog.categoryList(),
+      CACHE_KEYS.catalog.categoryList(true),
+      CACHE_KEYS.catalog.categoryList(false),
     );
     return toCategory(doc.toObject() as Record<string, unknown>);
   }
@@ -296,24 +321,36 @@ export class MongoCategoryRepository implements ICategoryRepository {
       { new: true },
     ).lean<Record<string, unknown> | null>();
     await this.cache.del(
-      'catalog:v1:categories:all',
-      'catalog:v1:categories:true',
-      'catalog:v1:categories:false',
+      CACHE_KEYS.catalog.categoryDetail(id),
+      CACHE_KEYS.catalog.categoryList(),
+      CACHE_KEYS.catalog.categoryList(true),
+      CACHE_KEYS.catalog.categoryList(false),
     );
+    if (doc?.slug) {
+      await this.cache.del(CACHE_KEYS.catalog.categoryDetail(`slug:${doc.slug as string}`));
+    }
     return doc ? toCategory(doc) : null;
   }
 
   async softDelete(id: string): Promise<boolean> {
     if (!OID.test(id)) return false;
+    const existing = await CategoryModel.findOne({ _id: id }).lean<Record<
+      string,
+      unknown
+    > | null>();
     const result = await CategoryModel.updateOne(
       { _id: id, isDeleted: false },
       { $set: { isDeleted: true, deletedAt: new Date() } },
     );
     await this.cache.del(
-      'catalog:v1:categories:all',
-      'catalog:v1:categories:true',
-      'catalog:v1:categories:false',
+      CACHE_KEYS.catalog.categoryDetail(id),
+      CACHE_KEYS.catalog.categoryList(),
+      CACHE_KEYS.catalog.categoryList(true),
+      CACHE_KEYS.catalog.categoryList(false),
     );
+    if (existing?.slug) {
+      await this.cache.del(CACHE_KEYS.catalog.categoryDetail(`slug:${existing.slug as string}`));
+    }
     return result.modifiedCount > 0;
   }
 }
@@ -321,35 +358,62 @@ export class MongoCategoryRepository implements ICategoryRepository {
 // ---- ProductCollectionRepository ------------------------------------------------------------
 
 export class MongoProductCollectionRepository implements IProductCollectionRepository {
+  constructor(private readonly cache: ICacheService = cacheService) {}
+
   async findById(id: string): Promise<ProductCollection | null> {
     if (!OID.test(id)) return null;
+    const cacheKey = CACHE_KEYS.catalog.collectionDetail(id);
+    const cached = await this.cache.get<ProductCollection>(cacheKey);
+    if (cached) return reviveCollection(cached);
+
     const doc = await ProductCollectionModel.findOne({ _id: id, isDeleted: false }).lean<Record<
       string,
       unknown
     > | null>();
-    return doc ? toCollection(doc) : null;
+    if (!doc) return null;
+    const collection = toCollection(doc);
+    await this.cache.set(cacheKey, collection, CACHE_TTL.CATALOG_DETAIL);
+    return collection;
   }
 
   async findBySlug(slug: string): Promise<ProductCollection | null> {
+    const cacheKey = CACHE_KEYS.catalog.collectionDetail(`slug:${slug}`);
+    const cached = await this.cache.get<ProductCollection>(cacheKey);
+    if (cached) return reviveCollection(cached);
+
     const doc = await ProductCollectionModel.findOne({ slug, isDeleted: false }).lean<Record<
       string,
       unknown
     > | null>();
-    return doc ? toCollection(doc) : null;
+    if (!doc) return null;
+    const collection = toCollection(doc);
+    await this.cache.set(cacheKey, collection, CACHE_TTL.CATALOG_DETAIL);
+    return collection;
   }
 
   async findAll(filter: { status?: string; featured?: boolean }): Promise<ProductCollection[]> {
+    const cacheKey = CACHE_KEYS.catalog.collectionList(filter.status, filter.featured);
+    const cached = await this.cache.get<ProductCollection[]>(cacheKey);
+    if (cached) return cached.map(reviveCollection);
+
     const query: Record<string, unknown> = { isDeleted: false };
     if (filter.status) query['status'] = filter.status;
     if (filter.featured !== undefined) query['featured'] = filter.featured;
     const docs = await ProductCollectionModel.find(query)
       .sort({ sortOrder: 1, createdAt: -1 })
       .lean<Record<string, unknown>[]>();
-    return docs.map(toCollection);
+    const result = docs.map(toCollection);
+    await this.cache.set(cacheKey, result, CACHE_TTL.CATALOG_LIST);
+    return result;
   }
 
   async create(input: CreateProductCollectionInput): Promise<ProductCollection> {
     const doc = await ProductCollectionModel.create(input);
+    await this.cache.del(
+      CACHE_KEYS.catalog.collectionList(),
+      CACHE_KEYS.catalog.collectionList('PUBLISHED', true),
+      CACHE_KEYS.catalog.collectionList('PUBLISHED', false),
+    );
     return toCollection(doc.toObject() as Record<string, unknown>);
   }
 
@@ -363,15 +427,37 @@ export class MongoProductCollectionRepository implements IProductCollectionRepos
       { $set: input },
       { new: true },
     ).lean<Record<string, unknown> | null>();
+    await this.cache.del(
+      CACHE_KEYS.catalog.collectionDetail(id),
+      CACHE_KEYS.catalog.collectionList(),
+      CACHE_KEYS.catalog.collectionList('PUBLISHED', true),
+      CACHE_KEYS.catalog.collectionList('PUBLISHED', false),
+    );
+    if (doc?.slug) {
+      await this.cache.del(CACHE_KEYS.catalog.collectionDetail(`slug:${doc.slug as string}`));
+    }
     return doc ? toCollection(doc) : null;
   }
 
   async softDelete(id: string): Promise<boolean> {
     if (!OID.test(id)) return false;
+    const existing = await ProductCollectionModel.findOne({ _id: id }).lean<Record<
+      string,
+      unknown
+    > | null>();
     const result = await ProductCollectionModel.updateOne(
       { _id: id, isDeleted: false },
       { $set: { isDeleted: true, status: 'ARCHIVED' } },
     );
+    await this.cache.del(
+      CACHE_KEYS.catalog.collectionDetail(id),
+      CACHE_KEYS.catalog.collectionList(),
+      CACHE_KEYS.catalog.collectionList('PUBLISHED', true),
+      CACHE_KEYS.catalog.collectionList('PUBLISHED', false),
+    );
+    if (existing?.slug) {
+      await this.cache.del(CACHE_KEYS.catalog.collectionDetail(`slug:${existing.slug as string}`));
+    }
     return result.modifiedCount > 0;
   }
 }
@@ -494,6 +580,18 @@ export class MongoProductRepository implements IProductRepository {
       sortSpec = { createdAt: sortDir };
     }
 
+    const cacheFilterStr = Buffer.from(
+      JSON.stringify({ filter, sortBy: options.sortBy, sortOrder: options.sortOrder, limit }),
+    ).toString('base64url');
+    const cacheKey = CACHE_KEYS.catalog.productList(page, cacheFilterStr);
+    const cached = await this.cache.get<ProductListResult>(cacheKey);
+    if (cached) {
+      return {
+        ...cached,
+        items: cached.items.map(reviveProduct),
+      };
+    }
+
     const [docs, total] = await Promise.all([
       ProductModel.find(query)
         .sort(sortSpec)
@@ -503,7 +601,9 @@ export class MongoProductRepository implements IProductRepository {
       ProductModel.countDocuments(query),
     ]);
 
-    return { items: docs.map(toProduct), total, page, limit };
+    const result: ProductListResult = { items: docs.map(toProduct), total, page, limit };
+    await this.cache.set(cacheKey, result, CACHE_TTL.CATALOG_LIST);
+    return result;
   }
 
   async create(input: CreateProductInput): Promise<Product> {
