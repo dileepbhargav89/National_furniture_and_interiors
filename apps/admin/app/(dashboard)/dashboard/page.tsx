@@ -217,6 +217,7 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [toastMsg, setToastMsg] = useState('');
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -311,6 +312,7 @@ function DashboardContent() {
       setTrends(DEFAULT_TRENDS);
     } finally {
       setLoading(false);
+      setLastUpdated(new Date());
     }
   }, [currentRange]);
 
@@ -411,6 +413,14 @@ function DashboardContent() {
               <Download className="h-3.5 w-3.5 text-[#7A5C45]" />
               <span className="hidden sm:inline">Export</span>
             </button>
+
+            {/* Cache freshness indicator */}
+            <div className="hidden items-center gap-1.5 rounded-lg border border-[#DDD0BE] bg-[#FDF8F2] px-2.5 py-1.5 text-xs text-[#7A5C45] md:flex">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              <span>
+                Synced: {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
 
             <button
               onClick={loadData}

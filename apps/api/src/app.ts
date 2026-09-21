@@ -80,9 +80,14 @@ export function createApp(mountBusinessRoutes = true): Express {
     const mongoConnected = isDatabaseConnected();
     const redisConnected = isCacheConnected();
     const ready = mongoConnected && redisConnected;
-    res
-      .status(ready ? 200 : 503)
-      .json({ status: ready ? 'ready' : 'not_ready', mongoConnected, redisConnected });
+    res.status(ready ? 200 : 503).json({
+      status: ready ? 'ready' : 'not_ready',
+      mongoConnected,
+      redisConnected,
+      redis: {
+        status: redisConnected ? 'connected' : 'disconnected',
+      },
+    });
   });
 
   if (mountBusinessRoutes) {
