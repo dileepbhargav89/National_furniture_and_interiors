@@ -5,10 +5,10 @@ import { AuthProvider } from '../../providers/auth-provider';
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <div className="relative min-h-screen w-full overflow-x-hidden bg-[#FAF9F6] lg:grid lg:grid-cols-2">
+      <div className="relative w-full overflow-x-hidden bg-[#FAF9F6] lg:grid lg:min-h-screen lg:grid-cols-2">
         {/* Left — Brand Showcase Panel */}
         <div
-          className="bg-blueprint-grid relative hidden min-h-screen flex-col justify-between overflow-hidden p-8 text-white lg:flex lg:p-12"
+          className="bg-blueprint-grid relative hidden h-full flex-col justify-between overflow-hidden p-8 text-white lg:flex lg:p-12"
           style={{
             backgroundColor: '#0E0B09',
             borderRight: '1px solid rgba(224, 112, 32, 0.22)',
@@ -125,7 +125,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
         {/* Right — Elevated Authentication Form Panel */}
         <div
-          className="relative flex min-h-screen w-full items-center justify-center overflow-hidden p-6 sm:p-8 lg:p-12"
+          className="relative flex min-h-screen items-center justify-center overflow-hidden p-6 sm:p-8 lg:p-12"
           style={{ backgroundColor: '#FAF9F6' }}
         >
           {/* Subtle ambient light reflections safely contained inside overflow-hidden */}
