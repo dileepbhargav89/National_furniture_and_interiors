@@ -902,12 +902,14 @@ export function buildAppContext(): AppContext {
   const getDesignFunnelUseCase = new GetDesignFunnelUseCase(designProjectRepository);
   const getSalesMetricsUseCase = new GetSalesMetricsUseCase(orderRepository);
 
+  const analyticsUseCases = new AnalyticsUseCases();
   const analytics = {
-    useCases: new AnalyticsUseCases(),
+    useCases: analyticsUseCases,
     jobProcessor: new AnalyticsJobProcessor(
       getLeadsFunnelUseCase,
       getDesignFunnelUseCase,
       getSalesMetricsUseCase,
+      analyticsUseCases,
     ),
   };
 

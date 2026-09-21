@@ -1,34 +1,33 @@
 import { Worker, Job } from 'bullmq';
-import { redisClient } from '../../../core/cache';
+import {
+  redisClient,
+  cacheService,
+  ICacheService,
+  CACHE_KEYS,
+  CACHE_TTL,
+} from '../../../core/cache';
 import { logger } from '../../../core/logger';
-import { env } from '../../../core/config';
 import { GetLeadsFunnelUseCase } from '../../leads/application/leads.use-cases';
 import { GetDesignFunnelUseCase } from '../../design-projects/application/design-projects.use-cases';
 import { GetSalesMetricsUseCase } from '../../orders/application/orders.use-cases';
 import { AnalyticsDateRange } from '../domain/analytics.types';
+import type { AnalyticsUseCases } from '../application/analytics.use-cases';
 
 export class AnalyticsJobProcessor {
   private worker?: Worker | undefined;
-  private readonly CACHE_KEY_PREFIX = 'analytics:dashboard';
 
   constructor(
     private readonly getLeadsFunnelUseCase: GetLeadsFunnelUseCase,
     private readonly getDesignFunnelUseCase: GetDesignFunnelUseCase,
-    private readonly getSalesMetricsUseCase: GetSalesMetricsUseCase
+    private readonly getSalesMetricsUseCase: GetSalesMetricsUseCase,
+    private readonly analyticsUseCases?: AnalyticsUseCases | undefined,
+    private readonly cache: ICacheService = cacheService,
   ) {}
-
-  private getCacheKey(metric: string, range?: AnalyticsDateRange): string {
-    const start = range?.startDate || 'all';
-    const end = range?.endDate || 'all';
-    return `${this.CACHE_KEY_PREFIX}:${metric}:${start}:${end}`;
-  }
 
   async processJob(job: Job): Promise<void> {
     logger.info({ jobId: job.id }, 'Processing analytics pre-computation job');
 
     try {
-      // For now, we compute the "all-time" metrics.
-      // A more sophisticated setup might compute for different date ranges.
       const range: AnalyticsDateRange = {};
 
       const [leadsFunnel, designFunnel, salesMetrics] = await Promise.all([
@@ -38,10 +37,31 @@ export class AnalyticsJobProcessor {
       ]);
 
       await Promise.all([
-        redisClient.set(this.getCacheKey('leads-funnel', range), JSON.stringify(leadsFunnel)),
-        redisClient.set(this.getCacheKey('design-funnel', range), JSON.stringify(designFunnel)),
-        redisClient.set(this.getCacheKey('sales', range), JSON.stringify(salesMetrics)),
+        this.cache.set(
+          CACHE_KEYS.analytics.leadsFunnel(range),
+          leadsFunnel,
+          CACHE_TTL.ANALYTICS_KPI,
+        ),
+        this.cache.set(
+          CACHE_KEYS.analytics.designFunnel(range),
+          designFunnel,
+          CACHE_TTL.ANALYTICS_KPI,
+        ),
+        this.cache.set(
+          CACHE_KEYS.analytics.salesMetrics(range),
+          salesMetrics,
+          CACHE_TTL.ANALYTICS_KPI,
+        ),
       ]);
+
+      if (this.analyticsUseCases) {
+        await Promise.all([
+          this.analyticsUseCases.getExecutiveKPIs(range),
+          this.analyticsUseCases.getRevenueTrends(range),
+          this.analyticsUseCases.getCustomerCohorts(),
+          this.analyticsUseCases.getCategoryPerformance(),
+        ]);
+      }
 
       logger.info('Analytics pre-computation completed successfully');
     } catch (error) {
@@ -52,15 +72,11 @@ export class AnalyticsJobProcessor {
 
   start(): void {
     if (this.worker) return;
-    
-    this.worker = new Worker(
-      'analytics-precomputation',
-      async (job) => this.processJob(job),
-      {
-        connection: redisClient,
-        concurrency: 1, // Avoid running multiple aggregations concurrently
-      }
-    );
+
+    this.worker = new Worker('analytics-precomputation', async (job) => this.processJob(job), {
+      connection: redisClient,
+      concurrency: 1, // Avoid running multiple aggregations concurrently
+    });
 
     this.worker.on('error', (err) => {
       logger.error({ err }, 'Analytics worker error');

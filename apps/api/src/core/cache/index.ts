@@ -19,7 +19,11 @@ redisClient.on('error', (error: unknown) => {
 let connectPromise: Promise<void> | null = null;
 
 export async function connectCache(): Promise<void> {
-  if (redisClient.status === 'ready' || redisClient.status === 'connecting' || redisClient.status === 'connect') {
+  if (
+    redisClient.status === 'ready' ||
+    redisClient.status === 'connecting' ||
+    redisClient.status === 'connect'
+  ) {
     return;
   }
   if (!connectPromise) {
@@ -44,3 +48,9 @@ export async function disconnectCache(): Promise<void> {
   await redisClient.quit();
   connectPromise = null;
 }
+
+export * from './cache.service';
+export * from './cache.keys';
+
+import { CacheService } from './cache.service';
+export const cacheService = new CacheService(redisClient);

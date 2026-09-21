@@ -1,12 +1,26 @@
+import type Redis from 'ioredis';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AnalyticsJobProcessor } from '../../../../src/modules/analytics/infrastructure/analytics.job-processor';
-import { redisClient } from '../../../../src/core/cache';
-import { Worker } from 'bullmq';
-vi.mock('../../../../src/core/cache', () => ({
-  redisClient: {
+import { redisClient, CACHE_KEYS, CACHE_TTL } from '../../../../src/core/cache';
+import { Worker, type Job } from 'bullmq';
+import type { GetLeadsFunnelUseCase } from '../../../../src/modules/leads/application/leads.use-cases';
+import type { GetDesignFunnelUseCase } from '../../../../src/modules/design-projects/application/design-projects.use-cases';
+import type { GetSalesMetricsUseCase } from '../../../../src/modules/orders/application/orders.use-cases';
+import type { AnalyticsUseCases } from '../../../../src/modules/analytics/application/analytics.use-cases';
+
+vi.mock('../../../../src/core/cache', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../src/core/cache')>();
+  const mockRedis = {
     set: vi.fn(),
-  },
-}));
+    get: vi.fn(),
+    del: vi.fn(),
+  };
+  return {
+    ...actual,
+    redisClient: mockRedis,
+    cacheService: new actual.CacheService(mockRedis as unknown as Redis),
+  };
+});
 
 vi.mock('../../../../src/core/logger', () => ({
   logger: {
@@ -29,9 +43,15 @@ vi.mock('bullmq', () => {
 
 describe('AnalyticsJobProcessor', () => {
   let processor: AnalyticsJobProcessor;
-  let mockLeadsFunnelUseCase: any;
-  let mockDesignFunnelUseCase: any;
-  let mockSalesMetricsUseCase: any;
+  let mockLeadsFunnelUseCase: { execute: ReturnType<typeof vi.fn> };
+  let mockDesignFunnelUseCase: { execute: ReturnType<typeof vi.fn> };
+  let mockSalesMetricsUseCase: { execute: ReturnType<typeof vi.fn> };
+  let mockAnalyticsUseCases: {
+    getExecutiveKPIs: ReturnType<typeof vi.fn>;
+    getRevenueTrends: ReturnType<typeof vi.fn>;
+    getCustomerCohorts: ReturnType<typeof vi.fn>;
+    getCategoryPerformance: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -39,17 +59,24 @@ describe('AnalyticsJobProcessor', () => {
     mockLeadsFunnelUseCase = { execute: vi.fn().mockResolvedValue({ totalLeads: 10 }) };
     mockDesignFunnelUseCase = { execute: vi.fn().mockResolvedValue({ totalProjects: 5 }) };
     mockSalesMetricsUseCase = { execute: vi.fn().mockResolvedValue({ totalRevenue: 1000 }) };
+    mockAnalyticsUseCases = {
+      getExecutiveKPIs: vi.fn().mockResolvedValue({}),
+      getRevenueTrends: vi.fn().mockResolvedValue([]),
+      getCustomerCohorts: vi.fn().mockResolvedValue({}),
+      getCategoryPerformance: vi.fn().mockResolvedValue([]),
+    };
 
     processor = new AnalyticsJobProcessor(
-      mockLeadsFunnelUseCase,
-      mockDesignFunnelUseCase,
-      mockSalesMetricsUseCase
+      mockLeadsFunnelUseCase as unknown as GetLeadsFunnelUseCase,
+      mockDesignFunnelUseCase as unknown as GetDesignFunnelUseCase,
+      mockSalesMetricsUseCase as unknown as GetSalesMetricsUseCase,
+      mockAnalyticsUseCases as unknown as AnalyticsUseCases,
     );
   });
 
   describe('processJob', () => {
-    it('should fetch metrics and store them in redis', async () => {
-      const mockJob = { id: 'job-1' } as any;
+    it('should fetch metrics and store them in redis with TTL', async () => {
+      const mockJob = { id: 'job-1' } as unknown as Job;
 
       await processor.processJob(mockJob);
 
@@ -57,23 +84,33 @@ describe('AnalyticsJobProcessor', () => {
       expect(mockDesignFunnelUseCase.execute).toHaveBeenCalled();
       expect(mockSalesMetricsUseCase.execute).toHaveBeenCalled();
 
-      expect(redisClient.set).toHaveBeenCalledTimes(3);
+      expect(mockAnalyticsUseCases.getExecutiveKPIs).toHaveBeenCalled();
+      expect(mockAnalyticsUseCases.getRevenueTrends).toHaveBeenCalled();
+      expect(mockAnalyticsUseCases.getCustomerCohorts).toHaveBeenCalled();
+      expect(mockAnalyticsUseCases.getCategoryPerformance).toHaveBeenCalled();
+
       expect(redisClient.set).toHaveBeenCalledWith(
-        'analytics:dashboard:leads-funnel:all:all',
-        JSON.stringify({ totalLeads: 10 })
+        CACHE_KEYS.analytics.leadsFunnel(),
+        JSON.stringify({ totalLeads: 10 }),
+        'EX',
+        CACHE_TTL.ANALYTICS_KPI,
       );
       expect(redisClient.set).toHaveBeenCalledWith(
-        'analytics:dashboard:design-funnel:all:all',
-        JSON.stringify({ totalProjects: 5 })
+        CACHE_KEYS.analytics.designFunnel(),
+        JSON.stringify({ totalProjects: 5 }),
+        'EX',
+        CACHE_TTL.ANALYTICS_KPI,
       );
       expect(redisClient.set).toHaveBeenCalledWith(
-        'analytics:dashboard:sales:all:all',
-        JSON.stringify({ totalRevenue: 1000 })
+        CACHE_KEYS.analytics.salesMetrics(),
+        JSON.stringify({ totalRevenue: 1000 }),
+        'EX',
+        CACHE_TTL.ANALYTICS_KPI,
       );
     });
 
     it('should throw if a use case fails', async () => {
-      const mockJob = { id: 'job-1' } as any;
+      const mockJob = { id: 'job-1' } as unknown as Job;
       mockLeadsFunnelUseCase.execute.mockRejectedValueOnce(new Error('DB Error'));
 
       await expect(processor.processJob(mockJob)).rejects.toThrow('DB Error');

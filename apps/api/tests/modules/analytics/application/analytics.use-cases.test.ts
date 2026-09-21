@@ -1,13 +1,21 @@
+import type Redis from 'ioredis';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AnalyticsUseCases } from '../../../../src/modules/analytics/application/analytics.use-cases';
-import { redisClient } from '../../../../src/core/cache';
+import { redisClient, CACHE_KEYS } from '../../../../src/core/cache';
 
-vi.mock('../../../../src/core/cache', () => ({
-  redisClient: {
+vi.mock('../../../../src/core/cache', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../src/core/cache')>();
+  const mockRedis = {
     get: vi.fn(),
     set: vi.fn(),
-  },
-}));
+    del: vi.fn(),
+  };
+  return {
+    ...actual,
+    redisClient: mockRedis,
+    cacheService: new actual.CacheService(mockRedis as unknown as Redis),
+  };
+});
 
 vi.mock('../../../../src/core/logger', () => ({
   logger: {
@@ -32,7 +40,7 @@ describe('AnalyticsUseCases', () => {
 
       const result = await useCases.getLeadsFunnel();
       expect(result).toEqual(mockData);
-      expect(redisClient.get).toHaveBeenCalledWith('analytics:dashboard:leads-funnel:all:all');
+      expect(redisClient.get).toHaveBeenCalledWith(CACHE_KEYS.analytics.leadsFunnel());
     });
 
     it('should return default empty state if not in cache', async () => {
@@ -57,6 +65,7 @@ describe('AnalyticsUseCases', () => {
 
       const result = await useCases.getDesignFunnel();
       expect(result).toEqual(mockData);
+      expect(redisClient.get).toHaveBeenCalledWith(CACHE_KEYS.analytics.designFunnel());
     });
 
     it('should return default empty state if not in cache', async () => {
@@ -80,6 +89,7 @@ describe('AnalyticsUseCases', () => {
 
       const result = await useCases.getSalesMetrics();
       expect(result).toEqual(mockData);
+      expect(redisClient.get).toHaveBeenCalledWith(CACHE_KEYS.analytics.salesMetrics());
     });
 
     it('should return default empty state if not in cache', async () => {
@@ -102,7 +112,7 @@ describe('AnalyticsUseCases', () => {
         .mockResolvedValueOnce(JSON.stringify({ totalRevenue: 500 })); // sales
 
       const result = await useCases.getDashboardSummary();
-      
+
       expect(result.leadsFunnel).toEqual({ totalLeads: 5 });
       expect(result.designFunnel).toEqual({ totalProjects: 3 });
       expect(result.salesMetrics).toEqual({ totalRevenue: 500 });
