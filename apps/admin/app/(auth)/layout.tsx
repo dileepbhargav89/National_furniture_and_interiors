@@ -5,10 +5,10 @@ import { AuthProvider } from '../../providers/auth-provider';
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <div className="relative grid min-h-screen flex-col items-center justify-center lg:max-w-none lg:grid-cols-2 lg:px-0">
+      <div className="relative min-h-screen w-full overflow-x-hidden bg-[#FAF9F6] lg:grid lg:grid-cols-2">
         {/* Left — Brand Showcase Panel */}
         <div
-          className="bg-blueprint-grid relative hidden h-full flex-col justify-between overflow-hidden p-12 text-white lg:flex"
+          className="bg-blueprint-grid relative hidden min-h-screen flex-col justify-between overflow-hidden p-8 text-white lg:flex lg:p-12"
           style={{
             backgroundColor: '#0E0B09',
             borderRight: '1px solid rgba(224, 112, 32, 0.22)',
@@ -125,14 +125,35 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
         {/* Right — Elevated Authentication Form Panel */}
         <div
-          className="relative flex min-h-screen items-center justify-center p-6 lg:p-12"
+          className="relative flex min-h-screen w-full items-center justify-center overflow-hidden p-6 sm:p-8 lg:p-12"
           style={{ backgroundColor: '#FAF9F6' }}
         >
-          {/* Subtle ambient light reflections */}
+          {/* Subtle ambient light reflections safely contained inside overflow-hidden */}
           <div className="pointer-events-none absolute -right-20 -top-20 h-96 w-96 rounded-full bg-amber-100/50 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-20 -left-20 h-96 w-96 rounded-full bg-orange-100/40 blur-3xl" />
 
           <div className="relative z-10 w-full max-w-md">
+            {/* Mobile/Tablet Brand Showcase Header (visible on screens below lg when left panel is hidden) */}
+            <div className="mb-6 flex flex-col items-center text-center lg:hidden">
+              <div className="group relative mb-3 flex items-center justify-center rounded-2xl bg-white p-3 shadow-xl ring-1 ring-amber-500/20">
+                <Image
+                  src="/nfi-logo.png"
+                  alt="National Furniture & Interiors Logo"
+                  width={140}
+                  height={140}
+                  className="h-9 w-auto object-contain"
+                  priority
+                />
+              </div>
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#8C7355]">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                </span>
+                Est. 1998 · Bengaluru &amp; Hyderabad
+              </div>
+            </div>
+
             <div className="rounded-3xl border border-stone-200/80 bg-white/95 p-8 shadow-2xl shadow-stone-900/5 backdrop-blur-xl transition-all duration-300 sm:p-10">
               {children}
             </div>
