@@ -17,6 +17,8 @@ export const metadata = {
     'Turnkey residential interiors, fine dining restaurants, boutique hotels, corporate workspaces, and luxury retail shops in Bengaluru. 45-day handover guarantee, 10-year warranty, 40,000 sq.ft factory, and studios in Indiranagar, Whitefield & HSR Layout.',
 };
 
+export const revalidate = 60;
+
 async function getPortfolioProjects(): Promise<PortfolioProject[]> {
   try {
     const apiUrl =
@@ -24,7 +26,7 @@ async function getPortfolioProjects(): Promise<PortfolioProject[]> {
       process.env.NEXT_PUBLIC_API_BASE_URL ||
       'http://localhost:4000';
     const res = await fetch(`${apiUrl}/api/v1/design-projects/portfolio`, {
-      next: { revalidate: 10 },
+      next: { revalidate: 60 },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();

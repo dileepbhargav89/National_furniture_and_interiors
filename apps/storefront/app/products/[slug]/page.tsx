@@ -9,16 +9,25 @@ import { ProductSpecificationsTabs } from '../../../components/product-specifica
 import { ProductReviews } from '../../../components/product-reviews';
 import { RelatedProductsCarousel } from '../../../components/related-products-carousel';
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export const revalidate = 600;
+
+export async function generateStaticParams() {
+  try {
+    const res = await CatalogService.listProducts({ limit: 50 });
+    const items = res.data?.items ?? [];
+    return items.map((p) => ({ slug: p.slug }));
+  } catch {
+    return [];
+  }
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   try {
     const res = await CatalogService.getProduct(slug);
     const rawData = res.data as unknown as { product?: Product } & Product;
-    const product: Product | null = rawData?.product ?? (rawData?.name ? (rawData as Product) : null);
+    const product: Product | null =
+      rawData?.product ?? (rawData?.name ? (rawData as Product) : null);
     if (product) {
       return {
         title: `${product.name} | National Furniture & Interiors`,
@@ -38,11 +47,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function ProductDetailPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
   let product: Product | null = null;
@@ -67,7 +72,8 @@ export default async function ProductDetailPage({
         : (product.categoryId as unknown as { _id?: string })?._id;
     if (catId) {
       const catRes = await CatalogService.getCategory(catId);
-      const catData = catRes.data as unknown as { category?: { name?: string }; name?: string } | undefined;
+      const catData = catRes.data as unknown as
+        { category?: { name?: string }; name?: string } | undefined;
       const resolvedName = catData?.category?.name || catData?.name;
       if (resolvedName) categoryName = resolvedName;
     }
@@ -89,7 +95,9 @@ export default async function ProductDetailPage({
     // Fallback if category has no other pieces
     if (relatedProducts.length === 0) {
       const fallbackRes = await CatalogService.listProducts({ limit: 5 });
-      relatedProducts = (fallbackRes.data?.items || []).filter((p) => (p.id || p._id) !== currentId);
+      relatedProducts = (fallbackRes.data?.items || []).filter(
+        (p) => (p.id || p._id) !== currentId,
+      );
     }
   } catch {
     // Optional related products lookup
@@ -98,7 +106,8 @@ export default async function ProductDetailPage({
   const basePriceAmt = (product.basePrice?.amount || 0) / 100;
   const mrpAmt = product.mrp ? product.mrp.amount / 100 : null;
   const savingsAmt = mrpAmt && mrpAmt > basePriceAmt ? mrpAmt - basePriceAmt : 0;
-  const discountPercentage = mrpAmt && mrpAmt > basePriceAmt ? Math.round((savingsAmt / mrpAmt) * 100) : 0;
+  const discountPercentage =
+    mrpAmt && mrpAmt > basePriceAmt ? Math.round((savingsAmt / mrpAmt) * 100) : 0;
   const firstVariant = product.variants && product.variants.length > 0 ? product.variants[0] : null;
   const primaryThumbnail =
     product.images?.[0]?.url ||
@@ -137,45 +146,45 @@ export default async function ProductDetailPage({
   };
 
   return (
-    <div className="bg-white min-h-screen pt-6 pb-24 font-sans selection:bg-amber-100 selection:text-amber-900">
+    <div className="min-h-screen bg-white pb-24 pt-6 font-sans selection:bg-amber-100 selection:text-amber-900">
       {/* Schema.org Rich Snippet */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+      <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Luxury Breadcrumb Navigation */}
         <nav
-          className="flex items-center text-xs text-neutral-400 mb-8 uppercase tracking-widest overflow-x-auto whitespace-nowrap scrollbar-none"
+          className="scrollbar-none mb-8 flex items-center overflow-x-auto whitespace-nowrap text-xs uppercase tracking-widest text-neutral-400"
           aria-label="Breadcrumb"
         >
           <ol className="inline-flex items-center gap-1.5">
             <li>
-              <Link href="/" className="hover:text-neutral-900 transition-colors">
+              <Link href="/" className="transition-colors hover:text-neutral-900">
                 Home
               </Link>
             </li>
             <li className="flex items-center">
-              <ChevronRight className="w-3 h-3 text-neutral-300 mx-1" />
-              <Link href="/products" className="hover:text-neutral-900 transition-colors">
+              <ChevronRight className="mx-1 h-3 w-3 text-neutral-300" />
+              <Link href="/products" className="transition-colors hover:text-neutral-900">
                 Furniture
               </Link>
             </li>
             {categoryName && (
               <li className="flex items-center">
-                <ChevronRight className="w-3 h-3 text-neutral-300 mx-1" />
+                <ChevronRight className="mx-1 h-3 w-3 text-neutral-300" />
                 <Link
                   href={`/products?category=${typeof product.categoryId === 'string' ? product.categoryId : ''}`}
-                  className="hover:text-neutral-900 transition-colors"
+                  className="transition-colors hover:text-neutral-900"
                 >
                   {categoryName}
                 </Link>
               </li>
             )}
             <li aria-current="page" className="flex items-center">
-              <ChevronRight className="w-3 h-3 text-neutral-300 mx-1" />
-              <span className="text-neutral-900 font-semibold truncate max-w-[240px]">
+              <ChevronRight className="mx-1 h-3 w-3 text-neutral-300" />
+              <span className="max-w-[240px] truncate font-semibold text-neutral-900">
                 {product.name}
               </span>
             </li>
@@ -183,7 +192,7 @@ export default async function ProductDetailPage({
         </nav>
 
         {/* Hero Section: Media Gallery (Left) & Purchase Matrix (Right) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 xl:gap-18 items-start">
+        <div className="xl:gap-18 grid grid-cols-1 items-start gap-10 lg:grid-cols-12 lg:gap-14">
           {/* Left Column: Interactive Photos & HD Videos Gallery */}
           <div className="lg:col-span-7">
             <ProductMediaGallery
@@ -196,7 +205,7 @@ export default async function ProductDetailPage({
           </div>
 
           {/* Right Column: Pricing, Specs, Swatches & Action CTAs */}
-          <div className="lg:col-span-5 lg:sticky lg:top-24">
+          <div className="lg:sticky lg:top-24 lg:col-span-5">
             <ProductPurchaseSection
               productId={product.id || product._id || ''}
               name={product.name}
@@ -233,12 +242,12 @@ export default async function ProductDetailPage({
         />
 
         {/* Customer Reviews & Ratings Engine */}
-        <div id="customer-reviews" className="mt-20 pt-16 border-t border-[#EBE8E3]">
+        <div id="customer-reviews" className="mt-20 border-t border-[#EBE8E3] pt-16">
           <div className="mb-6">
-            <span className="text-xs font-semibold tracking-widest text-[#8C7355] uppercase block mb-1">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-widest text-[#8C7355]">
               Real Patron Experiences
             </span>
-            <h2 className="text-2xl sm:text-3xl font-serif text-neutral-900 font-normal tracking-tight">
+            <h2 className="font-serif text-2xl font-normal tracking-tight text-neutral-900 sm:text-3xl">
               Customer Reviews & Ratings
             </h2>
           </div>
@@ -246,10 +255,7 @@ export default async function ProductDetailPage({
         </div>
 
         {/* Complementary & Related Products Showcase */}
-        <RelatedProductsCarousel
-          products={relatedProducts}
-          categoryName={categoryName}
-        />
+        <RelatedProductsCarousel products={relatedProducts} categoryName={categoryName} />
       </div>
     </div>
   );
