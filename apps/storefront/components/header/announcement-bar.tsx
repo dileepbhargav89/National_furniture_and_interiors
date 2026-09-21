@@ -83,6 +83,16 @@ export function AnnouncementBar() {
     loadPromoBanner();
   }, []);
 
+  // Close store modal on Escape key
+  useEffect(() => {
+    if (!isStoreModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsStoreModalOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isStoreModalOpen]);
+
   const handleSelectStore = (store: StoreLocation) => {
     setSelectedStore(store.name);
     if (typeof window !== 'undefined') {
@@ -183,12 +193,16 @@ export function AnnouncementBar() {
 
       {/* Studio / Store Selection Modal */}
       {isStoreModalOpen && (
-        <div className="backdrop-blur-xs animate-in fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 duration-200">
+        <div
+          className="backdrop-blur-xs animate-in fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 duration-200"
+          onClick={() => setIsStoreModalOpen(false)}
+        >
           <div
             className="relative w-full max-w-md rounded-2xl border border-stone-200 bg-white p-5 shadow-2xl sm:p-6"
             role="dialog"
             aria-modal="true"
             aria-labelledby="store-modal-title"
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
@@ -209,6 +223,7 @@ export function AnnouncementBar() {
                 type="button"
                 onClick={() => setIsStoreModalOpen(false)}
                 className="rounded-lg p-1 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
+                aria-label="Close store selection modal"
               >
                 <X className="h-5 w-5" />
               </button>

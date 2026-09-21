@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
 
 export interface MediaGalleryItem {
@@ -78,6 +78,21 @@ export function ProductMediaGallery({
   const activeMedia = mediaItems[activeIndex] || mediaItems[0];
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
+  // Lightbox keyboard shortcuts (Escape to close, Arrow keys to navigate)
+  useEffect(() => {
+    if (!isLightboxOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsLightboxOpen(false);
+      else if (e.key === 'ArrowRight') {
+        setActiveIndex((prev) => (prev < mediaItems.length - 1 ? prev + 1 : 0));
+      } else if (e.key === 'ArrowLeft') {
+        setActiveIndex((prev) => (prev > 0 ? prev - 1 : mediaItems.length - 1));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLightboxOpen, mediaItems.length]);
+
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -86,16 +101,16 @@ export function ProductMediaGallery({
   };
 
   return (
-    <div className="flex flex-col gap-4 select-none">
+    <div className="flex select-none flex-col gap-4">
       {/* Main Showcase Stage */}
       <div
-        className="relative aspect-[4/3] sm:aspect-[1/1] lg:aspect-[4/5] w-full overflow-hidden rounded-2xl bg-[#FAF9F6] border border-[#EBE8E3] shadow-xs group"
+        className="shadow-xs group relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-[#EBE8E3] bg-[#FAF9F6] sm:aspect-[1/1] lg:aspect-[4/5]"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onMouseMove={activeMedia?.type === 'image' ? handleMouseMove : undefined}
       >
         {activeMedia?.type === 'video' ? (
-          <div className="relative w-full h-full bg-black flex items-center justify-center">
+          <div className="relative flex h-full w-full items-center justify-center bg-black">
             <video
               ref={videoRef}
               src={activeMedia.url}
@@ -103,17 +118,17 @@ export function ProductMediaGallery({
               autoPlay
               playsInline
               loop
-              className="w-full h-full object-contain"
+              className="h-full w-full object-contain"
             />
-            <div className="absolute top-4 right-4 z-10">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-black/70 text-white backdrop-blur-md border border-white/20">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="absolute right-4 top-4 z-10">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/70 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white backdrop-blur-md">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
                 HD Craft Video
               </span>
             </div>
           </div>
         ) : (
-          <div className="relative w-full h-full overflow-hidden">
+          <div className="relative h-full w-full overflow-hidden">
             {activeMedia && (
               <Image
                 src={activeMedia.url}
@@ -137,14 +152,14 @@ export function ProductMediaGallery({
         )}
 
         {/* Top Badges */}
-        <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 pointer-events-none">
+        <div className="pointer-events-none absolute left-4 top-4 z-10 flex flex-col gap-1.5">
           {discountPercentage > 0 && (
-            <span className="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-[#171717] text-white rounded-md shadow-sm">
+            <span className="rounded-md bg-[#171717] px-3 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-sm">
               Save {discountPercentage}%
             </span>
           )}
           {isBestseller && (
-            <span className="px-3 py-1 text-xs font-medium uppercase tracking-wider bg-white/95 text-emerald-950 backdrop-blur-md rounded-md border border-emerald-200 shadow-sm">
+            <span className="rounded-md border border-emerald-200 bg-white/95 px-3 py-1 text-xs font-medium uppercase tracking-wider text-emerald-950 shadow-sm backdrop-blur-md">
               ★ Bestseller
             </span>
           )}
@@ -155,10 +170,10 @@ export function ProductMediaGallery({
           <button
             type="button"
             onClick={() => setIsLightboxOpen(true)}
-            className="absolute bottom-4 right-4 z-10 p-2.5 rounded-full bg-white/90 text-neutral-800 shadow-md backdrop-blur-md hover:bg-white hover:scale-105 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+            className="absolute bottom-4 right-4 z-10 rounded-full bg-white/90 p-2.5 text-neutral-800 opacity-0 shadow-md backdrop-blur-md transition-all hover:scale-105 hover:bg-white focus:opacity-100 group-hover:opacity-100"
             aria-label="Expand photo lightbox"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -172,7 +187,7 @@ export function ProductMediaGallery({
 
       {/* Thumbnail Carousel Strip */}
       {mediaItems.length > 1 && (
-        <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+        <div className="scrollbar-none flex items-center gap-3 overflow-x-auto pb-2">
           {mediaItems.map((item, idx) => {
             const isActive = idx === activeIndex;
             return (
@@ -180,20 +195,21 @@ export function ProductMediaGallery({
                 key={idx}
                 type="button"
                 onClick={() => setActiveIndex(idx)}
-                className={`relative w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-xl overflow-hidden bg-[#FAF9F6] border-2 transition-all ${
+                aria-label={`View ${item.type === 'video' ? 'video' : 'photo'} ${idx + 1}`}
+                className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border-2 bg-[#FAF9F6] transition-all sm:h-24 sm:w-24 ${
                   isActive
-                    ? 'border-[#8C7355] ring-2 ring-[#8C7355]/30 shadow-md scale-102'
-                    : 'border-[#EBE8E3] hover:border-neutral-400 opacity-75 hover:opacity-100'
+                    ? 'scale-102 border-[#8C7355] shadow-md ring-2 ring-[#8C7355]/30'
+                    : 'border-[#EBE8E3] opacity-75 hover:border-neutral-400 hover:opacity-100'
                 }`}
               >
                 {item.type === 'video' ? (
-                  <div className="relative w-full h-full bg-neutral-900 flex flex-col items-center justify-center text-white">
-                    <div className="w-8 h-8 rounded-full bg-amber-600/90 flex items-center justify-center shadow-md">
-                      <svg className="w-4 h-4 fill-white ml-0.5" viewBox="0 0 24 24">
+                  <div className="relative flex h-full w-full flex-col items-center justify-center bg-neutral-900 text-white">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-600/90 shadow-md">
+                      <svg className="ml-0.5 h-4 w-4 fill-white" viewBox="0 0 24 24">
                         <path d="M8 5v14l11-7z" />
                       </svg>
                     </div>
-                    <span className="text-[9px] font-bold uppercase tracking-wider mt-1 text-amber-300">
+                    <span className="mt-1 text-[9px] font-bold uppercase tracking-wider text-amber-300">
                       Video
                     </span>
                   </div>
@@ -213,18 +229,18 @@ export function ProductMediaGallery({
       )}
 
       {/* Trust Micro-Row */}
-      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#EBE8E3] text-center text-[11px] text-neutral-600">
-        <div className="flex flex-col items-center gap-1 p-2 rounded-lg bg-[#FAF9F6]">
+      <div className="grid grid-cols-3 gap-2 border-t border-[#EBE8E3] pt-2 text-center text-[11px] text-neutral-600">
+        <div className="flex flex-col items-center gap-1 rounded-lg bg-[#FAF9F6] p-2">
           <span className="text-base">🛡️</span>
           <span className="font-medium text-neutral-900">10-Year Warranty</span>
           <span className="text-[10px] text-neutral-500">Structural Frame</span>
         </div>
-        <div className="flex flex-col items-center gap-1 p-2 rounded-lg bg-[#FAF9F6]">
+        <div className="flex flex-col items-center gap-1 rounded-lg bg-[#FAF9F6] p-2">
           <span className="text-base">🚚</span>
           <span className="font-medium text-neutral-900">Free White-Glove</span>
           <span className="text-[10px] text-neutral-500">Delivery & Assembly</span>
         </div>
-        <div className="flex flex-col items-center gap-1 p-2 rounded-lg bg-[#FAF9F6]">
+        <div className="flex flex-col items-center gap-1 rounded-lg bg-[#FAF9F6] p-2">
           <span className="text-base">🪵</span>
           <span className="font-medium text-neutral-900">Authentic Luxury</span>
           <span className="text-[10px] text-neutral-500">Kiln-Dried Hardwood</span>
@@ -236,27 +252,32 @@ export function ProductMediaGallery({
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4 backdrop-blur-md animate-fadeIn"
+          className="animate-fadeIn fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 p-4 backdrop-blur-md"
         >
           {/* Close & Counter Header */}
-          <div className="w-full max-w-5xl flex items-center justify-between text-white mb-3">
-            <span className="text-xs font-mono text-neutral-400">
+          <div className="mb-3 flex w-full max-w-5xl items-center justify-between text-white">
+            <span className="font-mono text-xs text-neutral-400">
               {activeIndex + 1} / {mediaItems.length} · {productName}
             </span>
             <button
               type="button"
               onClick={() => setIsLightboxOpen(false)}
-              className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              className="rounded-full bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
               aria-label="Close fullscreen"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
 
           {/* Large Image Viewport */}
-          <div className="relative w-full max-w-5xl h-[75vh] flex items-center justify-center">
+          <div className="relative flex h-[75vh] w-full max-w-5xl items-center justify-center">
             <Image
               src={activeMedia.url}
               alt={activeMedia.altText || productName}
@@ -267,13 +288,13 @@ export function ProductMediaGallery({
           </div>
 
           {/* Lightbox Navigation Buttons */}
-          <div className="flex items-center gap-4 mt-4">
+          <div className="mt-4 flex items-center gap-4">
             <button
               type="button"
               onClick={() =>
                 setActiveIndex((prev) => (prev > 0 ? prev - 1 : mediaItems.length - 1))
               }
-              className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-medium backdrop-blur-sm transition-colors"
+              className="rounded-full bg-white/10 px-4 py-2 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/20"
             >
               ← Previous
             </button>
@@ -282,7 +303,7 @@ export function ProductMediaGallery({
               onClick={() =>
                 setActiveIndex((prev) => (prev < mediaItems.length - 1 ? prev + 1 : 0))
               }
-              className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-medium backdrop-blur-sm transition-colors"
+              className="rounded-full bg-white/10 px-4 py-2 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/20"
             >
               Next →
             </button>

@@ -208,6 +208,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <div className="lg:sticky lg:top-24 lg:col-span-5">
             <ProductPurchaseSection
               productId={product.id || product._id || ''}
+              slug={product.slug || slug}
+              category={categoryName}
               name={product.name}
               sku={product.sku}
               brand={product.brand}
