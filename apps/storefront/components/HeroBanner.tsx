@@ -8,10 +8,13 @@ import { ChevronLeft, ChevronRight, Sparkles, Tag, ArrowUpRight } from 'lucide-r
 const FALLBACK_BANNER: Banner = {
   id: 'fallback-hero',
   title: 'Where Architectural Heritage Meets Modern Living.',
-  subtitle: 'Bespoke solid wood craftsmanship, curated European upholstery, and turnkey interior design tailored to discerning Indian homes.',
+  subtitle:
+    'Bespoke solid wood craftsmanship, curated European upholstery, and turnkey interior design tailored to discerning Indian homes.',
   badgeText: 'EST. 1998 — BENGALURU & HYDERABAD',
-  imageUrl: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?q=85&w=2400&auto=format&fit=crop',
-  mobileImageUrl: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=85&w=900&auto=format&fit=crop',
+  imageUrl:
+    'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?q=85&w=2400&auto=format&fit=crop',
+  mobileImageUrl:
+    'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=85&w=900&auto=format&fit=crop',
   linkUrl: '/products',
   ctaText: 'Explore Signature Collections',
   secondaryCtaText: 'Book Design Consultation',
@@ -89,7 +92,7 @@ export function HeroBanner() {
     <section
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className="relative h-[90vh] min-h-[660px] max-h-[960px] w-full flex items-end overflow-hidden select-none"
+      className="relative flex h-[90vh] max-h-[960px] min-h-[660px] w-full select-none items-end overflow-hidden"
       style={{ backgroundColor: 'var(--nfi-brown-dark)' }}
       aria-roledescription="carousel"
       aria-label="Highlighted Collections"
@@ -103,15 +106,13 @@ export function HeroBanner() {
         />
         <picture>
           {currentBanner.mobileImageUrl && (
-            <source
-              media="(max-width: 768px)"
-              srcSet={currentBanner.mobileImageUrl}
-            />
+            <source media="(max-width: 768px)" srcSet={currentBanner.mobileImageUrl} />
           )}
           <img
+            key={currentBanner.id}
             src={currentBanner.imageUrl || FALLBACK_BANNER.imageUrl}
             alt={currentBanner.title}
-            className="absolute inset-0 w-full h-full object-cover object-center opacity-70 transition-opacity duration-1000"
+            className="animate-ken-burns absolute inset-0 h-full w-full object-cover object-center opacity-70 transition-opacity duration-1000"
             loading="eager"
             onError={(e) => {
               const img = e.currentTarget;
@@ -125,40 +126,46 @@ export function HeroBanner() {
 
       {/* Luxury Gradient Vignette Overlay */}
       <div className="absolute inset-0 z-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-      <div className="absolute inset-0 z-0 bg-gradient-to-r from-black/60 via-transparent to-transparent hidden sm:block" />
+      <div className="absolute inset-0 z-0 hidden bg-gradient-to-r from-black/60 via-transparent to-transparent sm:block" />
 
-      {/* Banner Content Container */}
-      <div className="relative z-10 container mx-auto px-6 md:px-12 pb-16 sm:pb-24 text-white max-w-7xl">
+      {/* Banner Content Container with Staggered Keyframe Entrance */}
+      <div
+        key={`content-${currentIndex}`}
+        className="container relative z-10 mx-auto max-w-7xl px-6 pb-16 text-white sm:pb-24 md:px-12"
+      >
         {/* Pre-title Badge Pill */}
-        <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <div className="animate-reveal-up mb-4 flex flex-wrap items-center gap-3">
           {currentBanner.badgeText ? (
             <span
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-[0.2em] uppercase backdrop-blur-md transition-all shadow-sm"
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] shadow-sm backdrop-blur-md transition-all"
               style={{
                 backgroundColor: 'rgba(224, 112, 32, 0.22)',
                 color: '#F5A060',
                 border: '1px solid rgba(224, 112, 32, 0.5)',
               }}
             >
-              <Sparkles className="w-3 h-3" style={{ color: 'var(--nfi-orange)' }} />
+              <Sparkles className="h-3 w-3 animate-pulse" style={{ color: 'var(--nfi-orange)' }} />
               {currentBanner.badgeText}
             </span>
           ) : (
-            <span className="text-[11px] tracking-[0.25em] text-gray-300 uppercase font-medium">
+            <span className="text-[11px] font-medium uppercase tracking-[0.25em] text-gray-300">
               National Furniture & Interiors — Est. 1998
             </span>
           )}
 
           {currentBanner.discountCode && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/50 backdrop-blur-md">
-              <Tag className="w-3 h-3 text-emerald-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/50 bg-emerald-950/80 px-2.5 py-0.5 font-mono text-[11px] font-bold text-emerald-400 backdrop-blur-md">
+              <Tag className="h-3 w-3 text-emerald-400" />
               PRIVILEGE CODE: {currentBanner.discountCode}
             </span>
           )}
         </div>
 
-        {/* Dynamic Headline */}
-        <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-serif font-light tracking-tight leading-[1.08] mb-4 max-w-4xl drop-shadow-md">
+        {/* Dynamic Headline with Staggered Reveal */}
+        <h1
+          className="animate-reveal-up mb-4 max-w-4xl font-serif text-3xl font-light leading-[1.08] tracking-tight drop-shadow-md sm:text-5xl md:text-6xl lg:text-7xl"
+          style={{ animationDelay: '120ms' }}
+        >
           {currentBanner.title.split('\\n').map((line, i) => (
             <span key={i}>
               {line}
@@ -167,26 +174,32 @@ export function HeroBanner() {
           ))}
         </h1>
 
-        {/* Editorial Subtitle */}
+        {/* Editorial Subtitle with Staggered Reveal */}
         {currentBanner.subtitle && (
-          <p className="text-sm sm:text-base md:text-lg text-gray-200/90 font-light max-w-2xl mb-8 leading-relaxed line-clamp-2 sm:line-clamp-none">
+          <p
+            className="animate-reveal-up mb-8 line-clamp-2 max-w-2xl text-sm font-light leading-relaxed text-gray-200/90 sm:line-clamp-none sm:text-base md:text-lg"
+            style={{ animationDelay: '240ms' }}
+          >
             {currentBanner.subtitle}
           </p>
         )}
 
-        {/* Dual Conversion CTAs */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 max-w-lg">
+        {/* Dual Conversion CTAs with Shimmer Sweep */}
+        <div
+          className="animate-reveal-up flex max-w-lg flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-4"
+          style={{ animationDelay: '360ms' }}
+        >
           <Link
             href={currentBanner.linkUrl || '/products'}
             onClick={() => handleCtaClick(currentBanner.id)}
             className="flex-1"
           >
             <button
-              className="w-full px-7 py-3.5 text-white text-xs sm:text-sm uppercase tracking-widest font-bold transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 shadow-2xl active:scale-95 flex items-center justify-center gap-2 rounded-none"
+              className="btn-shimmer-wrap group flex w-full items-center justify-center gap-2 rounded-none px-7 py-3.5 text-xs font-bold uppercase tracking-widest text-white shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:brightness-110 active:scale-95 sm:text-sm"
               style={{ backgroundColor: 'var(--nfi-orange)' }}
             >
               <span>{currentBanner.ctaText || 'Explore Collection'}</span>
-              <ArrowUpRight className="w-4 h-4" />
+              <ArrowUpRight className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </button>
           </Link>
 
@@ -196,7 +209,7 @@ export function HeroBanner() {
               onClick={() => handleCtaClick(currentBanner.id)}
               className="flex-1"
             >
-              <button className="w-full px-7 py-3.5 border border-white/80 text-white text-xs sm:text-sm uppercase tracking-widest font-semibold hover:bg-white/15 backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 active:scale-95 rounded-none">
+              <button className="w-full rounded-none border border-white/80 px-7 py-3.5 text-xs font-semibold uppercase tracking-widest text-white backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:bg-white/15 active:scale-95 sm:text-sm">
                 {currentBanner.secondaryCtaText}
               </button>
             </Link>
@@ -206,8 +219,8 @@ export function HeroBanner() {
 
       {/* Carousel Navigation Controls (Visible if > 1 banner) */}
       {banners.length > 1 && (
-        <div className="absolute bottom-8 right-8 sm:right-12 z-20 flex items-center gap-3">
-          <div className="flex items-center gap-1.5 mr-2">
+        <div className="absolute bottom-8 right-8 z-20 flex items-center gap-3 sm:right-12">
+          <div className="mr-2 flex items-center gap-1.5">
             {banners.map((_, idx) => (
               <button
                 key={idx}
@@ -216,7 +229,11 @@ export function HeroBanner() {
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   idx === currentIndex ? 'w-8' : 'w-2 bg-white/40 hover:bg-white/70'
                 }`}
-              style={idx === currentIndex ? { backgroundColor: 'var(--nfi-orange)', width: '2rem' } : {}}
+                style={
+                  idx === currentIndex
+                    ? { backgroundColor: 'var(--nfi-orange)', width: '2rem' }
+                    : {}
+                }
               />
             ))}
           </div>
@@ -224,16 +241,16 @@ export function HeroBanner() {
           <button
             onClick={handlePrev}
             aria-label="Previous Slide"
-            className="w-10 h-10 rounded-full border border-white/30 bg-black/40 backdrop-blur-md text-white hover:bg-white/20 flex items-center justify-center transition-colors"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-black/40 text-white backdrop-blur-md transition-colors hover:bg-white/20"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="h-5 w-5" />
           </button>
           <button
             onClick={handleNext}
             aria-label="Next Slide"
-            className="w-10 h-10 rounded-full border border-white/30 bg-black/40 backdrop-blur-md text-white hover:bg-white/20 flex items-center justify-center transition-colors"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-black/40 text-white backdrop-blur-md transition-colors hover:bg-white/20"
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="h-5 w-5" />
           </button>
         </div>
       )}

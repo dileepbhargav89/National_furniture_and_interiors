@@ -151,7 +151,10 @@ export function HeaderActions({ onSearchClick }: { onSearchClick: () => void }) 
           className={wishlistCount > 0 ? 'fill-[#8C7355] text-[#8C7355]' : ''}
         />
         {wishlistCount > 0 && (
-          <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-[#8C7355] text-[10px] font-medium text-white shadow-sm">
+          <span
+            key={`wishlist-badge-${wishlistCount}`}
+            className="animate-badge-bounce absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-[#8C7355] text-[10px] font-medium text-white shadow-sm"
+          >
             {wishlistCount}
           </span>
         )}
@@ -168,7 +171,10 @@ export function HeaderActions({ onSearchClick }: { onSearchClick: () => void }) 
       >
         <ShoppingBag strokeWidth={1.2} size={20} />
         {itemCount > 0 && (
-          <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-gray-900 text-[10px] font-medium text-white">
+          <span
+            key={`cart-badge-${itemCount}`}
+            className="animate-badge-bounce absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-[#E07020] text-[10px] font-bold text-white shadow-sm"
+          >
             {itemCount}
           </span>
         )}
@@ -176,7 +182,7 @@ export function HeaderActions({ onSearchClick }: { onSearchClick: () => void }) 
 
       {/* CTA */}
       <Link href="/contact" className="ml-2 hidden shrink-0 lg:block xl:ml-3">
-        <button className="whitespace-nowrap bg-[#1a1a1a] px-3.5 py-2 text-xs font-medium tracking-wide text-white transition-colors hover:bg-black xl:px-5 xl:text-[13px]">
+        <button className="btn-shimmer-wrap shadow-xs whitespace-nowrap bg-[#1a1a1a] px-3.5 py-2 text-xs font-medium tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-black xl:px-5 xl:text-[13px]">
           Book Consultation
         </button>
       </Link>

@@ -13,6 +13,7 @@ import { ProductCard } from '../components/product-card';
 import { ProductSkeleton } from '../components/product-skeleton';
 import { QuickViewModal } from '../components/quick-view-modal';
 import { NewsletterForm } from '../components/NewsletterForm';
+import { useScrollReveal } from '../hooks/use-scroll-reveal';
 
 // Curated compact 6-room category data aligned with active database slugs
 const COMPACT_ROOM_CATEGORIES: CompactCategoryItem[] = [
@@ -65,6 +66,16 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
+  const { ref: categoriesRef, isRevealed: categoriesRevealed } = useScrollReveal<HTMLElement>({
+    threshold: 0.1,
+  });
+  const { ref: bestsellersRef, isRevealed: bestsellersRevealed } = useScrollReveal<HTMLElement>({
+    threshold: 0.08,
+  });
+  const { ref: newsletterRef, isRevealed: newsletterRevealed } = useScrollReveal<HTMLElement>({
+    threshold: 0.15,
+  });
+
   useEffect(() => {
     async function loadFeatured() {
       try {
@@ -99,7 +110,12 @@ export default function HomePage() {
       <TrustBadgeStrip />
 
       {/* 3. Compact Room & Category Grid (Reduced Card Size) */}
-      <section className="bg-white py-12 sm:py-16">
+      <section
+        ref={categoriesRef}
+        className={`reveal-on-scroll bg-white py-12 sm:py-16 ${
+          categoriesRevealed ? 'is-revealed' : ''
+        }`}
+      >
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div>
@@ -135,7 +151,12 @@ export default function HomePage() {
       </section>
 
       {/* 4. Curator's Bestsellers (Compact Product Cards with Live Data) */}
-      <section className="border-y border-[#EBE8E3] bg-[#FAF9F6] py-12 sm:py-16">
+      <section
+        ref={bestsellersRef}
+        className={`reveal-on-scroll border-y border-[#EBE8E3] bg-[#FAF9F6] py-12 sm:py-16 ${
+          bestsellersRevealed ? 'is-revealed' : ''
+        }`}
+      >
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div>
@@ -218,7 +239,11 @@ export default function HomePage() {
       <PatronReviewsSection />
 
       {/* 8. VIP Design Circle & Newsletter */}
-      <section className="py-14 text-white" style={{ backgroundColor: 'var(--nfi-brown-dark)' }}>
+      <section
+        ref={newsletterRef}
+        className={`reveal-on-scroll py-14 text-white ${newsletterRevealed ? 'is-revealed' : ''}`}
+        style={{ backgroundColor: 'var(--nfi-brown-dark)' }}
+      >
         <div className="container mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
           <p
             className="mb-2 text-[11px] font-semibold uppercase tracking-[0.25em]"

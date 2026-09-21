@@ -108,10 +108,10 @@ export function CartDrawer() {
     <>
       {/* Backdrop */}
       <div
-        className={`backdrop-blur-xs fixed inset-0 z-[100] bg-black/60 transition-opacity duration-300 ${
-          visible ? 'opacity-100' : 'pointer-events-none opacity-0'
-        }`}
         onClick={closeCart}
+        className={`backdrop-blur-xs duration-400 fixed inset-0 z-[100] bg-black/60 transition-opacity ease-out ${
+          visible ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+        }`}
         aria-hidden="true"
       />
 
@@ -120,7 +120,7 @@ export function CartDrawer() {
         role="dialog"
         aria-modal="true"
         aria-label="Shopping Bag"
-        className={`fixed inset-y-0 right-0 z-[101] flex w-full max-w-[440px] flex-col bg-white text-[#171717] shadow-2xl transition-transform duration-300 ease-out ${
+        className={`duration-400 fixed inset-y-0 right-0 z-[101] flex w-full max-w-[440px] flex-col bg-white text-[#171717] shadow-2xl transition-transform ease-[cubic-bezier(0.16,1,0.3,1)] ${
           visible ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -437,9 +437,9 @@ export function CartDrawer() {
 
             <div className="space-y-2">
               <Link href="/checkout" onClick={closeCart} className="block">
-                <button className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-[#171717] py-3.5 text-xs font-semibold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-[#8C7355]">
+                <button className="btn-shimmer-wrap active:scale-98 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-[#171717] py-3.5 text-xs font-semibold uppercase tracking-wider text-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#E07020]">
                   <span>Proceed to Checkout</span>
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                 </button>
               </Link>
 

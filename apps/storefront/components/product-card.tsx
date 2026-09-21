@@ -102,8 +102,7 @@ export function ProductCard({
         }).format(mrp / 100)
       : null;
 
-  const discountPercentage =
-    mrp && mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0;
+  const discountPercentage = mrp && mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0;
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -140,12 +139,15 @@ export function ProductCard({
   if (viewMode === 'list') {
     return (
       <div
-        className="group relative flex flex-col sm:flex-row gap-6 p-4 rounded-lg bg-white border border-[#EBE8E3] hover:border-[#D4AF37]/50 hover:shadow-md transition-all duration-300"
+        className="group relative flex flex-col gap-6 rounded-lg border border-[#EBE8E3] bg-white p-4 transition-all duration-300 hover:border-[#D4AF37]/50 hover:shadow-md sm:flex-row"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
         {/* Left Thumbnail */}
-        <Link href={`/products/${slug}`} className="relative w-full sm:w-60 h-64 shrink-0 overflow-hidden rounded bg-[#FAF9F6]">
+        <Link
+          href={`/products/${slug}`}
+          className="relative h-64 w-full shrink-0 overflow-hidden rounded bg-[#FAF9F6] sm:w-60"
+        >
           {primaryImage ? (
             <>
               <Image
@@ -166,7 +168,7 @@ export function ProductCard({
                   fill
                   sizes="(max-width: 640px) 100vw, 240px"
                   className={`object-cover transition-all duration-500 ease-in-out ${
-                    isHovered ? 'opacity-100 scale-105' : 'opacity-0'
+                    isHovered ? 'scale-105 opacity-100' : 'opacity-0'
                   }`}
                 />
               )}
@@ -178,15 +180,15 @@ export function ProductCard({
           )}
 
           {/* Badges */}
-          <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
+          <div className="absolute left-2.5 top-2.5 flex flex-col gap-1">
             {discountPercentage > 0 && (
-              <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[#171717] text-white">
+              <span className="bg-[#171717] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                 -{discountPercentage}%
               </span>
             )}
             {hasVideo && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-[#171717]/90 text-white backdrop-blur-xs rounded shadow-xs">
-                <svg className="w-2.5 h-2.5 fill-current text-amber-400" viewBox="0 0 24 24">
+              <span className="backdrop-blur-xs shadow-xs inline-flex items-center gap-1 rounded bg-[#171717]/90 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
+                <svg className="h-2.5 w-2.5 fill-current text-amber-400" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z" />
                 </svg>
                 <span>Video</span>
@@ -199,25 +201,31 @@ export function ProductCard({
         <div className="flex flex-1 flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-medium uppercase tracking-widest text-[#8C7355]">{category}</span>
+              <span className="text-[11px] font-medium uppercase tracking-widest text-[#8C7355]">
+                {category}
+              </span>
               <button
                 onClick={toggleWishlist}
-                className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                className="p-1.5 text-gray-400 transition-colors hover:text-red-500"
                 aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
               >
                 <svg
-                  className={`w-5 h-5 ${isWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-400'}`}
+                  className={`h-5 w-5 ${isWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-400'}`}
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                   strokeWidth={1.5}
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                  />
                 </svg>
               </button>
             </div>
 
             <Link href={`/products/${slug}`}>
-              <h3 className="mt-1 text-lg font-serif font-normal text-[#171717] group-hover:text-[#B7791F] transition-colors">
+              <h3 className="mt-1 font-serif text-lg font-normal text-[#171717] transition-colors group-hover:text-[#B7791F]">
                 {name}
               </h3>
             </Link>
@@ -225,19 +233,19 @@ export function ProductCard({
             {/* Ratings & Material */}
             <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
               {ratingsAvg && (
-                <div className="flex items-center gap-1 text-amber-600 font-medium">
+                <div className="flex items-center gap-1 font-medium text-amber-600">
                   <span>★</span>
                   <span>{ratingsAvg.toFixed(1)}</span>
-                  <span className="text-gray-400 font-normal">({ratingsCount || 0})</span>
+                  <span className="font-normal text-gray-400">({ratingsCount || 0})</span>
                 </div>
               )}
               {material && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-[#FAF9F6] text-gray-700 border border-gray-200">
+                <span className="inline-flex items-center rounded border border-gray-200 bg-[#FAF9F6] px-2 py-0.5 text-[11px] text-gray-700">
                   {material}
                 </span>
               )}
               {productType && (
-                <span className="text-[11px] text-gray-500 uppercase tracking-wider">
+                <span className="text-[11px] uppercase tracking-wider text-gray-500">
                   {productType === 'READY_TO_SHIP' ? 'Ready to Ship' : 'Made to Order'}
                 </span>
               )}
@@ -253,10 +261,12 @@ export function ProductCard({
           </div>
 
           {/* Pricing & Actions */}
-          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-4">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-gray-100 pt-4">
             <div className="flex items-baseline gap-2">
               <span className="text-xl font-semibold text-[#171717]">{formattedPrice}</span>
-              {formattedMrp && <span className="text-sm text-gray-400 line-through">{formattedMrp}</span>}
+              {formattedMrp && (
+                <span className="text-sm text-gray-400 line-through">{formattedMrp}</span>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -264,7 +274,7 @@ export function ProductCard({
                 <button
                   type="button"
                   onClick={handleQuickViewClick}
-                  className="px-4 py-2 text-xs font-medium uppercase tracking-wider text-gray-700 bg-white border border-gray-300 hover:border-gray-900 rounded transition-colors"
+                  className="rounded border border-gray-300 bg-white px-4 py-2 text-xs font-medium uppercase tracking-wider text-gray-700 transition-colors hover:border-gray-900"
                 >
                   Quick View
                 </button>
@@ -273,10 +283,8 @@ export function ProductCard({
                 type="button"
                 onClick={handleAddToCart}
                 disabled={adding}
-                className={`px-5 py-2 text-xs font-medium uppercase tracking-wider text-white rounded transition-colors ${
-                  added
-                    ? 'bg-emerald-700'
-                    : 'bg-[#171717] hover:bg-black'
+                className={`rounded px-5 py-2 text-xs font-medium uppercase tracking-wider text-white transition-colors ${
+                  added ? 'bg-emerald-700' : 'bg-[#171717] hover:bg-black'
                 }`}
               >
                 {adding ? 'Adding...' : added ? '✓ Added' : 'Add to Bag'}
@@ -291,12 +299,12 @@ export function ProductCard({
   // Standard Grid Card (Editorial 3-col or Compact 4-col)
   return (
     <div
-      className="group relative flex flex-col bg-transparent transition-all duration-300"
+      className="luxury-card-hover group relative flex flex-col rounded-md bg-transparent"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Image Container */}
-      <div className="relative aspect-[4/5] w-full overflow-hidden rounded-md bg-[#FAF9F6] border border-[#F0EDE8] transition-all duration-300 group-hover:border-[#D4AF37]/40 group-hover:shadow-lg">
+      <div className="relative aspect-[4/5] w-full overflow-hidden rounded-md border border-[#F0EDE8] bg-[#FAF9F6] transition-all duration-500 group-hover:border-[#E07020]/40 group-hover:shadow-md">
         <Link href={`/products/${slug}`} className="block h-full w-full">
           {primaryImage ? (
             <>
@@ -309,8 +317,8 @@ export function ProductCard({
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1440px) 33vw, 25vw"
                 className={`object-cover transition-all duration-700 ease-out ${
                   isHovered && secondaryImage !== primaryImage
-                    ? 'opacity-0 scale-100'
-                    : 'opacity-100 group-hover:scale-105'
+                    ? 'scale-100 opacity-0'
+                    : 'group-hover:scale-106 opacity-100'
                 }`}
               />
               {secondaryImage && secondaryImage !== primaryImage && (
@@ -320,14 +328,21 @@ export function ProductCard({
                   fill
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1440px) 33vw, 25vw"
                   className={`object-cover transition-all duration-700 ease-out ${
-                    isHovered ? 'opacity-100 scale-105' : 'opacity-0 scale-100'
+                    isHovered ? 'scale-106 opacity-100' : 'scale-100 opacity-0'
                   }`}
                 />
               )}
             </>
           ) : (
             <div className="flex h-full w-full items-center justify-center text-gray-300">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+              <svg
+                width="40"
+                height="40"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1"
+              >
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                 <circle cx="8.5" cy="8.5" r="1.5" />
                 <polyline points="21 15 16 10 5 21" />
@@ -337,30 +352,30 @@ export function ProductCard({
         </Link>
 
         {/* Top Badges */}
-        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10 pointer-events-none">
+        <div className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex flex-col gap-1">
           {discountPercentage > 0 && (
-            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[#171717] text-white shadow-sm">
+            <span className="bg-[#171717] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm transition-transform duration-300 group-hover:scale-105">
               -{discountPercentage}%
             </span>
           )}
           {isBestSeller && (
-            <span className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-white/95 backdrop-blur-sm text-emerald-900 border border-emerald-200 shadow-sm">
+            <span className="border border-emerald-200 bg-white/95 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-emerald-900 shadow-sm backdrop-blur-sm">
               Bestseller
             </span>
           )}
           {isFeatured && !isBestSeller && (
-            <span className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-white/95 backdrop-blur-sm text-amber-900 border border-amber-200 shadow-sm">
+            <span className="border border-amber-200 bg-white/95 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-900 shadow-sm backdrop-blur-sm">
               Featured
             </span>
           )}
           {productType === 'MADE_TO_ORDER' && (
-            <span className="px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider bg-white/95 text-stone-800 border border-stone-200">
+            <span className="border border-stone-200 bg-white/95 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wider text-stone-800">
               Made to Order
             </span>
           )}
           {hasVideo && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-[#171717]/90 text-white backdrop-blur-xs rounded shadow-xs">
-              <svg className="w-2.5 h-2.5 fill-current text-amber-400" viewBox="0 0 24 24">
+            <span className="backdrop-blur-xs shadow-xs inline-flex items-center gap-1 rounded bg-[#171717]/90 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
+              <svg className="h-2.5 w-2.5 fill-current text-amber-400" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z" />
               </svg>
               <span>Video</span>
@@ -368,15 +383,15 @@ export function ProductCard({
           )}
         </div>
 
-        {/* Wishlist Button */}
+        {/* Wishlist Button with Heart Pop Keyframe */}
         <button
           onClick={toggleWishlist}
-          className="absolute top-2.5 right-2.5 p-2 bg-white/90 hover:bg-white text-gray-700 hover:text-red-500 rounded-full shadow-sm transition-all duration-200 z-20"
+          className="absolute right-2.5 top-2.5 z-20 rounded-full bg-white/90 p-2 text-gray-700 shadow-sm transition-all duration-300 hover:scale-110 hover:bg-white hover:text-red-500 active:scale-90"
           aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
         >
           <svg
-            className={`w-4 h-4 transition-transform active:scale-125 ${
-              isWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-600'
+            className={`h-4 w-4 transition-all duration-300 ${
+              isWishlisted ? 'animate-heart-pop fill-red-500 text-red-500' : 'text-gray-600'
             }`}
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -390,13 +405,13 @@ export function ProductCard({
           </svg>
         </button>
 
-        {/* Bottom Hover Action Bar */}
-        <div className="absolute inset-x-0 bottom-0 p-2.5 bg-gradient-to-t from-black/40 via-black/10 to-transparent opacity-0 translate-y-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0 z-20 flex gap-2">
+        {/* Bottom Hover Action Bar with Spring Slide-Up */}
+        <div className="backdrop-blur-xs absolute inset-x-0 bottom-0 z-20 flex translate-y-3 gap-2 bg-gradient-to-t from-black/50 via-black/20 to-transparent p-2.5 opacity-0 transition-all duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100">
           {onQuickView && (
             <button
               type="button"
               onClick={handleQuickViewClick}
-              className="flex-1 py-2 px-2 text-xs font-medium tracking-wider uppercase bg-white/95 hover:bg-white text-[#171717] border border-gray-200 rounded shadow transition-colors active:scale-[0.98]"
+              className="flex-1 rounded border border-gray-200 bg-white/95 px-2 py-2 text-xs font-medium uppercase tracking-wider text-[#171717] shadow transition-all hover:scale-[1.02] hover:bg-white active:scale-[0.98]"
             >
               Quick View
             </button>
@@ -405,8 +420,8 @@ export function ProductCard({
             type="button"
             onClick={handleAddToCart}
             disabled={adding}
-            className={`flex-1 py-2 px-2 text-xs font-medium tracking-wider uppercase text-white rounded shadow transition-all active:scale-[0.98] ${
-              added ? 'bg-emerald-700' : 'bg-[#171717] hover:bg-black'
+            className={`flex-1 rounded px-2 py-2 text-xs font-medium uppercase tracking-wider text-white shadow transition-all hover:scale-[1.02] active:scale-[0.98] ${
+              added ? 'bg-emerald-700' : 'bg-[#171717] hover:bg-[#E07020]'
             }`}
           >
             {adding ? 'Adding...' : added ? '✓ Added' : 'Add to Bag'}
@@ -415,30 +430,30 @@ export function ProductCard({
       </div>
 
       {/* Product Information */}
-      <div className="pt-3.5 pb-1 flex flex-col flex-1">
+      <div className="flex flex-1 flex-col pb-1 pt-3.5">
         {/* Category & Rating Row */}
-        <div className="flex items-center justify-between text-[11px] mb-1">
-          <span className="uppercase tracking-widest text-[#8C7355] font-medium truncate">{category}</span>
+        <div className="mb-1 flex items-center justify-between text-[11px]">
+          <span className="truncate font-medium uppercase tracking-widest text-[#8C7355]">
+            {category}
+          </span>
           {ratingsAvg && (
-            <div className="flex items-center gap-1 text-amber-600 font-medium shrink-0">
+            <div className="flex shrink-0 items-center gap-1 font-medium text-amber-600">
               <span>★</span>
               <span>{ratingsAvg.toFixed(1)}</span>
-              <span className="text-gray-400 font-normal">({ratingsCount || 0})</span>
+              <span className="font-normal text-gray-400">({ratingsCount || 0})</span>
             </div>
           )}
         </div>
 
         {/* Product Title */}
         <Link href={`/products/${slug}`} className="block">
-          <h3 className="text-sm font-serif font-normal text-[#171717] group-hover:text-[#B7791F] transition-colors line-clamp-1 leading-snug">
+          <h3 className="line-clamp-1 font-serif text-sm font-normal leading-snug text-[#171717] transition-colors group-hover:text-[#B7791F]">
             {name}
           </h3>
         </Link>
 
         {/* Material snippet if available */}
-        {material && (
-          <p className="mt-0.5 text-[11px] text-gray-500 line-clamp-1">{material}</p>
-        )}
+        {material && <p className="mt-0.5 line-clamp-1 text-[11px] text-gray-500">{material}</p>}
 
         {/* Price Row */}
         <div className="mt-2 flex items-baseline gap-2">
@@ -455,11 +470,11 @@ export function ProductCard({
               <span
                 key={i}
                 title={finish}
-                className="w-2.5 h-2.5 rounded-full border border-gray-300 bg-[#D4AF37]/30"
+                className="h-2.5 w-2.5 rounded-full border border-gray-300 bg-[#D4AF37]/30"
               />
             ))}
             {finishes.length > 3 && (
-              <span className="text-[10px] text-gray-400 ml-0.5">+{finishes.length - 3}</span>
+              <span className="ml-0.5 text-[10px] text-gray-400">+{finishes.length - 3}</span>
             )}
           </div>
         )}

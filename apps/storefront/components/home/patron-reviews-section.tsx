@@ -46,9 +46,18 @@ const PATRON_REVIEWS: PatronReview[] = [
   },
 ];
 
+import { useScrollReveal } from '../../hooks/use-scroll-reveal';
+
 export function PatronReviewsSection() {
+  const { ref, isRevealed } = useScrollReveal<HTMLElement>({ threshold: 0.15 });
+
   return (
-    <section className="border-t border-[#EBE8E3] bg-white py-16 sm:py-20">
+    <section
+      ref={ref}
+      className={`reveal-on-scroll border-t border-[#EBE8E3] bg-white py-16 sm:py-20 ${
+        isRevealed ? 'is-revealed' : ''
+      }`}
+    >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
@@ -66,7 +75,7 @@ export function PatronReviewsSection() {
 
           <Link
             href="/products"
-            className="text-xs font-medium uppercase tracking-wider text-[#8C7355] underline underline-offset-4 hover:text-black"
+            className="text-xs font-medium uppercase tracking-wider text-[#8C7355] underline underline-offset-4 transition-colors hover:text-black"
           >
             Explore All 90+ Pieces
           </Link>
@@ -77,18 +86,18 @@ export function PatronReviewsSection() {
           {PATRON_REVIEWS.map((review) => (
             <div
               key={review.name}
-              className="shadow-2xs flex flex-col overflow-hidden rounded-lg border border-[#E5E0D8] bg-[#FAF9F6] transition-shadow hover:shadow-md"
+              className="luxury-card-hover group flex flex-col overflow-hidden rounded-lg border border-[#E5E0D8] bg-[#FAF9F6]"
             >
               {/* Image of piece in home */}
-              <div className="relative aspect-[16/10] w-full bg-gray-100">
+              <div className="relative aspect-[16/10] w-full overflow-hidden bg-gray-100">
                 <Image
                   src={review.image}
                   alt={review.productName}
                   fill
                   sizes="(max-width: 768px) 100vw, 33vw"
-                  className="object-cover"
+                  className="luxury-img-zoom object-cover"
                 />
-                <span className="backdrop-blur-xs absolute bottom-2 left-2 rounded bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white">
+                <span className="shadow-xs absolute bottom-2 left-2 rounded bg-black/75 px-2.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-md">
                   Verified Patron Home
                 </span>
               </div>
