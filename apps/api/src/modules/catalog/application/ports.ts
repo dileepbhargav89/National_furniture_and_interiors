@@ -52,10 +52,10 @@ export interface CreateProductCollectionInput {
   slug: string;
   shortDescription?: string;
   description?: string;
-  heroImage?: any;
+  heroImage?: unknown;
   heroVideo?: string;
-  thumbnailImage?: any;
-  galleryImages?: any[];
+  thumbnailImage?: unknown;
+  galleryImages?: unknown[];
   galleryVideos?: string[];
   productIds?: string[];
   rules?: Record<string, unknown>;
@@ -73,7 +73,10 @@ export interface IProductCollectionRepository {
   findBySlug(slug: string): Promise<ProductCollection | null>;
   findAll(filter: { status?: string; featured?: boolean }): Promise<ProductCollection[]>;
   create(input: CreateProductCollectionInput): Promise<ProductCollection>;
-  update(id: string, input: Partial<CreateProductCollectionInput>): Promise<ProductCollection | null>;
+  update(
+    id: string,
+    input: Partial<CreateProductCollectionInput>,
+  ): Promise<ProductCollection | null>;
   softDelete(id: string): Promise<boolean>;
 }
 
@@ -191,7 +194,11 @@ export interface ReserveStockInput {
 }
 
 export interface IInventoryRepository {
-  findByVariant(productId: string, variantId: string, warehouseId: string): Promise<Inventory | null>;
+  findByVariant(
+    productId: string,
+    variantId: string,
+    warehouseId: string,
+  ): Promise<Inventory | null>;
   findByProduct(productId: string): Promise<Inventory[]>;
   /**
    * docs/03 §9.2.6 — CRITICAL: reservation MUST be a single atomic conditional update.

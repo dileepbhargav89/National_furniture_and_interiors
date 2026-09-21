@@ -1,5 +1,5 @@
-// Cart Mongoose schema and repository — docs/03 §9.3.1.
 import mongoose, { Schema } from 'mongoose';
+import { cacheService, ICacheService, CACHE_KEYS, CACHE_TTL } from '../../../core/cache';
 import type { Cart, CartItem } from '../domain/cart.types';
 import { CART_STATUSES, calculateCartTotals } from '../domain/cart.types';
 import type { ICartRepository } from '../application/ports';
@@ -71,7 +71,22 @@ function toCart(doc: Record<string, unknown>): Cart {
   };
 }
 
+function reviveCart(c: Cart): Cart {
+  return {
+    ...c,
+    expiresAt: new Date(c.expiresAt),
+    createdAt: new Date(c.createdAt),
+    updatedAt: new Date(c.updatedAt),
+    items: c.items.map((i) => ({
+      ...i,
+      addedAt: new Date(i.addedAt),
+    })),
+  };
+}
+
 export class MongoCartRepository implements ICartRepository {
+  constructor(private readonly cache: ICacheService = cacheService) {}
+
   async findByUser(userId: string): Promise<Cart | null> {
     const doc = await CartModel.findOne({
       userId: new mongoose.Types.ObjectId(userId),
@@ -81,11 +96,18 @@ export class MongoCartRepository implements ICartRepository {
   }
 
   async findBySession(sessionId: string): Promise<Cart | null> {
+    const key = CACHE_KEYS.cart.session(sessionId);
+    const cached = await this.cache.get<Cart>(key);
+    if (cached) return reviveCart(cached);
+
     const doc = await CartModel.findOne({ sessionId, status: 'ACTIVE' }).lean<Record<
       string,
       unknown
     > | null>();
-    return doc ? toCart(doc) : null;
+    if (!doc) return null;
+    const cart = toCart(doc);
+    await this.cache.set(key, cart, CACHE_TTL.CART_SESSION);
+    return cart;
   }
 
   async create(input: { userId: string | null; sessionId: string | null }): Promise<Cart> {
@@ -93,7 +115,11 @@ export class MongoCartRepository implements ICartRepository {
       userId: input.userId ? new mongoose.Types.ObjectId(input.userId) : null,
       sessionId: input.sessionId,
     });
-    return toCart(doc.toObject() as Record<string, unknown>);
+    const cart = toCart(doc.toObject() as Record<string, unknown>);
+    if (cart.sessionId) {
+      await this.cache.set(CACHE_KEYS.cart.session(cart.sessionId), cart, CACHE_TTL.CART_SESSION);
+    }
+    return cart;
   }
 
   async updateItems(cartId: string, items: CartItem[], discount = 0): Promise<Cart> {
@@ -121,7 +147,11 @@ export class MongoCartRepository implements ICartRepository {
     ).lean<Record<string, unknown> | null>();
 
     if (!doc) throw new Error('Cart not found during update');
-    return toCart(doc);
+    const cart = toCart(doc);
+    if (cart.sessionId) {
+      await this.cache.set(CACHE_KEYS.cart.session(cart.sessionId), cart, CACHE_TTL.CART_SESSION);
+    }
+    return cart;
   }
 
   async updateCoupon(cartId: string, couponCode: string | null, discount: number): Promise<Cart> {
@@ -144,11 +174,22 @@ export class MongoCartRepository implements ICartRepository {
     ).lean<Record<string, unknown> | null>();
 
     if (!doc) throw new Error('Cart not found during coupon update');
-    return toCart(doc);
+    const cart = toCart(doc);
+    if (cart.sessionId) {
+      await this.cache.set(CACHE_KEYS.cart.session(cart.sessionId), cart, CACHE_TTL.CART_SESSION);
+    }
+    return cart;
   }
 
   async markConverted(cartId: string): Promise<void> {
-    await CartModel.findByIdAndUpdate(cartId, { $set: { status: 'CONVERTED' } });
+    const doc = await CartModel.findByIdAndUpdate(
+      cartId,
+      { $set: { status: 'CONVERTED' } },
+      { new: true },
+    ).lean<Record<string, unknown> | null>();
+    if (doc && doc.sessionId) {
+      await this.cache.del(CACHE_KEYS.cart.session(doc.sessionId as string));
+    }
   }
 
   async mergeAndDelete(guestCartId: string, userCartId: string): Promise<Cart> {
@@ -181,6 +222,9 @@ export class MongoCartRepository implements ICartRepository {
 
     // Delete guest cart after merge.
     await CartModel.findByIdAndDelete(guestCartId);
+    if (guestCart.sessionId) {
+      await this.cache.del(CACHE_KEYS.cart.session(guestCart.sessionId));
+    }
 
     return updated;
   }

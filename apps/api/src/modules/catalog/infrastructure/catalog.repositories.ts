@@ -6,6 +6,7 @@
 //
 // docs/03 §3.1: every query applies isDeleted: false unless explicitly querying a trash view.
 import mongoose from 'mongoose';
+import { cacheService, ICacheService, CACHE_KEYS, CACHE_TTL } from '../../../core/cache';
 import type {
   Category,
   Inventory,
@@ -17,6 +18,7 @@ import type {
 import type {
   CreateCategoryInput,
   CreateProductInput,
+  CreateProductCollectionInput,
   IInventoryMovementRepository,
   IInventoryRepository,
   ICategoryRepository,
@@ -56,6 +58,22 @@ function toCategory(doc: Record<string, unknown>): Category {
     seo: doc.seo as Category['seo'],
     createdAt: doc.createdAt as Date,
     updatedAt: doc.updatedAt as Date,
+  };
+}
+
+function reviveCategory(c: Category): Category {
+  return {
+    ...c,
+    createdAt: new Date(c.createdAt),
+    updatedAt: new Date(c.updatedAt),
+  };
+}
+
+function reviveProduct(p: Product): Product {
+  return {
+    ...p,
+    createdAt: new Date(p.createdAt),
+    updatedAt: new Date(p.updatedAt),
   };
 }
 
@@ -179,19 +197,19 @@ function toCollection(doc: Record<string, unknown>): ProductCollection {
     slug: doc.slug as string,
     shortDescription: doc.shortDescription as string | undefined,
     description: doc.description as string | undefined,
-    heroImage: doc.heroImage as any,
+    heroImage: doc.heroImage as ProductCollection['heroImage'],
     heroVideo: doc.heroVideo as string | undefined,
-    thumbnailImage: doc.thumbnailImage as any,
-    galleryImages: (doc.galleryImages as any[]) ?? [],
+    thumbnailImage: doc.thumbnailImage as ProductCollection['thumbnailImage'],
+    galleryImages: (doc.galleryImages as ProductCollection['galleryImages']) ?? [],
     galleryVideos: (doc.galleryVideos as string[]) ?? [],
     productIds: ((doc.productIds as unknown[]) ?? []).map(String),
     rules: doc.rules as Record<string, unknown> | undefined,
     startDate: doc.startDate as Date | undefined,
     endDate: doc.endDate as Date | undefined,
-    status: (doc.status as any) || 'DRAFT',
+    status: (doc.status as ProductCollection['status']) || 'DRAFT',
     featured: doc.featured as boolean,
     sortOrder: doc.sortOrder as number,
-    seo: doc.seo as any,
+    seo: doc.seo as ProductCollection['seo'],
     publishedAt: doc.publishedAt as Date | undefined,
     createdAt: doc.createdAt as Date,
     updatedAt: doc.updatedAt as Date,
@@ -201,22 +219,38 @@ function toCollection(doc: Record<string, unknown>): ProductCollection {
 // ---- CategoryRepository ---------------------------------------------------------------------
 
 export class MongoCategoryRepository implements ICategoryRepository {
+  constructor(private readonly cache: ICacheService = cacheService) {}
+
   async findById(id: string): Promise<Category | null> {
     if (!OID.test(id)) return null;
-    const doc = await CategoryModel.findOne({ _id: id, isDeleted: false }).lean<Record<string, unknown> | null>();
+    const doc = await CategoryModel.findOne({ _id: id, isDeleted: false }).lean<Record<
+      string,
+      unknown
+    > | null>();
     return doc ? toCategory(doc) : null;
   }
 
   async findBySlug(slug: string): Promise<Category | null> {
-    const doc = await CategoryModel.findOne({ slug, isDeleted: false }).lean<Record<string, unknown> | null>();
+    const doc = await CategoryModel.findOne({ slug, isDeleted: false }).lean<Record<
+      string,
+      unknown
+    > | null>();
     return doc ? toCategory(doc) : null;
   }
 
   async findAll(filter: { isActive?: boolean }): Promise<Category[]> {
+    const cacheKey = `catalog:v1:categories:${filter.isActive ?? 'all'}`;
+    const cached = await this.cache.get<Category[]>(cacheKey);
+    if (cached) return cached.map(reviveCategory);
+
     const query: Record<string, unknown> = { isDeleted: false };
     if (filter.isActive !== undefined) query['isActive'] = filter.isActive;
-    const docs = await CategoryModel.find(query).sort({ level: 1, sortOrder: 1 }).lean<Record<string, unknown>[]>();
-    return docs.map(toCategory);
+    const docs = await CategoryModel.find(query)
+      .sort({ level: 1, sortOrder: 1 })
+      .lean<Record<string, unknown>[]>();
+    const result = docs.map(toCategory);
+    await this.cache.set(cacheKey, result, CACHE_TTL.CATALOG_LIST);
+    return result;
   }
 
   async findByAncestor(ancestorId: string): Promise<Category[]> {
@@ -246,6 +280,11 @@ export class MongoCategoryRepository implements ICategoryRepository {
       ancestors: ancestors.map((a) => new mongoose.Types.ObjectId(a)),
       level,
     });
+    await this.cache.del(
+      'catalog:v1:categories:all',
+      'catalog:v1:categories:true',
+      'catalog:v1:categories:false',
+    );
     return toCategory(doc.toObject() as Record<string, unknown>);
   }
 
@@ -256,6 +295,11 @@ export class MongoCategoryRepository implements ICategoryRepository {
       { $set: input },
       { new: true },
     ).lean<Record<string, unknown> | null>();
+    await this.cache.del(
+      'catalog:v1:categories:all',
+      'catalog:v1:categories:true',
+      'catalog:v1:categories:false',
+    );
     return doc ? toCategory(doc) : null;
   }
 
@@ -263,7 +307,12 @@ export class MongoCategoryRepository implements ICategoryRepository {
     if (!OID.test(id)) return false;
     const result = await CategoryModel.updateOne(
       { _id: id, isDeleted: false },
-      { $set: { isDeleted: true, deletedAt: new Date() } }
+      { $set: { isDeleted: true, deletedAt: new Date() } },
+    );
+    await this.cache.del(
+      'catalog:v1:categories:all',
+      'catalog:v1:categories:true',
+      'catalog:v1:categories:false',
     );
     return result.modifiedCount > 0;
   }
@@ -274,12 +323,18 @@ export class MongoCategoryRepository implements ICategoryRepository {
 export class MongoProductCollectionRepository implements IProductCollectionRepository {
   async findById(id: string): Promise<ProductCollection | null> {
     if (!OID.test(id)) return null;
-    const doc = await ProductCollectionModel.findOne({ _id: id, isDeleted: false }).lean<Record<string, unknown> | null>();
+    const doc = await ProductCollectionModel.findOne({ _id: id, isDeleted: false }).lean<Record<
+      string,
+      unknown
+    > | null>();
     return doc ? toCollection(doc) : null;
   }
 
   async findBySlug(slug: string): Promise<ProductCollection | null> {
-    const doc = await ProductCollectionModel.findOne({ slug, isDeleted: false }).lean<Record<string, unknown> | null>();
+    const doc = await ProductCollectionModel.findOne({ slug, isDeleted: false }).lean<Record<
+      string,
+      unknown
+    > | null>();
     return doc ? toCollection(doc) : null;
   }
 
@@ -287,16 +342,21 @@ export class MongoProductCollectionRepository implements IProductCollectionRepos
     const query: Record<string, unknown> = { isDeleted: false };
     if (filter.status) query['status'] = filter.status;
     if (filter.featured !== undefined) query['featured'] = filter.featured;
-    const docs = await ProductCollectionModel.find(query).sort({ sortOrder: 1, createdAt: -1 }).lean<Record<string, unknown>[]>();
+    const docs = await ProductCollectionModel.find(query)
+      .sort({ sortOrder: 1, createdAt: -1 })
+      .lean<Record<string, unknown>[]>();
     return docs.map(toCollection);
   }
 
-  async create(input: any): Promise<ProductCollection> {
+  async create(input: CreateProductCollectionInput): Promise<ProductCollection> {
     const doc = await ProductCollectionModel.create(input);
     return toCollection(doc.toObject() as Record<string, unknown>);
   }
 
-  async update(id: string, input: any): Promise<ProductCollection | null> {
+  async update(
+    id: string,
+    input: Partial<CreateProductCollectionInput>,
+  ): Promise<ProductCollection | null> {
     if (!OID.test(id)) return null;
     const doc = await ProductCollectionModel.findOneAndUpdate(
       { _id: id, isDeleted: false },
@@ -310,7 +370,7 @@ export class MongoProductCollectionRepository implements IProductCollectionRepos
     if (!OID.test(id)) return false;
     const result = await ProductCollectionModel.updateOne(
       { _id: id, isDeleted: false },
-      { $set: { isDeleted: true, status: 'ARCHIVED' } }
+      { $set: { isDeleted: true, status: 'ARCHIVED' } },
     );
     return result.modifiedCount > 0;
   }
@@ -319,21 +379,45 @@ export class MongoProductCollectionRepository implements IProductCollectionRepos
 // ---- ProductRepository -----------------------------------------------------------------------
 
 export class MongoProductRepository implements IProductRepository {
+  constructor(private readonly cache: ICacheService = cacheService) {}
+
   async findById(id: string): Promise<Product | null> {
     if (!OID.test(id)) return null;
-    const doc = await ProductModel.findOne({ _id: id, isDeleted: false }).lean<Record<string, unknown> | null>();
-    return doc ? toProduct(doc) : null;
+    const cacheKey = CACHE_KEYS.catalog.productDetail(id);
+    const cached = await this.cache.get<Product>(cacheKey);
+    if (cached) return reviveProduct(cached);
+
+    const doc = await ProductModel.findOne({ _id: id, isDeleted: false }).lean<Record<
+      string,
+      unknown
+    > | null>();
+    if (!doc) return null;
+    const product = toProduct(doc);
+    await this.cache.set(cacheKey, product, CACHE_TTL.CATALOG_DETAIL);
+    return product;
   }
 
   async findBySlug(slug: string): Promise<Product | null> {
-    const doc = await ProductModel.findOne({ slug, isDeleted: false }).lean<Record<string, unknown> | null>();
-    return doc ? toProduct(doc) : null;
+    const cacheKey = CACHE_KEYS.catalog.productDetail(`slug:${slug}`);
+    const cached = await this.cache.get<Product>(cacheKey);
+    if (cached) return reviveProduct(cached);
+
+    const doc = await ProductModel.findOne({ slug, isDeleted: false }).lean<Record<
+      string,
+      unknown
+    > | null>();
+    if (!doc) return null;
+    const product = toProduct(doc);
+    await this.cache.set(cacheKey, product, CACHE_TTL.CATALOG_DETAIL);
+    return product;
   }
 
   async findByIds(ids: string[]): Promise<Product[]> {
     const validIds = ids.filter((id) => OID.test(id));
     if (validIds.length === 0) return [];
-    const docs = await ProductModel.find({ _id: { $in: validIds }, isDeleted: false }).lean<Record<string, unknown>[]>();
+    const docs = await ProductModel.find({ _id: { $in: validIds }, isDeleted: false }).lean<
+      Record<string, unknown>[]
+    >();
     return docs.map(toProduct);
   }
 
@@ -366,7 +450,10 @@ export class MongoProductRepository implements IProductRepository {
     }
     if (filter.minPrice !== undefined) query['basePrice.amount'] = { $gte: filter.minPrice };
     if (filter.maxPrice !== undefined) {
-      query['basePrice.amount'] = { ...(query['basePrice.amount'] as object ?? {}), $lte: filter.maxPrice };
+      query['basePrice.amount'] = {
+        ...((query['basePrice.amount'] as object) ?? {}),
+        $lte: filter.maxPrice,
+      };
     }
     if (filter.search) {
       const cleanSearch = filter.search.slice(0, 100).trim();
@@ -435,15 +522,31 @@ export class MongoProductRepository implements IProductRepository {
       { $set: input },
       { new: true },
     ).lean<Record<string, unknown> | null>();
+    if (doc) {
+      await this.cache.del(
+        CACHE_KEYS.catalog.productDetail(id),
+        CACHE_KEYS.catalog.productDetail(`slug:${doc.slug as string}`),
+      );
+    }
     return doc ? toProduct(doc) : null;
   }
 
   async softDelete(id: string): Promise<boolean> {
     if (!OID.test(id)) return false;
+    const doc = await ProductModel.findOne({ _id: id, isDeleted: false }).lean<Record<
+      string,
+      unknown
+    > | null>();
     const result = await ProductModel.updateOne(
       { _id: id, isDeleted: false },
-      { $set: { isDeleted: true, deletedAt: new Date() } }
+      { $set: { isDeleted: true, deletedAt: new Date() } },
     );
+    if (doc) {
+      await this.cache.del(
+        CACHE_KEYS.catalog.productDetail(id),
+        CACHE_KEYS.catalog.productDetail(`slug:${doc.slug as string}`),
+      );
+    }
     return result.modifiedCount > 0;
   }
 
@@ -454,6 +557,7 @@ export class MongoProductRepository implements IProductRepository {
   ): Promise<void> {
     if (!OID.test(productId)) return;
     await ProductModel.updateOne({ _id: productId }, { $set: { ratingsAvg, ratingsCount } });
+    await this.cache.del(CACHE_KEYS.catalog.productDetail(productId));
   }
 }
 
@@ -524,7 +628,11 @@ export class MongoInventoryRepository implements IInventoryRepository {
   }
 
   /** Releases reserved stock back to available (e.g. on order cancellation). */
-  async atomicRelease(inventoryId: string, quantity: number, _referenceId: string): Promise<boolean> {
+  async atomicRelease(
+    inventoryId: string,
+    quantity: number,
+    _referenceId: string,
+  ): Promise<boolean> {
     if (!OID.test(inventoryId)) return false;
 
     const result = await InventoryModel.updateOne(
@@ -544,7 +652,11 @@ export class MongoInventoryRepository implements IInventoryRepository {
   }
 
   /** Commits reserved stock to permanent onHand decrement (called on payment webhook confirm). */
-  async atomicCommit(inventoryId: string, quantity: number, _referenceId: string): Promise<boolean> {
+  async atomicCommit(
+    inventoryId: string,
+    quantity: number,
+    _referenceId: string,
+  ): Promise<boolean> {
     if (!OID.test(inventoryId)) return false;
 
     const result = await InventoryModel.updateOne(
@@ -608,7 +720,9 @@ export class MongoInventoryRepository implements IInventoryRepository {
 // ---- InventoryMovementRepository ------------------------------------------------------------
 
 export class MongoInventoryMovementRepository implements IInventoryMovementRepository {
-  async create(input: Parameters<IInventoryMovementRepository['create']>[0]): Promise<InventoryMovement> {
+  async create(
+    input: Parameters<IInventoryMovementRepository['create']>[0],
+  ): Promise<InventoryMovement> {
     const doc = await InventoryMovementModel.create({
       inventoryId: new mongoose.Types.ObjectId(input.inventoryId),
       productId: new mongoose.Types.ObjectId(input.productId),

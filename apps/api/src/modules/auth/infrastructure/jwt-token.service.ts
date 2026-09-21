@@ -6,7 +6,7 @@
 // Refresh token — a high-entropy opaque random string, NOT a JWT. Its authority comes from the
 //                 stored hash, so there is nothing to gain from making it self-describing, and
 //                 an opaque value cannot leak claims if intercepted.
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { UnauthorizedError } from '../../../core/exceptions';
 import { env } from '../../../core/config';
@@ -28,7 +28,8 @@ export class JwtTokenService implements ITokenService {
     const options: jwt.SignOptions = {
       expiresIn: env.JWT_ACCESS_TTL as NonNullable<jwt.SignOptions['expiresIn']>,
     };
-    return jwt.sign(claims, env.JWT_ACCESS_SECRET, options);
+    const jti = claims.jti || randomUUID();
+    return jwt.sign({ ...claims, jti }, env.JWT_ACCESS_SECRET, options);
   }
 
   verifyAccessToken(token: string): AccessTokenClaims {
@@ -43,6 +44,7 @@ export class JwtTokenService implements ITokenService {
         roleId: decoded.roleId as string,
         roleName: (decoded.roleName as string) ?? undefined,
         permissions: (decoded.permissions as string[]) ?? [],
+        jti: (decoded.jti as string) ?? undefined,
       };
     } catch {
       // Signature failure, expiry, and malformed input all collapse to one response — revealing

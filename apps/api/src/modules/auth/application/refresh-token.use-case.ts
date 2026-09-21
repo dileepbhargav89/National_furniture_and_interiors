@@ -6,6 +6,7 @@
 // audit_logs with action TOKEN_REUSE_DETECTED, because "refresh-token reuse is one of the
 // highest-confidence account-compromise indicators available anywhere in the system".
 import { UnauthorizedError } from '../../../core/exceptions';
+import { cacheService, ICacheService, CACHE_KEYS, CACHE_TTL } from '../../../core/cache';
 import type {
   IAuditLogger,
   IAuthUserRepository,
@@ -85,10 +86,14 @@ export class LogoutUser {
   constructor(
     private readonly refreshTokens: IRefreshTokenRepository,
     private readonly tokens: ITokenService,
+    private readonly cache: ICacheService = cacheService,
   ) {}
 
-  /** docs/02 §9's Logout sequence — delete the stored refresh token, clear the cookie. */
-  async execute(presentedToken: string | undefined): Promise<void> {
+  /** docs/02 §9's Logout sequence — delete the stored refresh token, clear the cookie, deny-list JWT. */
+  async execute(presentedToken: string | undefined, jti?: string | undefined): Promise<void> {
+    if (jti) {
+      await this.cache.set(CACHE_KEYS.auth.tokenDenyList(jti), '1', CACHE_TTL.JWT_DENY_LIST);
+    }
     if (!presentedToken) {
       return; // Idempotent: logging out without a session is a no-op, not an error.
     }

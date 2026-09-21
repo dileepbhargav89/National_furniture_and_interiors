@@ -187,7 +187,10 @@ export function createAuthController(deps: AuthControllerDeps) {
     /** POST /auth/logout — revokes the stored refresh token and clears the cookie. */
     async logout(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
-        await deps.logoutUser.execute(req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined);
+        await deps.logoutUser.execute(
+          req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined,
+          req.auth?.jti,
+        );
         res.clearCookie(REFRESH_COOKIE_NAME, { path: '/api/v1/auth/refresh' });
         sendSuccess(req, res, 200, null);
       } catch (error) {

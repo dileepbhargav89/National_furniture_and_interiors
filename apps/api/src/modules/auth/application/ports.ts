@@ -69,6 +69,7 @@ export interface AccessTokenClaims {
   roleName?: string;
   /** docs/02 §9.1 — the access token carries resolved PERMISSION KEYS, not just a role name. */
   permissions: string[];
+  jti?: string | undefined;
 }
 
 export interface ITokenService {

@@ -29,6 +29,7 @@ export interface RequestAuthClaims {
   roleId: string;
   roleName?: string;
   permissions: string[];
+  jti?: string | undefined;
 }
 
 declare global {
@@ -74,10 +75,18 @@ export function requirePermissions(...requiredKeys: string[]) {
         : neededKey.replace(/_/g, '-');
       if (held.has(altKey)) return true;
       // Interoperability between .manage and .write (e.g. payments.manage vs payments.write)
-      if (neededKey.endsWith('.manage') && held.has(neededKey.replace(/\.manage$/, '.write'))) return true;
-      if (neededKey.endsWith('.write') && held.has(neededKey.replace(/\.write$/, '.manage'))) return true;
+      if (neededKey.endsWith('.manage') && held.has(neededKey.replace(/\.manage$/, '.write')))
+        return true;
+      if (neededKey.endsWith('.write') && held.has(neededKey.replace(/\.write$/, '.manage')))
+        return true;
       // Interoperability for self actions (e.g. reviews.write_self, cart.read_self) for authenticated customers
-      if (neededKey.endsWith('_self') && (held.has(neededKey.replace(/_self$/, '')) || claims.userType === 'CUSTOMER' || claims.roleName === 'CUSTOMER')) return true;
+      if (
+        neededKey.endsWith('_self') &&
+        (held.has(neededKey.replace(/_self$/, '')) ||
+          claims.userType === 'CUSTOMER' ||
+          claims.roleName === 'CUSTOMER')
+      )
+        return true;
       return false;
     };
 
