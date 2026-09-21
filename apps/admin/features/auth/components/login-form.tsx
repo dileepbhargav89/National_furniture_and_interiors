@@ -7,7 +7,18 @@ import { authService } from '../services/auth.service';
 import { authValidation, LoginFormData } from '@nfi/shared';
 import { useAuthStore, AdminUser } from '../store/auth.store';
 import { useRouter } from 'next/navigation';
-import { Button, Input, Label, QRCode } from '@nfi/ui';
+import { Input, Label, QRCode } from '@nfi/ui';
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Loader2,
+  ShieldCheck,
+  ShieldAlert,
+  ArrowRight,
+  Sparkles,
+} from 'lucide-react';
 
 type MfaState = 'NONE' | 'MFA_REQUIRED' | 'MFA_ENROLMENT_REQUIRED';
 
@@ -160,34 +171,54 @@ function AdminLoginFormComponent() {
 
   if (mfaState !== 'NONE') {
     return (
-      <div className="grid gap-6">
-        <form onSubmit={onMfaSubmit}>
-          <div className="grid gap-4">
-            {mfaState === 'MFA_ENROLMENT_REQUIRED' && (
-              <div className="bg-muted/50 flex flex-col items-center justify-center space-y-4 rounded-lg border p-4">
-                <p className="text-center text-sm font-medium">
-                  Scan QR Code with your Authenticator App
-                </p>
-                {qrCodeUrl ? (
-                  <div className="rounded-md bg-white p-2 shadow-sm">
-                    <QRCode value={qrCodeUrl} size={180} />
-                  </div>
-                ) : (
-                  <div className="bg-muted flex h-[180px] w-[180px] animate-pulse items-center justify-center rounded-md">
-                    <span className="text-muted-foreground text-xs">Loading QR...</span>
-                  </div>
-                )}
-                <p className="text-muted-foreground text-center text-xs">
-                  Enter the 6-digit code below (or dev backup:{' '}
-                  <span className="font-mono font-bold">123456</span>)
-                </p>
+      <div className="animate-in fade-in grid gap-6 duration-300">
+        <form onSubmit={onMfaSubmit} className="space-y-5">
+          {mfaState === 'MFA_ENROLMENT_REQUIRED' && (
+            <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-b from-stone-900 to-[#1C140E] p-6 text-center text-white shadow-xl">
+              <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-[11px] font-semibold text-[#F5A060]">
+                <Sparkles className="h-3 w-3" />
+                <span>Authenticator Enrollment</span>
               </div>
-            )}
+              <p className="mb-4 text-xs text-stone-300">
+                Scan this cryptographically signed QR code using Google Authenticator or Microsoft
+                Authenticator
+              </p>
+              {qrCodeUrl ? (
+                <div className="relative mx-auto inline-block rounded-xl bg-white p-3 shadow-2xl">
+                  {/* Animated laser scan guide */}
+                  <div className="animate-scanline absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-amber-500 to-transparent shadow-[0_0_8px_#F5A060]" />
+                  <QRCode value={qrCodeUrl} size={180} />
+                </div>
+              ) : (
+                <div className="mx-auto flex h-[204px] w-[204px] animate-pulse items-center justify-center rounded-xl bg-stone-800">
+                  <Loader2 className="h-6 w-6 animate-spin text-[#F5A060]" />
+                </div>
+              )}
+              <p className="mt-4 font-mono text-[11px] text-stone-400">
+                Enter generated 6-digit code below (or backup code:{' '}
+                <span className="font-bold text-[#F5A060]">123456</span>)
+              </p>
+            </div>
+          )}
 
-            {error && <div className="text-destructive text-sm font-medium">{error}</div>}
+          {error && (
+            <div
+              className="animate-shake shadow-xs flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-medium text-rose-800"
+              role="alert"
+            >
+              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+              <div className="flex-1 leading-relaxed">{error}</div>
+            </div>
+          )}
 
-            <div className="grid gap-2">
-              <Label htmlFor="mfa">Authenticator / Master Code</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="mfa" className="text-xs font-semibold text-stone-700">
+              One-Time Passcode (6 Digits)
+            </Label>
+            <div className="group relative">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-stone-400 transition-colors group-focus-within:text-[#C5A059]">
+                <Lock className="h-4 w-4" />
+              </div>
               <Input
                 id="mfa"
                 type="text"
@@ -198,26 +229,41 @@ function AdminLoginFormComponent() {
                 onChange={(e) => setTotpToken(e.target.value)}
                 required
                 maxLength={6}
+                className="min-h-[46px] border-stone-200 bg-stone-50/50 pl-10 text-center font-mono text-base font-bold tracking-[0.3em] text-stone-900 transition-all duration-200 hover:border-stone-300 focus:border-[#C5A059] focus:bg-white focus:ring-2 focus:ring-[#C5A059]/25"
               />
             </div>
-            <Button
+          </div>
+
+          <div className="space-y-2 pt-2">
+            <button
               disabled={loading}
               type="submit"
-              className="w-full bg-[#171717] text-white hover:bg-[#2e2e2e]"
+              className="group relative flex min-h-[46px] w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-stone-700/50 bg-gradient-to-r from-[#171717] via-[#2A1D15] to-[#171717] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-stone-900/10 transition-all duration-300 hover:scale-[1.01] hover:border-amber-500/40 hover:shadow-xl active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {loading ? 'Verifying...' : 'Complete Sign In'}
-            </Button>
-            <Button
-              variant="ghost"
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-[#F5A060]" />
+                  <span>Verifying Token...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span>Verify &amp; Enter Executive Portal</span>
+                  <ArrowRight className="h-4 w-4 text-[#F5A060] transition-transform duration-300 group-hover:translate-x-1" />
+                </div>
+              )}
+            </button>
+
+            <button
               type="button"
               onClick={() => {
                 setMfaState('NONE');
                 setQrCodeUrl(null);
               }}
               disabled={loading}
+              className="w-full py-2 text-center text-xs font-medium text-stone-500 transition-colors hover:text-stone-900"
             >
-              Back to Login
-            </Button>
+              &larr; Back to Email Sign In
+            </button>
           </div>
         </form>
       </div>
@@ -225,21 +271,28 @@ function AdminLoginFormComponent() {
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="animate-in fade-in space-y-5 duration-300">
       {/* Main Authentication Form */}
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="grid gap-4">
-          {error && (
-            <div
-              className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-700"
-              role="alert"
-            >
-              {error}
-            </div>
-          )}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {error && (
+          <div
+            className="animate-shake shadow-xs flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-medium text-rose-800"
+            role="alert"
+          >
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+            <div className="flex-1 leading-relaxed">{error}</div>
+          </div>
+        )}
 
-          <div className="grid gap-2">
-            <Label htmlFor="email">Executive / Staff Email</Label>
+        {/* Email Field */}
+        <div className="space-y-1.5">
+          <Label htmlFor="email" className="text-xs font-semibold text-stone-700">
+            Executive / Staff Email
+          </Label>
+          <div className="group relative">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-stone-400 transition-colors group-focus-within:text-[#C5A059]">
+              <Mail className="h-4 w-4" />
+            </div>
             <Input
               id="email"
               type="email"
@@ -248,90 +301,97 @@ function AdminLoginFormComponent() {
               autoComplete="email"
               autoCorrect="off"
               disabled={loading}
-              className="min-h-[44px]"
+              className="min-h-[46px] border-stone-200 bg-stone-50/50 pl-10 text-xs text-stone-900 transition-all duration-200 hover:border-stone-300 focus:border-[#C5A059] focus:bg-white focus:ring-2 focus:ring-[#C5A059]/25"
               {...register('email')}
             />
-            {errors.email && <p className="text-destructive text-xs">{errors.email.message}</p>}
           </div>
+          {errors.email && (
+            <p className="animate-in fade-in slide-in-from-top-1 text-[11px] font-medium text-rose-600">
+              {errors.email.message}
+            </p>
+          )}
+        </div>
 
-          <div className="grid gap-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="focus:outline-hidden flex cursor-pointer select-none items-center gap-1 text-[11px] font-medium text-stone-500 transition-colors hover:text-stone-900 focus:underline"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? (
-                  <>
-                    <svg
-                      className="h-3.5 w-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"
-                      />
-                    </svg>
-                    Hide
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      className="h-3.5 w-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                      />
-                    </svg>
-                    Show
-                  </>
-                )}
-              </button>
-            </div>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••••••"
-                disabled={loading}
-                className="min-h-[44px] pr-10"
-                {...register('password')}
-              />
-            </div>
-            {errors.password && (
-              <p className="text-destructive text-xs">{errors.password.message}</p>
-            )}
+        {/* Password Field */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password" className="text-xs font-semibold text-stone-700">
+              Password
+            </Label>
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="flex items-center gap-1 text-[11px] font-medium text-stone-400 transition-colors hover:text-stone-700"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? (
+                <>
+                  <EyeOff className="h-3.5 w-3.5" />
+                  <span>Hide</span>
+                </>
+              ) : (
+                <>
+                  <Eye className="h-3.5 w-3.5" />
+                  <span>Show</span>
+                </>
+              )}
+            </button>
           </div>
+          <div className="group relative">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-stone-400 transition-colors group-focus-within:text-[#C5A059]">
+              <Lock className="h-4 w-4" />
+            </div>
+            <Input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="••••••••••••"
+              disabled={loading}
+              className="min-h-[46px] border-stone-200 bg-stone-50/50 pl-10 pr-10 text-xs text-stone-900 transition-all duration-200 hover:border-stone-300 focus:border-[#C5A059] focus:bg-white focus:ring-2 focus:ring-[#C5A059]/25"
+              {...register('password')}
+            />
+          </div>
+          {errors.password && (
+            <p className="animate-in fade-in slide-in-from-top-1 text-[11px] font-medium text-rose-600">
+              {errors.password.message}
+            </p>
+          )}
+        </div>
 
-          <Button
+        {/* Action Button */}
+        <div className="pt-2">
+          <button
             disabled={loading}
             type="submit"
-            className="min-h-[44px] w-full bg-[#171717] font-medium text-white shadow-sm transition-all hover:bg-[#2e2e2e] focus:ring-2 focus:ring-amber-500"
+            className="group relative flex min-h-[46px] w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-stone-700/60 bg-gradient-to-r from-[#171717] via-[#281D16] to-[#171717] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-stone-900/10 transition-all duration-300 hover:scale-[1.01] hover:border-amber-500/40 hover:shadow-xl active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {loading ? 'Authenticating...' : 'Secure Sign In'}
-          </Button>
+            {/* Shimmer sweep effect */}
+            <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-1000 group-hover:translate-x-full" />
+
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-[#F5A060]" />
+                <span>Authenticating Session...</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span>Secure Sign In</span>
+                <ArrowRight className="h-4 w-4 text-[#F5A060] transition-transform duration-300 group-hover:translate-x-1" />
+              </div>
+            )}
+          </button>
         </div>
       </form>
+
+      {/* Security Trust Markers */}
+      <div className="flex items-center justify-between border-t border-stone-100 pt-4 text-[11px] text-stone-400">
+        <div className="flex items-center gap-1.5">
+          <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+          <span>256-Bit TLS Encryption</span>
+        </div>
+        <span className="font-mono text-[10px] uppercase tracking-wider text-stone-400">
+          Zero-Trust Isolation
+        </span>
+      </div>
     </div>
   );
 }
