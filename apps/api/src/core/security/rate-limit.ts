@@ -24,6 +24,12 @@ export interface RateLimiterConfig {
   max: number;
   /** Distinguishes this limiter's counters in Redis from every other limiter's. */
   keyPrefix: string;
+  /** Custom key generator to scope by email, phone, userId, or compound keys. Default is client IP. */
+  keyGenerator?: (req: import('express').Request) => string;
+  /** Skip successful requests (useful for failed attempt tracking where only auth failures count). */
+  skipSuccessfulRequests?: boolean;
+  /** Skip failed requests. */
+  skipFailedRequests?: boolean;
 }
 
 /**
@@ -64,11 +70,19 @@ export function createRateLimiter(
     limit: config.max,
     standardHeaders: true,
     legacyHeaders: false,
+    ...(config.keyGenerator ? { keyGenerator: config.keyGenerator } : {}),
+    ...(config.skipSuccessfulRequests !== undefined
+      ? { skipSuccessfulRequests: config.skipSuccessfulRequests }
+      : {}),
+    ...(config.skipFailedRequests !== undefined
+      ? { skipFailedRequests: config.skipFailedRequests }
+      : {}),
     ...(store ? { store } : {}),
     // docs/08_api_architecture.md §3.11: 429 -> error.code = RATE_LIMITED, Retry-After set.
     // The envelope shape mirrors core/exceptions/error-response.ts without importing it directly
     // (express-rate-limit's handler runs outside the normal error-middleware chain).
     handler: (req, res) => {
+      const retryAfter = res.getHeader('Retry-After');
       res.status(429).json({
         success: false,
         data: null,
@@ -76,6 +90,7 @@ export function createRateLimiter(
           code: 'RATE_LIMITED',
           message: 'Too many requests — please try again later',
           traceId: req.id ?? 'unknown',
+          ...(retryAfter ? { retryAfterSeconds: Number(retryAfter) } : {}),
         },
         meta: { requestId: req.id ?? 'unknown', timestamp: new Date().toISOString() },
       });

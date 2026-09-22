@@ -19,6 +19,7 @@ import {
   ArrowRight,
   Sparkles,
 } from 'lucide-react';
+import { ApiError } from '@nfi/api-client';
 
 type MfaState = 'NONE' | 'MFA_REQUIRED' | 'MFA_ENROLMENT_REQUIRED';
 
@@ -48,11 +49,26 @@ function parseJwtClaims(token: string): {
 function AdminLoginFormComponent() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [rateLimitCooldown, setRateLimitCooldown] = useState<number | null>(null);
   const [mfaState, setMfaState] = useState<MfaState>('NONE');
   const [userId, setUserId] = useState<string | null>(null);
   const [totpToken, setTotpToken] = useState('');
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (rateLimitCooldown === null || rateLimitCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setRateLimitCooldown((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(interval);
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [rateLimitCooldown]);
 
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
@@ -123,7 +139,16 @@ function AdminLoginFormComponent() {
         }
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'An error occurred during authentication');
+      if (err instanceof ApiError && err.code === 'RATE_LIMITED') {
+        const cooldown =
+          err.retryAfterSeconds && err.retryAfterSeconds > 0 ? err.retryAfterSeconds : 60;
+        setRateLimitCooldown(cooldown);
+        setError(
+          `Too many authentication attempts. For atelier security, please wait ${cooldown}s before retrying.`,
+        );
+      } else {
+        setError(err instanceof Error ? err.message : 'An error occurred during authentication');
+      }
     } finally {
       setLoading(false);
     }
@@ -290,14 +315,33 @@ function AdminLoginFormComponent() {
     <div className="animate-in fade-in space-y-5 duration-300">
       {/* Main Authentication Form */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {error && (
+        {rateLimitCooldown !== null && rateLimitCooldown > 0 ? (
           <div
-            className="animate-shake shadow-xs flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-medium text-rose-800"
+            className="animate-in fade-in flex items-center gap-3 rounded-xl border border-[#C5A059]/40 bg-[#C5A059]/10 p-3.5 text-xs text-[#8C7355] dark:text-[#C5A059]"
             role="alert"
+            aria-live="polite"
           >
-            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
-            <div className="flex-1 leading-relaxed">{error}</div>
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#C5A059]/20 font-mono text-xs font-bold text-stone-900">
+              {rateLimitCooldown}s
+            </div>
+            <div>
+              <p className="font-semibold text-stone-900">Executive Security Rate Limit</p>
+              <p className="mt-0.5 text-stone-600">
+                Too many requests. Please wait {rateLimitCooldown} second
+                {rateLimitCooldown !== 1 ? 's' : ''} before retrying.
+              </p>
+            </div>
           </div>
+        ) : (
+          error && (
+            <div
+              className="animate-shake shadow-xs flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-medium text-rose-800"
+              role="alert"
+            >
+              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+              <div className="flex-1 leading-relaxed">{error}</div>
+            </div>
+          )
         )}
 
         {/* Email Field */}
@@ -376,14 +420,18 @@ function AdminLoginFormComponent() {
         {/* Action Button */}
         <div className="pt-2">
           <button
-            disabled={loading}
+            disabled={loading || (rateLimitCooldown !== null && rateLimitCooldown > 0)}
             type="submit"
             className="group relative flex min-h-[46px] w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-stone-700/60 bg-gradient-to-r from-[#171717] via-[#281D16] to-[#171717] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-stone-900/10 transition-all duration-300 hover:scale-[1.01] hover:border-amber-500/40 hover:shadow-xl active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
           >
             {/* Shimmer sweep effect */}
             <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-1000 group-hover:translate-x-full" />
 
-            {loading ? (
+            {rateLimitCooldown !== null && rateLimitCooldown > 0 ? (
+              <div className="flex items-center gap-2">
+                <span>Cooldown Active ({rateLimitCooldown}s)</span>
+              </div>
+            ) : loading ? (
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin text-[#F5A060]" />
                 <span>Authenticating Session...</span>

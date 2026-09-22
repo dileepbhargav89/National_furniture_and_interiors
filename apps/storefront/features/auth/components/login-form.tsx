@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { Button, Input, Label, QRCode, SocialLoginButton } from '@nfi/ui';
 import { useGoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
 import { Eye, EyeOff } from 'lucide-react';
+import { ApiError } from '@nfi/api-client';
 import { ForgotPasswordModal } from './forgot-password-modal';
 
 type MfaState = 'NONE' | 'MFA_REQUIRED' | 'MFA_ENROLMENT_REQUIRED';
@@ -19,6 +20,7 @@ function LoginFormComponent() {
   const [error, setError] = useState<string | null>(null);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [rateLimitCooldown, setRateLimitCooldown] = useState<number | null>(null);
   const [mfaState, setMfaState] = useState<MfaState>('NONE');
   const [userId, setUserId] = useState<string | null>(null);
   const [totpToken, setTotpToken] = useState('');
@@ -30,6 +32,20 @@ function LoginFormComponent() {
   const [resendTimer, setResendTimer] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (rateLimitCooldown === null || rateLimitCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setRateLimitCooldown((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(interval);
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [rateLimitCooldown]);
 
   const router = useRouter();
   const setToken = useAuthStore((state) => state.setToken);
@@ -65,7 +81,16 @@ function LoginFormComponent() {
         }
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'An error occurred during login');
+      if (err instanceof ApiError && err.code === 'RATE_LIMITED') {
+        const cooldown =
+          err.retryAfterSeconds && err.retryAfterSeconds > 0 ? err.retryAfterSeconds : 60;
+        setRateLimitCooldown(cooldown);
+        setError(
+          `Too many login attempts. For security reasons, please wait ${cooldown}s before retrying.`,
+        );
+      } else {
+        setError(err instanceof Error ? err.message : 'An error occurred during login');
+      }
     } finally {
       setLoading(false);
     }
@@ -130,7 +155,14 @@ function LoginFormComponent() {
         setOtpCode(dataObj.demoOtp);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to send OTP');
+      if (err instanceof ApiError && err.code === 'RATE_LIMITED') {
+        const cooldown =
+          err.retryAfterSeconds && err.retryAfterSeconds > 0 ? err.retryAfterSeconds : 60;
+        setRateLimitCooldown(cooldown);
+        setError(`Too many OTP requests. Please wait ${cooldown}s before requesting a new code.`);
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to send OTP');
+      }
     } finally {
       setLoading(false);
     }
@@ -160,7 +192,14 @@ function LoginFormComponent() {
         }
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Invalid or expired OTP. You can use 123456');
+      if (err instanceof ApiError && err.code === 'RATE_LIMITED') {
+        const cooldown =
+          err.retryAfterSeconds && err.retryAfterSeconds > 0 ? err.retryAfterSeconds : 60;
+        setRateLimitCooldown(cooldown);
+        setError(`Too many verification attempts. Please wait ${cooldown}s before trying again.`);
+      } else {
+        setError(err instanceof Error ? err.message : 'Invalid or expired OTP. You can use 123456');
+      }
     } finally {
       setLoading(false);
     }
@@ -293,7 +332,30 @@ function LoginFormComponent() {
                 {successBanner}
               </div>
             )}
-            {error && <div className="text-destructive text-sm font-medium">{error}</div>}
+            {rateLimitCooldown !== null && rateLimitCooldown > 0 ? (
+              <div
+                role="alert"
+                aria-live="polite"
+                className="flex items-center gap-3 rounded-lg border border-[#C5A059]/40 bg-[#C5A059]/10 p-3.5 text-xs text-[#8C7355] dark:text-[#C5A059]"
+              >
+                <div className="text-foreground flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#C5A059]/20 font-mono text-xs font-bold">
+                  {rateLimitCooldown}s
+                </div>
+                <div>
+                  <p className="text-foreground font-semibold">Rate limit active</p>
+                  <p className="text-muted-foreground mt-0.5">
+                    Too many attempts. For security reasons, please wait {rateLimitCooldown} second
+                    {rateLimitCooldown !== 1 ? 's' : ''} before trying again.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              error && (
+                <div role="alert" className="text-destructive text-sm font-medium">
+                  {error}
+                </div>
+              )
+            )}
 
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
@@ -347,8 +409,15 @@ function LoginFormComponent() {
               )}
             </div>
 
-            <Button disabled={loading} type="submit">
-              {loading ? 'Logging in...' : 'Sign In'}
+            <Button
+              disabled={loading || (rateLimitCooldown !== null && rateLimitCooldown > 0)}
+              type="submit"
+            >
+              {rateLimitCooldown !== null && rateLimitCooldown > 0
+                ? `Please wait (${rateLimitCooldown}s)`
+                : loading
+                  ? 'Logging in...'
+                  : 'Sign In'}
             </Button>
           </div>
         </form>
@@ -364,7 +433,30 @@ function LoginFormComponent() {
           }
         >
           <div className="grid gap-4">
-            {error && <div className="text-destructive text-sm font-medium">{error}</div>}
+            {rateLimitCooldown !== null && rateLimitCooldown > 0 ? (
+              <div
+                role="alert"
+                aria-live="polite"
+                className="flex items-center gap-3 rounded-lg border border-[#C5A059]/40 bg-[#C5A059]/10 p-3.5 text-xs text-[#8C7355] dark:text-[#C5A059]"
+              >
+                <div className="text-foreground flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#C5A059]/20 font-mono text-xs font-bold">
+                  {rateLimitCooldown}s
+                </div>
+                <div>
+                  <p className="text-foreground font-semibold">Rate limit active</p>
+                  <p className="text-muted-foreground mt-0.5">
+                    Please wait {rateLimitCooldown} second{rateLimitCooldown !== 1 ? 's' : ''}{' '}
+                    before trying again.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              error && (
+                <div role="alert" className="text-destructive text-sm font-medium">
+                  {error}
+                </div>
+              )
+            )}
 
             <div className="grid gap-2">
               <Label htmlFor="phone">Phone Number</Label>
@@ -403,8 +495,17 @@ function LoginFormComponent() {
               </div>
             )}
 
-            <Button disabled={loading} type="submit">
-              {loading ? 'Processing...' : otpSent ? 'Verify OTP' : 'Send OTP'}
+            <Button
+              disabled={loading || (rateLimitCooldown !== null && rateLimitCooldown > 0)}
+              type="submit"
+            >
+              {rateLimitCooldown !== null && rateLimitCooldown > 0
+                ? `Please wait (${rateLimitCooldown}s)`
+                : loading
+                  ? 'Processing...'
+                  : otpSent
+                    ? 'Verify OTP'
+                    : 'Send OTP'}
             </Button>
             {otpSent && (
               <div className="mt-2 flex flex-col gap-2">

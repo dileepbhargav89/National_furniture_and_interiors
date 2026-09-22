@@ -157,4 +157,81 @@ describe('createRateLimiter', () => {
       expect(res.status).toBeGreaterThanOrEqual(400);
     });
   });
+
+  describe('identity-based rate limiting & retry-after headers', () => {
+    let server: Server;
+    let baseUrl: string;
+
+    beforeAll(async () => {
+      const app = express();
+      app.use(express.json());
+      app.use(requestIdMiddleware);
+      app.use(
+        '/login-mock',
+        createRateLimiter(
+          {
+            windowMs: 60_000,
+            max: 2,
+            keyPrefix: 'test-identity',
+            keyGenerator: (req) => req.body?.email || req.ip || 'anonymous',
+          },
+          memoryStore(),
+        ),
+      );
+      app.post('/login-mock', (_req, res) => {
+        res.status(200).json({ ok: true });
+      });
+      app.use(errorHandlerMiddleware);
+
+      ({ server, baseUrl } = await listen(app));
+    });
+
+    afterAll(async () => {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+      });
+    });
+
+    it('limits requests per identity key and includes retryAfter in 429 response', async () => {
+      // Target email request 1
+      const res1 = await fetch(`${baseUrl}/login-mock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'target@example.com' }),
+      });
+      expect(res1.status).toBe(200);
+
+      // Target email request 2
+      const res2 = await fetch(`${baseUrl}/login-mock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'target@example.com' }),
+      });
+      expect(res2.status).toBe(200);
+
+      // Target email request 3 exceeds limit (max 2)
+      const res3 = await fetch(`${baseUrl}/login-mock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'target@example.com' }),
+      });
+      expect(res3.status).toBe(429);
+      const data3 = (await res3.json()) as {
+        success: boolean;
+        error: { code: string; retryAfterSeconds?: number };
+      };
+      expect(data3.success).toBe(false);
+      expect(data3.error.code).toBe('RATE_LIMITED');
+      expect(typeof data3.error.retryAfterSeconds).toBe('number');
+      expect(data3.error.retryAfterSeconds).toBeGreaterThan(0);
+
+      // A different email is unaffected by target email's rate limit
+      const resOther = await fetch(`${baseUrl}/login-mock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'other@example.com' }),
+      });
+      expect(resOther.status).toBe(200);
+    });
+  });
 });

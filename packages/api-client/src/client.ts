@@ -8,12 +8,16 @@ export type FetchOptions = Omit<RequestInit, 'body'> & {
 export class ApiError extends Error {
   public code?: string;
   public data?: unknown;
+  public retryAfterSeconds?: number;
 
-  constructor(message: string, code?: string, data?: unknown) {
+  constructor(message: string, code?: string, data?: unknown, retryAfterSeconds?: number) {
     super(message);
     this.name = 'ApiError';
     if (code !== undefined) this.code = code;
     if (data !== undefined) this.data = data;
+    if (retryAfterSeconds !== undefined && !Number.isNaN(retryAfterSeconds)) {
+      this.retryAfterSeconds = retryAfterSeconds;
+    }
   }
 }
 
@@ -126,7 +130,16 @@ export class ApiClient {
       const message = String(data.message || errObj?.message || response.statusText);
       const code = errObj?.code ? String(errObj.code) : undefined;
       const errorData = errObj?.details || data.data;
-      throw new ApiError(message, code, errorData);
+
+      const retryAfterHeader = response.headers.get('retry-after');
+      const retryAfterSeconds =
+        typeof errObj?.retryAfterSeconds === 'number'
+          ? errObj.retryAfterSeconds
+          : retryAfterHeader
+            ? parseInt(retryAfterHeader, 10)
+            : undefined;
+
+      throw new ApiError(message, code, errorData, retryAfterSeconds);
     }
 
     return data as unknown as ApiResponse<T>;
